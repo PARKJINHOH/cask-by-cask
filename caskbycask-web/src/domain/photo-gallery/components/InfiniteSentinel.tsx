@@ -26,5 +26,15 @@ export default function InfiniteSentinel({ onReach, enabled, children }: Props) 
     return () => observer.disconnect()
   }, [enabled])
 
-  return <div ref={ref} className="py-8 text-center text-xs text-neutral-400">{children}</div>
+  // 스크린리더에도 "더 불러오는 중 / 마지막입니다" 를 알린다 — 무한 스크롤은 시각 단서뿐이라
+  // 안내가 없으면 목록이 끝났는지 로딩 중인지 알 길이 없다.
+  return (
+    <div
+      ref={ref}
+      aria-live="polite"
+      className="py-8 text-center text-xs text-neutral-400"
+    >
+      {children}
+    </div>
+  )
 }

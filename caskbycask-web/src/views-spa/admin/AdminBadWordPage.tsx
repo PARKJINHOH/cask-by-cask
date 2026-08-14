@@ -103,7 +103,7 @@ export default function AdminBadWordPage() {
                   data.content.map((bw) => (
                     <tr key={bw.id} className="hover:bg-neutral-50 transition-colors">
                       <td className="px-4 py-3 text-neutral-400 tabular-nums">{bw.id}</td>
-                      <td className="px-4 py-3 font-medium text-neutral-900">{bw.word}</td>
+                      <td className="max-w-[220px] px-4 py-3 font-medium text-neutral-900">{bw.word}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                           bw.isActive

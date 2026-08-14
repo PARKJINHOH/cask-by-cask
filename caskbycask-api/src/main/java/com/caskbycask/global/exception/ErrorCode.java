@@ -70,6 +70,8 @@ public enum ErrorCode {
     DISTILLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_001", "증류소 정보를 찾을 수 없습니다."),
     DISTILLERY_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_002", "증류소 등록 요청을 찾을 수 없습니다."),
     DISTILLERY_REQUEST_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "DISTILLERY_003", "이미 처리된 등록 요청입니다."),
+    DISTILLERY_LOGO_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "DISTILLERY_004", "로고 이미지는 최대 5장까지 등록할 수 있습니다."),
+    DISTILLERY_LOGO_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_005", "로고 이미지를 찾을 수 없습니다."),
 
     // Winery
     WINERY_NOT_FOUND(HttpStatus.NOT_FOUND, "WINERY_001", "와이너리 정보를 찾을 수 없습니다."),
@@ -198,6 +200,7 @@ public enum ErrorCode {
     POST_IMAGE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_019", "이미지는 게시글당 최대 20장까지 첨부할 수 있습니다."),
     POST_VIDEO_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_020", "동영상은 게시글당 최대 2개까지 첨부할 수 있습니다."),
     POST_MEDIA_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_021", "이미지·동영상 합계 용량은 게시글당 100MB를 초과할 수 없습니다."),
+    POST_IMAGE_DIMENSIONS_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_022", "이미지는 4천만 픽셀을 초과할 수 없습니다."),
     // [패치 9] 증류소 담당자는 본인 담당 증류소만 태그 가능
     POST_DISTILLERY_TAG_FORBIDDEN(HttpStatus.FORBIDDEN, "POST_015", "본인이 담당하는 증류소만 태그할 수 있습니다."),
 

@@ -40,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -139,6 +140,47 @@ public class SpiritService {
             SpiritSearchCondition condition, Pageable pageable, Long userId) {
         User user = requireSpiritManagementUser(userId);
         return searchSpiritsForAdmin(scopeToAssignedProducer(condition, user), pageable);
+    }
+
+    /**
+     * 키워드 검색에서 에디션을 셀 때 훑는 마스터 ID 상한.
+     * 결과가 이보다 많으면 에디션 수는 상위 N 건 기준이 된다 — 목록 위의 안내 숫자라 이 정도면 충분하고,
+     * 상한이 없으면 흔한 단어 하나로 수만 건 ID 를 메모리에 올리게 된다.
+     */
+    private static final int EDITION_COUNT_SCAN_LIMIT = 1000;
+
+    /**
+     * 검색 조건에 걸린 주류 수 — 목록의 '총 N개' 표기용.
+     *
+     * 목록은 마스터만 싣지만 에디션도 등록된 제품이라 합계로 보여 준다.
+     * 키워드가 있으면 목록이 전문 검색 인덱스를 타므로 카운트도 같은 경로로 센다 —
+     * 규칙이 다른 쿼리를 섞으면 페이지 수와 화면 숫자가 어긋난다.
+     */
+    @Transactional(readOnly = true)
+    public SpiritSearchCountResponse countSpirits(SpiritSearchCondition condition) {
+        if (org.springframework.util.StringUtils.hasText(condition.keyword())) {
+            Page<Long> idPage = spiritSearchService.searchSpiritIds(
+                    condition, PageRequest.of(0, EDITION_COUNT_SCAN_LIMIT));
+            long editionCount = idPage.isEmpty() ? 0L
+                    : spiritRepository.countEditionsByParentIds(idPage.getContent(), condition.status());
+            return SpiritSearchCountResponse.of(idPage.getTotalElements(), editionCount);
+        }
+        return SpiritSearchCountResponse.of(
+                spiritRepository.countMasters(condition), spiritRepository.countEditions(condition));
+    }
+
+    /** 카테고리별 등록 주류 수(에디션 포함) — 메인 홈 사이드바 통계. */
+    @Transactional(readOnly = true)
+    public List<SpiritCategoryStatResponse> getCategoryStats() {
+        return spiritRepository.findCategoryCountsWithEditions().stream()
+                .map(row -> SpiritCategoryStatResponse.of(
+                        (SpiritCategory) row[0], toCount(row[1]), toCount(row[2])))
+                .toList();
+    }
+
+    /** SUM(CASE ...) 의 반환 타입은 DB/드라이버마다 Long·BigDecimal 로 갈린다. */
+    private long toCount(Object value) {
+        return value instanceof Number number ? number.longValue() : 0L;
     }
 
     @Transactional(readOnly = true)

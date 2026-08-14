@@ -5,6 +5,8 @@ import com.caskbycask.domain.producer.entity.ProducerType;
 import com.caskbycask.domain.spirit.dto.SpiritWineRegionResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.util.List;
+
 public record ProducerResponse(
         @Schema(description = "생산자 고유 ID")
         Long id,
@@ -24,8 +26,8 @@ public record ProducerResponse(
         SpiritWineRegionResponse wineRegion,
         @Schema(description = "공식 웹사이트 URL")
         String website,
-        @Schema(description = "로고 이미지 URL — 포토카드 등에서 사용")
-        String logoImageUrl,
+        @Schema(description = "로고 이미지 목록(최대 5장, sortOrder 순) — 0번이 대표. 포토카드 등에서 사용")
+        List<ProducerLogoResponse> logoImages,
         @Schema(description = "설립연도")
         Integer foundedYear,
         @Schema(description = "한글 소개")
@@ -35,7 +37,7 @@ public record ProducerResponse(
         @Schema(description = "검색 별칭 (한글 음차 변형 등)")
         String searchKeywords
 ) {
-    public static ProducerResponse from(Producer producer) {
+    public static ProducerResponse from(Producer producer, List<ProducerLogoResponse> logoImages) {
         return new ProducerResponse(
                 producer.getId(),
                 producer.getType(),
@@ -46,7 +48,7 @@ public record ProducerResponse(
                 producer.getRegionCode() != null ? producer.getRegionCode().getCode() : null,
                 SpiritWineRegionResponse.from(producer.getRegionCode()),
                 producer.getWebsite(),
-                producer.getLogoImageUrl(),
+                logoImages,
                 producer.getFoundedYear(),
                 producer.getDescriptionKo(),
                 producer.getDescriptionEn(),

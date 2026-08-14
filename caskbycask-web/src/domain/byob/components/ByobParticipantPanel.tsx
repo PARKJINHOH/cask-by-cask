@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useByobParticipants, useByobActions } from '../hooks/useByob'
 import type { ByobParticipant, ParticipantStatus } from '../types/byob.types'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const STATUS_LABEL: Record<ParticipantStatus, string> = {
   PENDING:  '대기',
@@ -116,14 +117,15 @@ export default function ByobParticipantPanel({ byobId }: Props) {
               {rejectTarget.nickname}{t('byob.rejectModalTitle')}
             </h4>
             <FormFieldLabel required className="mt-3 mb-1.5">{t('byob.rejectReasonPlaceholder')}</FormFieldLabel>
-            <textarea
+            <AutoGrowTextarea
               required
               aria-required="true"
               value={rejectedReason}
               onChange={(e) => setRejectedReason(e.target.value)}
               rows={3}
+              maxLength={300}
               placeholder={t('byob.rejectReasonPlaceholder')}
-              className="w-full mt-3 px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none
+              className="w-full mt-3 px-3 py-2 border border-neutral-300 rounded-lg text-sm
                 focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
             <div className="flex gap-2 mt-4">
@@ -154,14 +156,15 @@ export default function ByobParticipantPanel({ byobId }: Props) {
               {removeTarget.nickname}님 제외
             </h4>
             <FormFieldLabel required className="mt-3 mb-1.5">{t('byob.removeReasonPlaceholder')}</FormFieldLabel>
-            <textarea
+            <AutoGrowTextarea
               required
               aria-required="true"
               value={removedReason}
               onChange={(e) => setRemovedReason(e.target.value)}
               rows={3}
+              maxLength={300}
               placeholder={t('byob.removeReasonPlaceholder')}
-              className="w-full mt-3 px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none
+              className="w-full mt-3 px-3 py-2 border border-neutral-300 rounded-lg text-sm
                 focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
             <div className="flex gap-2 mt-4">

@@ -7,6 +7,7 @@ import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const CATEGORY_OPTIONS: { value: FaqCategory; labelKo: string; labelEn: string }[] = [
   { value: 'SERVICE', labelKo: 'CaskByCask 이용 안내', labelEn: 'About CaskByCask' },
@@ -169,14 +170,14 @@ export default function AdminFaqFormPage() {
         {/* 답변 */}
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">답변 <RequiredMark /></label>
-          <textarea
+          <AutoGrowTextarea
             required
             aria-required="true"
             value={form.answer}
             onChange={(e) => set('answer', e.target.value)}
             rows={6}
             placeholder="답변을 입력하세요"
-            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
         </div>

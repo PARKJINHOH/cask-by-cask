@@ -44,6 +44,7 @@ import {
   WINE_TYPES, CERTIFICATIONS, HARVEST_METHODS, FERMENTATION_VESSELS,
   WINE_OAK_TYPES as OAK_TYPES,
 } from '@/domain/spirit/data/wine'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // 관능(맛) 지표는 WineTasteBars(5단계 바)가 담당한다 — 사용자 상세와 동일 컴포넌트를 공유.
 
@@ -291,10 +292,10 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
       {/* 기타 정보 (참고용 자유 입력) */}
       <div>
         <label className={LABEL}>기타 정보</label>
-        <textarea value={value.notes} rows={3} maxLength={500}
+        <AutoGrowTextarea value={value.notes} rows={3} maxLength={500}
           onChange={(e) => onChange({ notes: e.target.value })}
           placeholder="출시·양조 관련 참고 정보를 입력하세요."
-          className={`${INPUT} resize`} />
+          className={`${INPUT}`} />
       </div>
     </div>
   )

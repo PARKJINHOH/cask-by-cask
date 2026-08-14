@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Modal from '@/shared/components/Modal'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import Button from '@/shared/components/Button'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 export interface ReviewVariantDraft {
   variantValue: string
@@ -227,7 +228,7 @@ export default function ReviewVariantCreateModal({
               ?
             </span>
           </label>
-          <textarea
+          <AutoGrowTextarea
             value={requestMemo}
             onChange={(e) => setRequestMemo(e.target.value)}
             rows={3}

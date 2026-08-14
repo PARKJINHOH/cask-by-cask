@@ -4,6 +4,7 @@ import Button from '@/shared/components/Button'
 import { useCreateComment, useUpdateComment } from '../hooks/useComments'
 import type { CommentItem } from '../types/comment.types'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 export interface CommentFormProps {
   spiritId: number
@@ -73,7 +74,7 @@ export default function CommentForm({
       )}
 
       <FormFieldLabel required className="mb-1.5">{t('comment.contentLabel')}</FormFieldLabel>
-      <textarea
+      <AutoGrowTextarea
         required
         aria-required="true"
         value={content}
@@ -81,7 +82,7 @@ export default function CommentForm({
         maxLength={1000}
         rows={editingComment ? 3 : 2}
         placeholder={resolvedPlaceholder}
-        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
+        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
           focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent
           placeholder:text-neutral-400"
       />

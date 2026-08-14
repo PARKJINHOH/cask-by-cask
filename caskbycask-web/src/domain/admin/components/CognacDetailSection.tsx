@@ -5,6 +5,7 @@ import CruCompositionInput, { type CruCompositionRow } from '@/shared/components
 import {
   COGNAC_GRADES, COGNAC_GRADE_MIN_YEARS, COGNAC_GRADE_NO_STATEMENT, COGNAC_OAK_TYPES,
 } from '@/domain/spirit/data/cognac'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 /** 숙성 위계에 놓이는 등급만 — '등급 표기 없음'은 위계 밖이라 따로 렌더한다 */
 const AGING_GRADES = COGNAC_GRADES.filter((g) => g !== COGNAC_GRADE_NO_STATEMENT)
@@ -188,18 +189,18 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
           블렌드 설명
           <InfoTooltip text="아상블라주에 대한 서술. 예: 약 40종의 오드비를 블렌딩, 최고령 원액 25년." />
         </label>
-        <textarea value={value.blendDetail} rows={3} maxLength={300}
+        <AutoGrowTextarea value={value.blendDetail} rows={3} maxLength={300}
           onChange={(e) => onChange({ blendDetail: e.target.value })}
-          className={`${INPUT} resize`} />
+          className={`${INPUT}`} />
       </div>
 
       {/* 기타 정보 (참고용 자유 입력) */}
       <div>
         <label className={LABEL}>기타 정보</label>
-        <textarea value={value.notes} rows={3} maxLength={500}
+        <AutoGrowTextarea value={value.notes} rows={3} maxLength={500}
           onChange={(e) => onChange({ notes: e.target.value })}
           placeholder="출시·숙성 관련 참고 정보를 입력하세요."
-          className={`${INPUT} resize`} />
+          className={`${INPUT}`} />
       </div>
     </div>
   )

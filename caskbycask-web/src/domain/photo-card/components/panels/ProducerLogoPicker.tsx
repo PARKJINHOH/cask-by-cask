@@ -21,6 +21,9 @@ const DEBOUNCE_MS = 250
  * 훑는 화면이 되고, 정작 찾는 곳은 스크롤 아래에 묻힌다.
  * 로고가 등록된 곳만 서버에서 걸러 받는다(`hasLogo`) — 얹을 수 없는 항목을 보여 줄 이유가 없다.
  *
+ * 생산자가 로고를 여러 장(최대 5장) 등록해 뒀을 수 있다 — 한 장뿐이면 바로 얹고,
+ * 여러 장이면 그 자리에서 펼쳐 어떤 버전을 쓸지 고르게 한다.
+ *
  * 고른 로고는 편집기의 주류 정보에 실어 둔다. 카드의 로고 요소(source=PRODUCER_LOGO)가
  * 그 값을 보고 그리기 때문에, 주류를 따로 고르지 않아도 로고만 얹을 수 있다.
  */
@@ -30,6 +33,8 @@ export default function ProducerLogoPicker({ editor, onUploadInstead }: Props) {
   const [results, setResults] = useState<Producer[]>([])
   const [searched, setSearched] = useState(false)
   const [loading, setLoading] = useState(false)
+  /** 로고가 여러 장인 생산자를 눌렀을 때, 그 자리에서 펼쳐 보여 주는 대상 */
+  const [expandedId, setExpandedId] = useState<number | null>(null)
 
   // 같은 말을 다시 치면 서버에 또 묻지 않는다(홈 검색과 같은 방식).
   const cacheRef = useRef(new Map<string, Producer[]>())
@@ -43,6 +48,7 @@ export default function ProducerLogoPicker({ editor, onUploadInstead }: Props) {
 
   const runSearch = (value: string) => {
     setKeyword(value)
+    setExpandedId(null)
     if (timerRef.current) clearTimeout(timerRef.current)
 
     const query = value.trim()
@@ -86,8 +92,7 @@ export default function ProducerLogoPicker({ editor, onUploadInstead }: Props) {
     }, DEBOUNCE_MS)
   }
 
-  const place = (producer: Producer) => {
-    if (!producer.logoImageUrl) return
+  const place = (producer: Producer, imageUrl: string) => {
     // 주류를 고르지 않았어도 로고만 얹을 수 있어야 한다 — 최소한의 정보만 채운다.
     editor.setSpirit((current) => ({
       spiritId: null,
@@ -102,9 +107,19 @@ export default function ProducerLogoPicker({ editor, onUploadInstead }: Props) {
       producerCountry: '',
       spiritImageUrl: null,
       ...(current ?? {}),
-      producerLogoUrl: producer.logoImageUrl,
+      producerLogoUrl: imageUrl,
     }))
     editor.addLayer('IMAGE', { source: 'PRODUCER_LOGO', widthRatio: 0.16 })
+  }
+
+  const handlePick = (producer: Producer) => {
+    if (producer.logoImages.length === 0) return
+    // 한 장뿐이면 고민할 것 없이 바로 얹는다. 여러 장이면 그 자리에서 펼친다.
+    if (producer.logoImages.length === 1) {
+      place(producer, producer.logoImages[0].imageUrl)
+      return
+    }
+    setExpandedId((current) => (current === producer.id ? null : producer.id))
   }
 
   const query = keyword.trim()
@@ -121,34 +136,63 @@ export default function ProducerLogoPicker({ editor, onUploadInstead }: Props) {
 
       {results.length > 0 && (
         <ul role="listbox" aria-label={t('photoCard.logoSection')}
-          className="di-photo-card-scroll max-h-64 space-y-1 overflow-y-auto">
-          {results.map((producer) => (
-            <li key={producer.id}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={false}
-                onClick={() => place(producer)}
-                className="flex w-full items-center gap-2 rounded-lg border border-neutral-200 px-2 py-1.5 text-left transition-colors hover:border-primary-400 hover:bg-primary-50/40"
-              >
-                <img
-                  src={producer.logoImageUrl ?? ''}
-                  alt=""
-                  className="h-9 w-9 shrink-0 rounded border border-neutral-100 object-contain"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[11px] font-semibold text-neutral-700">
-                    {producer.nameKo}
+          className="di-photo-card-scroll max-h-72 space-y-1 overflow-y-auto">
+          {results.map((producer) => {
+            const expanded = expandedId === producer.id
+            return (
+              <li key={producer.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={expanded}
+                  onClick={() => handlePick(producer)}
+                  className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-colors ${
+                    expanded
+                      ? 'border-primary-400 bg-primary-50/60'
+                      : 'border-neutral-200 hover:border-primary-400 hover:bg-primary-50/40'
+                  }`}
+                >
+                  <img
+                    src={producer.logoImages[0]?.imageUrl ?? ''}
+                    alt=""
+                    className="h-9 w-9 shrink-0 rounded border border-neutral-100 object-contain"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[11px] font-semibold text-neutral-700">
+                      {producer.nameKo}
+                    </span>
+                    {producer.nameEn && (
+                      <span className="block truncate text-[11px] font-medium text-neutral-500">
+                        {producer.nameEn}
+                      </span>
+                    )}
                   </span>
-                  {producer.nameEn && (
-                    <span className="block truncate text-[11px] font-medium text-neutral-500">
-                      {producer.nameEn}
+                  {producer.logoImages.length > 1 && (
+                    <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500">
+                      {producer.logoImages.length}
                     </span>
                   )}
-                </span>
-              </button>
-            </li>
-          ))}
+                </button>
+
+                {/* 로고가 여러 장인 생산자 — 어떤 버전을 쓸지 그 자리에서 고른다 */}
+                {expanded && (
+                  <div className="mt-1 grid grid-cols-4 gap-1.5 rounded-lg bg-neutral-50 p-2">
+                    {producer.logoImages.map((logo) => (
+                      <button
+                        key={logo.id}
+                        type="button"
+                        onClick={() => place(producer, logo.imageUrl)}
+                        title={t('photoCard.logoVariantUse')}
+                        className="flex aspect-square items-center justify-center overflow-hidden rounded-md border border-neutral-200 bg-white hover:border-primary-400"
+                      >
+                        <img src={logo.imageUrl} alt="" className="h-full w-full object-contain p-1" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
 

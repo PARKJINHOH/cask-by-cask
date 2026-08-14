@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { TouchEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePostDetail, usePostActions } from '@/domain/community/hooks/usePostDetail'
 import CommentSection from '@/domain/community/components/CommentSection'
@@ -10,9 +10,12 @@ import UserBadge from '@/shared/components/UserBadge'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { loginRouteState, useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 import { formatDotDateTime } from '@/shared/utils/format'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import { splitPhotoContent } from '../utils/photoContent'
+import { PHOTO_DETAIL_SIZES, photoSrc, photoSrcSet } from '../utils/photoImageVariants'
+import { downloadImageUrl, fileNameFromImageUrl } from '../utils/downloadImage'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface Props {
@@ -55,6 +58,8 @@ export default function PhotoPostView({
 }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
+  const requireLogin = useRequireLogin()
   const { isLoggedIn } = useAuthStore()
   const { toasts, showToast, removeToast } = useToast()
   const { data: post, isLoading, isError, error } = usePostDetail(postId)
@@ -64,6 +69,7 @@ export default function PhotoPostView({
   const [viewerOpen, setViewerOpen] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [reportReason, setReportReason] = useState('')
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => { onViewerOpenChange?.(viewerOpen) }, [viewerOpen, onViewerOpenChange])
 
@@ -79,6 +85,10 @@ export default function PhotoPostView({
       captionHtml: split.captionHtml,
     }
   }, [post])
+
+  // 로딩 중에도(images 가 아직 빈 배열이어도) 안전하다 — 아래 다운로드 훅이 참조하므로
+  // 이 값을 로딩·에러 조기 반환보다 앞에 둔다(훅은 조건부 반환 뒤에 올 수 없다).
+  const currentImage = images[Math.min(imageIndex, Math.max(images.length - 1, 0))]
 
   const showPrevImage = useCallback(() => {
     setImageIndex((index) => (index - 1 + images.length) % images.length)
@@ -126,6 +136,25 @@ export default function PhotoPostView({
     }
   }, [showToast, t])
 
+  /**
+   * 지금 보고 있는 사진의 원본(풀해상도) 다운로드.
+   *
+   * `currentImage`(=post.images[i].imageUrl)는 서버에 저장된 본 이미지 그대로다 —
+   * 화면에 그리는 <img> 는 목록·상세 최적화를 위해 축소본(photoSrc)을 쓰지만,
+   * 다운로드는 그 축소본이 아니라 이 원본 URL을 대상으로 해야 한다.
+   */
+  const handleDownload = useCallback(async () => {
+    if (!currentImage || downloading) return
+    setDownloading(true)
+    try {
+      await downloadImageUrl(currentImage, fileNameFromImageUrl(currentImage, `caskbycask-photo-${postId}`))
+    } catch {
+      showToast(t('photoGallery.downloadOriginalFailed'), 'error')
+    } finally {
+      setDownloading(false)
+    }
+  }, [currentImage, downloading, postId, showToast, t])
+
   const handleDelete = useCallback(() => {
     if (!window.confirm(`${t('post.deleteConfirm')}\n\n${t('social.deleteSourceWarning')}`)) return
     deleteMutation.mutate(undefined, {
@@ -164,6 +193,7 @@ export default function PhotoPostView({
         <p className="text-sm text-neutral-500">{t('post.adultGate.viewDesc')}</p>
         <Link
           to={isLoggedIn ? '/mypage?tab=settings' : '/login'}
+          state={isLoggedIn ? undefined : loginRouteState(location)}
           className="mt-1 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700"
         >
           {isLoggedIn ? t('post.adultGate.goVerify') : t('nav.login')}
@@ -181,7 +211,6 @@ export default function PhotoPostView({
   }
 
   const isMyPost = isLoggedIn && !!post.isMyPost
-  const currentImage = images[Math.min(imageIndex, Math.max(images.length - 1, 0))]
 
   return (
     <div
@@ -213,8 +242,12 @@ export default function PhotoPostView({
             className="flex h-full w-full cursor-zoom-in items-center justify-center"
           >
             <img
-              src={currentImage}
+              // 상세는 크게 보여 주되 원본까지 갈 필요는 없다 — 확대는 라이트박스가 본 이미지로 연다.
+              src={photoSrc(currentImage, 1280)}
+              srcSet={photoSrcSet(currentImage)}
+              sizes={PHOTO_DETAIL_SIZES}
               alt={post.title}
+              decoding="async"
               className="max-h-full max-w-full object-contain"
             />
           </button>
@@ -399,8 +432,8 @@ export default function PhotoPostView({
               type="button"
               onClick={() => {
                 if (isMyPost) return
-                if (isLoggedIn) likeMutation.mutate(true)
-                else navigate('/login')
+                // 로그인 후 보던 사진(?post=)으로 그대로 돌아온다.
+                requireLogin(() => likeMutation.mutate(true))
               }}
               disabled={isMyPost}
               aria-label={t('post.like')}
@@ -459,6 +492,17 @@ export default function PhotoPostView({
               )}
               {isMyPost && (
                 <>
+                  {/* 원본(최종 카드 풀해상도) 다운로드 — 내 글일 때만. 화면엔 축소본이 보이지만
+                      이 버튼은 서버에 저장된 본 이미지 그대로를 내려받는다. */}
+                  <button
+                    type="button"
+                    onClick={() => { void handleDownload() }}
+                    disabled={downloading || !currentImage}
+                    title={t('photoGallery.downloadOriginal')}
+                    className="rounded border border-neutral-200 px-2 py-1 text-xs text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 disabled:opacity-40"
+                  >
+                    {downloading ? t('photoGallery.downloadingOriginal') : t('photoGallery.downloadOriginal')}
+                  </button>
                   <Link
                     to={`/community/photo/${postId}/edit`}
                     className="rounded border border-neutral-200 px-2 py-1 text-xs text-neutral-500 hover:border-neutral-300 hover:text-neutral-700"

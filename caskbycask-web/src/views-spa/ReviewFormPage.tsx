@@ -48,6 +48,7 @@ import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
 import { useToast } from '@/shared/hooks/useToast'
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { focusFirstError } from '@/shared/utils/focusFirstError'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
@@ -557,12 +558,12 @@ export default function ReviewFormPage() {
                   {t('review.overall')}{' '}
                   <span className="text-neutral-400 font-normal text-xs">({t('review.overallHint')})</span>
                 </label>
-                <textarea
+                <AutoGrowTextarea
                   {...field}
                   rows={4}
                   maxLength={1000}
                   placeholder={t('review.overallPlaceholder')}
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl resize-none
+                  className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
                     focus:outline-none focus:ring-2 focus:ring-primary-400
                     placeholder:text-neutral-400 min-h-[5rem]"
                 />

@@ -1,5 +1,6 @@
 package com.caskbycask.admin.controller;
 
+import com.caskbycask.domain.community.dto.ReorderRequest;
 import com.caskbycask.domain.producer.dto.*;
 import com.caskbycask.domain.producer.service.ProducerService;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
@@ -16,6 +17,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/producers")
@@ -96,22 +99,30 @@ public class AdminProducerController {
                 producerService.updateProducerRequest(id, body)));
     }
 
-    // ─── 로고 이미지 ───────────────────────────────────────────────
+    // ─── 로고 이미지 (최대 5장) ─────────────────────────────────────
     // 포토카드에 증류소 로고를 얹기 위해 도입. 생산자 저장(PUT)과 분리한 이유는
-    // UpdateProducerRequest 가 "null = 변경 안 함" 규약이라 삭제를 표현할 수 없기 때문이다.
+    // UpdateProducerRequest 가 "null = 변경 안 함" 규약이라 목록 편집을 표현할 수 없기 때문이다.
 
-    @PostMapping(value = "/{id}/logo", consumes = "multipart/form-data")
+    @PostMapping(value = "/{id}/logos", consumes = "multipart/form-data")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public ResponseEntity<ApiResponse<ProducerResponse>> uploadLogo(
+    public ResponseEntity<ApiResponse<List<ProducerLogoResponse>>> uploadLogo(
             @PathVariable Long id,
             @RequestParam("image") MultipartFile image) {
         return ResponseEntity.ok(ApiResponse.success(producerService.uploadLogo(id, image)));
     }
 
-    @DeleteMapping("/{id}/logo")
+    @DeleteMapping("/{id}/logos/{logoId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public ResponseEntity<ApiResponse<ProducerResponse>> deleteLogo(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(producerService.deleteLogo(id)));
+    public ResponseEntity<ApiResponse<List<ProducerLogoResponse>>> deleteLogo(
+            @PathVariable Long id, @PathVariable Long logoId) {
+        return ResponseEntity.ok(ApiResponse.success(producerService.deleteLogo(id, logoId)));
+    }
+
+    @PostMapping("/{id}/logos/reorder")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<List<ProducerLogoResponse>>> reorderLogos(
+            @PathVariable Long id, @Valid @RequestBody ReorderRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(producerService.reorderLogos(id, request.getIds())));
     }
 
     @PatchMapping("/requests/{id}/approve")

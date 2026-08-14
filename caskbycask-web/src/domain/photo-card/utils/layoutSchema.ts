@@ -15,7 +15,8 @@ import type {
  */
 export const PHOTO_CARD_SCHEMA_VERSION = 1
 export const PHOTO_CARD_MAX_LAYERS = 24
-export const PHOTO_CARD_MAX_TEXT_LENGTH = 200
+/** 리뷰 전문처럼 긴 글도 카드 한 장에 담을 수 있는 길이. 백엔드 MAX_TEXT_LENGTH 와 같아야 한다. */
+export const PHOTO_CARD_MAX_TEXT_LENGTH = 600
 export const PHOTO_CARD_MAX_TEMPLATES = 30
 export const PHOTO_CARD_MIN_FONT_SIZE_RATIO = 0.005
 export const PHOTO_CARD_MAX_FONT_SIZE_RATIO = 0.3

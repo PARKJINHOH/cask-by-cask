@@ -20,6 +20,7 @@ import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import ProducerLogoField from '@/domain/admin/components/ProducerLogoField'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const PRODUCER_TYPES: ProducerType[] = ['DISTILLERY', 'WINERY', 'COGNAC_HOUSE', 'OTHER']
 const SPIRIT_CATEGORY_LABEL = { WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타' } as const
@@ -163,7 +164,7 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
         </div>
         {/* 로고는 id 가 있어야 붙일 수 있으므로 수정 모드에서만 노출한다. */}
         {initial && (
-          <ProducerLogoField producerId={initial.id} initialLogoUrl={initial.logoImageUrl ?? null} />
+          <ProducerLogoField producerId={initial.id} initialLogoImages={initial.logoImages} />
         )}
         <div className="space-y-1 sm:col-span-2">
           <label className="block text-xs font-medium text-neutral-600">검색 별칭</label>
@@ -202,24 +203,24 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
         </div>
         <div className="space-y-1 sm:col-span-2">
           <label className="block text-xs font-medium text-neutral-600">소개 (한국어)</label>
-          <textarea
+          <AutoGrowTextarea
             {...register('descriptionKo')}
             rows={3}
             placeholder="증류소 소개를 입력하세요."
             maxLength={2000}
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none
-              focus:ring-2 focus:ring-primary-400 resize-none"
+              focus:ring-2 focus:ring-primary-400"
           />
         </div>
         <div className="space-y-1 sm:col-span-2">
           <label className="block text-xs font-medium text-neutral-600">소개 (영어)</label>
-          <textarea
+          <AutoGrowTextarea
             {...register('descriptionEn')}
             rows={3}
             placeholder="Enter producer description."
             maxLength={2000}
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none
-              focus:ring-2 focus:ring-primary-400 resize-none"
+              focus:ring-2 focus:ring-primary-400"
           />
         </div>
       </div>
@@ -570,8 +571,8 @@ export default function AdminProducerPage() {
                           {PRODUCER_TYPE_LABEL[d.type].ko}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-neutral-900">{d.nameKo}</td>
-                      <td className="px-4 py-3 text-neutral-500">{d.nameEn}</td>
+                      <td className="max-w-[240px] px-4 py-3 font-medium text-neutral-900">{d.nameKo}</td>
+                      <td className="max-w-[240px] px-4 py-3 text-neutral-500">{d.nameEn}</td>
                       <td className="px-4 py-3 text-neutral-500">{d.country}</td>
                       <td className="px-4 py-3 text-neutral-400">{d.region ?? '-'}</td>
                       {/* 세부 산지 = L2 산지(꼬냑의 크뤼 등). L1 만 지정됐으면 미등록으로 본다 */}

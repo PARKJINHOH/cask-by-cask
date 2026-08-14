@@ -7,10 +7,12 @@ import PageIndicator from '@/shared/components/PageIndicator'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
+import { loginRouteState } from '@/domain/auth/hooks/useRequireLogin'
 import { useMe } from '@/domain/user/hooks/useUser'
 import { changeLanguage } from '@/shared/utils/locale'
 import BottomNav from '@/shared/components/BottomNav'
 import { useChromeTop } from '@/shared/hooks/useChromeTop'
+import { useImmersiveEditing } from '@/shared/hooks/useImmersiveEditing'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
@@ -703,6 +705,7 @@ function UserDropdown() {
   const { user, isLoggedIn, isAuthReady, setUser } = useAuthStore()
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { data: profile } = useMe()
@@ -748,6 +751,8 @@ function UserDropdown() {
         <div className="inline-flex h-8 items-center overflow-hidden rounded-[var(--radius-control)] border border-neutral-300 bg-white">
           <Link
             to="/login"
+            // 헤더에서 로그인해도 보던 페이지로 돌아온다.
+            state={loginRouteState(location)}
             className="inline-flex h-full items-center px-2.5 text-sm font-medium text-neutral-700
               transition-colors whitespace-nowrap hover:bg-neutral-50 hover:text-primary-800 sm:px-3.5"
           >
@@ -881,9 +886,12 @@ export default function MainLayout() {
   const { isLoggedIn, isAuthReady } = useAuthStore()
   const { data: profile } = useMe()
   const showAuthedActions = isAuthReady && isLoggedIn
+  // 모바일에서 글을 쓰는 동안에는 헤더·GNB·하단 탭을 걷어내 편집 영역을 넓힌다.
+  const immersive = useImmersiveEditing()
   // 헤더+GNB 높이를 --di-chrome-top 으로 흘려 보낸다. 본문 안의 sticky 요소
   // (에디터 툴바 등)가 이 둘 뒤로 숨지 않으려면 그만큼 아래에 붙어야 한다.
-  useChromeTop()
+  // 껍데기를 접은 동안에는 잴 대상이 없으므로 0 으로 내려 준다.
+  useChromeTop(!immersive)
   // lazy 컴포넌트는 렌더되는 순간 청크를 내려받으므로, 모달 내부의 조건 검사만으로는
   // 번들 분리 효과가 없다. 실제로 강제 변경이 필요한 사용자일 때만 마운트한다.
   const needsPasswordChange = showAuthedActions && Boolean(profile?.mustChangePassword)
@@ -891,7 +899,7 @@ export default function MainLayout() {
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
       {/* 헤더 */}
-      <header className="bg-canvas border-b border-neutral-200 sticky top-0 z-40">
+      <header className={`bg-canvas border-b border-neutral-200 sticky top-0 z-40 ${immersive ? 'hidden' : ''}`}>
         <div className="user-layout-container px-4 h-16 flex items-center gap-2 sm:gap-4">
           {/* 로고 */}
           <Link to="/" className="flex items-center gap-1 sm:gap-2 flex-shrink-0 -my-2">
@@ -928,7 +936,7 @@ export default function MainLayout() {
       </header>
 
       {/* GNB */}
-      <GNB />
+      {!immersive && <GNB />}
 
       {/* 비밀번호 변경 권고 배너 */}
       <PasswordChangeBanner />
@@ -1016,8 +1024,8 @@ export default function MainLayout() {
         </div>
       </footer>
 
-      {/* 모바일 하단 탭 네비게이션 */}
-      <BottomNav />
+      {/* 모바일 하단 탭 네비게이션 — 글 쓰는 동안에는 키보드 위를 가리므로 접는다 */}
+      {!immersive && <BottomNav />}
 
       {/* 로그인 출석 체크 토스트 */}
       <AttendanceToastHandler />

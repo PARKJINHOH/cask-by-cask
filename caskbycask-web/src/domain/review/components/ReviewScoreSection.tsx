@@ -9,6 +9,7 @@ import {
 } from '../utils/aroma'
 import type { AromaProfile, AromaProfilePhase } from '../types/review.types'
 import AromaProfileControl from './AromaProfileControl'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // ── ReviewScoreSection ────────────────────────────────────────────
 
@@ -214,7 +215,7 @@ export default function ReviewScoreSection({
           {t('review.tastingNote')}
           <RequiredMark />
         </label>
-        <textarea
+        <AutoGrowTextarea
           required
           aria-required="true"
           data-field={noteFieldName}
@@ -224,16 +225,14 @@ export default function ReviewScoreSection({
           placeholder={notePlaceholder}
           maxLength={1000}
           rows={5}
-          className={`w-full px-3.5 py-2.5 text-sm border rounded-xl resize-none
+          className={`w-full px-3.5 py-2.5 text-sm border rounded-xl
             focus:outline-none focus:ring-2 focus:ring-primary-400
             placeholder:text-neutral-350 leading-relaxed bg-white ${
             noteError ? 'border-red-400' : 'border-neutral-300'
           }`}
         />
-        <div className="flex items-start justify-between mt-0.5">
-          <p className="text-xs text-red-500 min-h-[1.25rem]">{noteError ?? ''}</p>
-          <p className="text-[10px] text-neutral-400 tabular-nums">{note.length}/1000</p>
-        </div>
+        {/* 글자수는 입력칸 우측 하단에 붙는다(AutoGrowTextarea) — 여기서는 오류만 알린다 */}
+        <p className="mt-0.5 text-xs text-red-500 min-h-[1.25rem]">{noteError ?? ''}</p>
       </div>
     </div>
   )

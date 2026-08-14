@@ -276,7 +276,7 @@ export default function AdminSpiritPage() {
                         )}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className="max-w-[280px] px-4 py-3">
                         <p className="font-medium text-neutral-900 group-hover:text-primary-700">
                           {displayName.nameKo}
                         </p>

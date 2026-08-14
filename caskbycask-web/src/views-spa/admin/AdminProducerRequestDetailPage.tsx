@@ -14,6 +14,7 @@ import {
 import type { UpdateProducerRequestPayload } from '@/domain/producer/types/producerRequest.types'
 import { PRODUCER_TYPE_LABEL, type ProducerType } from '@/domain/producer/types/producer.types'
 import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: '대기 중', APPROVED: '승인됨', REJECTED: '반려됨',
@@ -230,11 +231,11 @@ export default function AdminProducerRequestDetailPage() {
             </div>
 
             <Field label="소개 (한글)">
-              <textarea className={`${FIELD_CLS} resize-none`} rows={3} maxLength={2000}
+              <AutoGrowTextarea className={`${FIELD_CLS}`} rows={3} maxLength={2000}
                 value={form.descriptionKo} onChange={e => set({ descriptionKo: e.target.value })} />
             </Field>
             <Field label="소개 (영문)">
-              <textarea className={`${FIELD_CLS} resize-none`} rows={3} maxLength={2000}
+              <AutoGrowTextarea className={`${FIELD_CLS}`} rows={3} maxLength={2000}
                 value={form.descriptionEn} onChange={e => set({ descriptionEn: e.target.value })} />
             </Field>
 
@@ -275,15 +276,16 @@ export default function AdminProducerRequestDetailPage() {
           {rejectOpen ? (
             <div className="space-y-3">
               <FormFieldLabel admin required>반려 사유</FormFieldLabel>
-              <textarea
+              <AutoGrowTextarea
                 required
                 aria-required="true"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
+                maxLength={500}
                 placeholder="반려 사유를 입력하세요 (요청자에게 알림으로 전달됩니다)"
                 className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
-                  focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+                  focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => { setRejectOpen(false); setReason('') }}>취소</Button>

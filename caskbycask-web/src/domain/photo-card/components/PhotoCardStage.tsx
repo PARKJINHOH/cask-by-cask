@@ -34,6 +34,14 @@ interface Props {
 
 /** 손끝으로도 집을 수 있는 여유(화면 px). 확대율로 나눠 캔버스 좌표로 환산한다. */
 const HIT_PADDING = 10
+/**
+ * 구분선 선택 표시의 최소 세로 폭(화면 px).
+ *
+ * 구분선 실제 두께는 보통 몇 px 뿐이라, 선택 상자를 두께 그대로 그리면 점선 테두리와
+ * 손잡이(모서리 사각형)가 선 위에 거의 겹쳐 그려져 색상·굵기가 잘 안 보인다.
+ * 표시용 상자만 이만큼 세로로 띄워 점선 안쪽에 선 자체가 또렷이 드러나게 한다.
+ */
+const MIN_DIVIDER_SELECTION_HEIGHT = 20
 /** 자석이 걸리는 거리(화면 px) */
 const SNAP_TOLERANCE = 6
 /**
@@ -87,6 +95,18 @@ interface PhotoDrag extends DragBase {
 }
 
 /**
+ * 두께만큼만 재면 눈에 보이지 않을 만큼 얇은 상자를, 화면 기준 최소 높이로 세로만 부풀린다.
+ * 가로(길이)는 그대로 둔다 — 흐트러지는 것은 두께 쪽이지 길이 쪽이 아니다.
+ */
+const inflateThinSelection = (bounds: LayerBounds, displayScale: number): LayerBounds => {
+  const minHeight = MIN_DIVIDER_SELECTION_HEIGHT / Math.max(displayScale, 0.0001)
+  const height = bounds.bottom - bounds.top
+  if (height >= minHeight) return bounds
+  const centerY = (bounds.top + bounds.bottom) / 2
+  return { ...bounds, top: centerY - minHeight / 2, bottom: centerY + minHeight / 2 }
+}
+
+/**
  * 중앙 작업 영역.
  *
  * 캔버스(그림) · 오버레이(선택·가이드·손잡이) · 뷰포트(확대·이동)를 한자리에 묶고,
@@ -134,10 +154,16 @@ export default function PhotoCardStage({
     if (!ctx) return [] as LayerBounds[]
     return editor.selectedLayers
       .filter((layer) => layer.visible !== false)
-      .map((layer) => measureLayerBounds(ctx, size, layer, editor.dataContext))
+      .map((layer) => {
+        const bounds = measureLayerBounds(ctx, size, layer, editor.dataContext)
+        // 구분선은 실제 두께(보통 몇 px)로만 상자를 재면 점선 테두리·손잡이가 선 위에
+        // 거의 겹쳐 그려진다 — 표시용으로만 세로 여백을 띄운다. 리사이즈 판정(handleResize
+        // 안의 measureLayerBounds 재호출)은 이 값을 쓰지 않아 실제 두께 그대로 정확하다.
+        return layer.type === 'DIVIDER' ? inflateThinSelection(bounds, displayScale) : bounds
+      })
     // layout 이 바뀌면 경계도 바뀐다. fontsReady 는 값으로 쓰이진 않지만, 글꼴이 붙기 전 폴백으로 잰
     // 글자 폭이 선택 상자에 그대로 남지 않게 다시 재기 위한 신호다.
-  }, [editor.dataContext, editor.fontsReady, editor.layout, editor.selectedLayers, size])
+  }, [displayScale, editor.dataContext, editor.fontsReady, editor.layout, editor.selectedLayers, size])
 
   // ── 포인터 ──────────────────────────────────────────────
   const handlePointerDown = (event: React.PointerEvent) => {
@@ -286,7 +312,7 @@ export default function PhotoCardStage({
   }
 
   // ── 손잡이(크기·회전) ───────────────────────────────────
-  const handleResize = ({ scale, anchor, corner }: TransformDelta) => {
+  const handleResize = ({ scale, scaleX, scaleY, anchor, corner }: TransformDelta) => {
     const ctx = measureContext()
     const layer = editor.selectedLayer
     if (!ctx || !layer) return
@@ -299,9 +325,10 @@ export default function PhotoCardStage({
     const patch: Partial<PhotoCardLayer> = base.type === 'TEXT'
       ? { fontSizeRatio: (base.fontSizeRatio ?? 0.04) * scale }
       : base.type === 'BOX'
+        // 박스는 가로·세로 비율이 고정되지 않는다 — 잡은 모서리를 따라 각 축을 독립적으로 늘이고 줄인다.
         ? {
-          widthRatio: (base.widthRatio ?? 0.5) * scale,
-          heightRatio: (base.heightRatio ?? 0.2) * scale,
+          widthRatio: (base.widthRatio ?? 0.5) * scaleX,
+          heightRatio: (base.heightRatio ?? 0.2) * scaleY,
         }
         : { widthRatio: (base.widthRatio ?? 0.15) * scale }
 

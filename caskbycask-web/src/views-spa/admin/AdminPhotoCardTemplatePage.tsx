@@ -274,7 +274,7 @@ function SortableTemplateRow({ template, ...props }: TemplateRowProps) {
 function TemplateRowCells({ template, showOwner, onModerate, onRemove }: TemplateRowProps) {
   return (
     <>
-      <td className="px-4 py-3">
+      <td className="max-w-[320px] px-4 py-3">
         <span className="font-semibold text-neutral-900">{template.name}</span>
         {template.description && (
           <span className="mt-0.5 block text-xs text-neutral-500">{template.description}</span>

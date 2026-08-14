@@ -37,6 +37,7 @@ import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type { AromaProfile } from '@/domain/review/types/review.types'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const MY_REVIEWS_PATH = '/mypage?tab=reviews'
 const NOTE_MIN_LENGTH = 20
@@ -428,13 +429,13 @@ export default function ReviewEditPage() {
                   <label className="mb-1.5 block text-xs font-semibold text-neutral-700">
                     {t('review.addEditionMemoLabel')}
                   </label>
-                  <textarea
+                  <AutoGrowTextarea
                     value={requestMemo}
                     onChange={(event) => setRequestMemo(event.target.value)}
                     rows={3}
                     maxLength={500}
                     placeholder={t('review.addEditionMemoPlaceholder')}
-                    className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
                   />
                 </div>
               </>
@@ -559,13 +560,13 @@ export default function ReviewEditPage() {
                 {t('review.overall')}{' '}
                 <span className="text-xs font-normal text-neutral-400">({t('review.overallHint')})</span>
               </label>
-              <textarea
+              <AutoGrowTextarea
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
                 rows={4}
                 maxLength={1000}
                 placeholder={t('review.overallPlaceholder')}
-                className="min-h-[5rem] w-full resize-none rounded-xl border border-neutral-300 px-3 py-2.5 text-sm
+                className="min-h-[5rem] w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm
                   placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
               <p className="mt-1 text-right text-xs tabular-nums text-neutral-400">{comment.length}/1000</p>

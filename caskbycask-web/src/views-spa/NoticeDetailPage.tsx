@@ -1,7 +1,7 @@
 ﻿import { useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useNoticeDetail, useToggleNoticeRecommend } from '@/domain/notice/hooks/useNoticeDetail'
-import { useAuthStore } from '@/domain/auth/store/authStore'
+import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 import { NOTICE_CATEGORY_LABELS } from '@/domain/notice/types/notice.types'
 import RichContent from '@/shared/components/RichContent'
 import { stripHtmlForMeta } from '@/shared/utils/seoText'
@@ -21,18 +21,16 @@ const CATEGORY_BADGE_VARIANT: Record<string, 'primary' | 'warning' | 'success' |
 export default function NoticeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const noticeId = id ? Number(id) : null
-  const navigate = useNavigate()
+  const requireLogin = useRequireLogin()
 
   const { data: notice, isLoading, isError } = useNoticeDetail(noticeId)
-  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   const recommendMutation = useToggleNoticeRecommend(noticeId)
 
   const handleRecommend = () => {
-    if (!isLoggedIn) {
-      navigate('/login')
-      return
-    }
-    if (!recommendMutation.isPending) recommendMutation.mutate()
+    // 로그인 후 이 공지로 그대로 돌아온다.
+    requireLogin(() => {
+      if (!recommendMutation.isPending) recommendMutation.mutate()
+    })
   }
 
   // 공지 확인 처리 — 이 공지 id 이상을 읽은 것으로 기록

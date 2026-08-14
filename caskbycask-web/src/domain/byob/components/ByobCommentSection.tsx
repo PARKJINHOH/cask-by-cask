@@ -4,6 +4,7 @@ import { useByobComments, useByobActions } from '../hooks/useByob'
 import type { ByobComment } from '../types/byob.types'
 import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface CommentItemProps {
   comment: ByobComment
@@ -149,18 +150,18 @@ export default function ByobCommentSection({ byobId, myUserId, hostUserId, isHos
           </div>
         )}
         <FormFieldLabel required className="mb-1.5">{t('comment.contentLabel')}</FormFieldLabel>
-        <textarea
+        <AutoGrowTextarea
           required
           aria-required="true"
           value={content}
           onChange={(e) => setContent(e.target.value.slice(0, 200))}
           rows={3}
+          maxLength={200}
           placeholder={isHost ? t('byob.hostCommentPlaceholder') : t('byob.commentPlaceholder')}
-          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none
+          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm
             focus:outline-none focus:ring-2 focus:ring-primary-300"
         />
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-neutral-400">{content.length}/200</span>
+        <div className="flex items-center justify-end">
           <button
             type="submit"
             disabled={!content.trim() || createCommentMutation.isPending}

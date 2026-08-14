@@ -10,6 +10,7 @@ import CommentSection from '@/domain/community/components/CommentSection'
 import RichContent from '@/shared/components/RichContent'
 import { stripHtmlForMeta } from '@/shared/utils/seoText'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { loginRouteState, useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 import { useToast } from '@/shared/hooks/useToast'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import UserBadge from '@/shared/components/UserBadge'
@@ -19,6 +20,7 @@ import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { SITE_URL } from '@/shared/config/site'
 import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 function toKstIsoDateTime(value: string): string {
   if (/Z$|[+-]\d{2}:?\d{2}$/.test(value)) return value
@@ -31,6 +33,7 @@ export default function PostDetailPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const requireLogin = useRequireLogin()
   const { isLoggedIn } = useAuthStore()
   const { showToast } = useToast()
   const boardPath = boardType ?? 'free'
@@ -106,6 +109,7 @@ export default function PostDetailPage() {
           ) : (
             <Link
               to="/login"
+              state={loginRouteState(location)}
               className="px-6 py-2.5 text-sm font-medium rounded-xl bg-primary-800 text-white hover:bg-primary-900 transition-colors"
             >
               {t('nav.login')}
@@ -480,7 +484,8 @@ export default function PostDetailPage() {
             <button
               onClick={() => {
                 if (isMyPost) return
-                isLoggedIn ? likeMutation.mutate(true) : navigate('/login')
+                // 로그인 후 보던 글로 그대로 돌아온다.
+                requireLogin(() => likeMutation.mutate(true))
               }}
               disabled={isMyPost}
               aria-label={t('post.like')}
@@ -519,11 +524,12 @@ export default function PostDetailPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h3 className="text-base font-semibold text-neutral-900 mb-3">{t('post.report')}</h3>
             <p className="text-sm text-neutral-500 mb-3">{t('post.reportReason')}</p>
-            <textarea
+            <AutoGrowTextarea
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+              maxLength={500}
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300"
               placeholder={t('comment.reportPlaceholder')}
             />
             <div className="flex gap-2 mt-4">

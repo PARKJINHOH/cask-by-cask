@@ -6,6 +6,7 @@ import type { UserRole } from '@/domain/auth/types/auth.types'
 import UserBadge from '@/shared/components/UserBadge'
 import EmojiReactionBar from './EmojiReactionBar'
 import CommunityCommentForm from './CommunityCommentForm'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface Props {
   comment: PostCommentItem
@@ -316,13 +317,13 @@ export default function CommunityCommentItem({
             ) : (
               <>
                 <h3 className="text-sm font-semibold mb-3">{t('comment.reportTitle')}</h3>
-                <textarea
+                <AutoGrowTextarea
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
                   maxLength={500}
                   rows={3}
                   placeholder={t('comment.reportPlaceholder')}
-                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg resize-none
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg
                     focus:outline-none focus:ring-1 focus:ring-red-400 mb-2"
                 />
                 {reportMutation.isError && (

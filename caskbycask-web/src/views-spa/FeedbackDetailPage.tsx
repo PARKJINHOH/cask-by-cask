@@ -14,6 +14,7 @@ import {
 import { FEEDBACK_STATUSES, type FeedbackStatus } from '@/domain/feedback/types/feedback.types'
 import { ProgressBar, StatusBadge, TypeChip } from '@/domain/feedback/components/FeedbackUi'
 import { formatDateTime } from '@/shared/utils/format'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 export default function FeedbackDetailPage() {
   const { t } = useTranslation()
@@ -238,7 +239,7 @@ export default function FeedbackDetailPage() {
         {(detail.isOwner || isAdmin) && (
           <form onSubmit={handleAddComment} className="mt-4">
             <FormFieldLabel required className="mb-1.5">{t('comment.contentLabel')}</FormFieldLabel>
-            <textarea
+            <AutoGrowTextarea
               required
               aria-required="true"
               value={comment}
@@ -246,7 +247,7 @@ export default function FeedbackDetailPage() {
               maxLength={5000}
               rows={3}
               placeholder={t('feedback.detail.commentPlaceholder')}
-              className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+              className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
             <div className="flex justify-end mt-2">
               <button

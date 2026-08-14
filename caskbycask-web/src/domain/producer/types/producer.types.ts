@@ -18,6 +18,13 @@ export const PRODUCER_TYPE_LABEL: Record<ProducerType, { ko: string; en: string 
   OTHER:        { ko: '생산자',     en: 'Producer' },
 }
 
+/** 생산자 로고 한 장. sortOrder 0번이 대표 — 포토카드가 주류 선택 시 우선 후보로 쓴다. */
+export interface ProducerLogoImage {
+  id: number
+  imageUrl: string
+  sortOrder: number
+}
+
 export interface Producer {
   id: number
   type: ProducerType
@@ -30,8 +37,8 @@ export interface Producer {
   /** 산지 (지도 표시용) — regionCode 를 풀어놓은 형태. 산지 미지정 시 null */
   wineRegion: SpiritWineRegion | null
   website: string | null
-  /** 로고 이미지 URL — 포토카드에서 증류소 로고로 쓴다 */
-  logoImageUrl: string | null
+  /** 로고 이미지 목록(최대 5장, sortOrder 순) — 포토카드에서 증류소 로고로 쓴다 */
+  logoImages: ProducerLogoImage[]
   foundedYear: number | null
   descriptionKo: string | null
   descriptionEn: string | null

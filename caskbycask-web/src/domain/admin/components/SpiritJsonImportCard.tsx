@@ -6,6 +6,7 @@ import {
   type ImportPlan, type ImportWarning,
 } from '@/domain/admin/utils/spiritResearchJson'
 import type { SpiritFormApi } from '@/domain/admin/components/SpiritFormFields'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 /**
  * 조사 프롬프트(docs/*-research-prompt.md)가 만든 JSON 을 붙여넣어 폼을 채우는 카드.
@@ -139,7 +140,7 @@ export default function SpiritJsonImportCard({ form, confirmMessage }: Props) {
             <b className="text-amber-700">기존 입력값은 모두 지워지고 새로 채워집니다.</b> 내용을 확인한 뒤 직접 등록하세요.
           </p>
 
-          <textarea
+          <AutoGrowTextarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={10}

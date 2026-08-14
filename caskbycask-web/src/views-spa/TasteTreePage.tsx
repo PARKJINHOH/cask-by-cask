@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { tasteTreeApi } from '@/domain/taste-tree/api/tasteTreeApi'
 import TasteTreePlayer from '@/domain/taste-tree/components/TasteTreePlayer'
 import type { TasteTreeEngagement, TasteTreeSort, TasteTreeType, TasteTreeView } from '@/domain/taste-tree/types/tasteTree.types'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { loginRouteState, useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
@@ -18,6 +19,7 @@ export default function TasteTreePage() {
 
 function TasteTreeDirectory() {
   const { t, i18n } = useTranslation()
+  const location = useLocation()
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
   const [type, setType] = useState<TasteTreeType>('OFFICIAL')
   const [sort, setSort] = useState<TasteTreeSort>('LATEST')
@@ -53,8 +55,8 @@ function TasteTreeDirectory() {
           <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-300 sm:text-base">{t('tasteTree.subtitle')}</p>
         </div>
         <div className="mt-7 flex flex-wrap gap-2 lg:mt-0">
-          <Link to={isLoggedIn ? '/taste-trees/mine' : '/login'} className="rounded-xl border border-white/25 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/10">{t('tasteTree.myTrees')}</Link>
-          <Link to={isLoggedIn ? '/taste-trees/new' : '/login'} className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-black text-stone-950 hover:bg-amber-300">{t('tasteTree.createMyTree')}</Link>
+          <Link to={isLoggedIn ? '/taste-trees/mine' : '/login'} state={isLoggedIn ? undefined : loginRouteState(location)} className="rounded-xl border border-white/25 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/10">{t('tasteTree.myTrees')}</Link>
+          <Link to={isLoggedIn ? '/taste-trees/new' : '/login'} state={isLoggedIn ? undefined : loginRouteState(location)} className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-black text-stone-950 hover:bg-amber-300">{t('tasteTree.createMyTree')}</Link>
         </div>
       </header>
 
@@ -119,8 +121,8 @@ function TasteTreeDirectory() {
 
 function TasteTreeDetail({ shareKey }: { shareKey: string }) {
   const { t, i18n } = useTranslation()
-  const navigate = useNavigate()
-  const location = useLocation()
+  // 이 화면에만 있던 지역 requireLogin 을 공용 훅으로 올렸다 — 다른 화면도 같은 규약을 쓴다.
+  const requireLogin = useRequireLogin()
   const queryClient = useQueryClient()
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
   const { toasts, showToast, removeToast } = useToast()
@@ -154,11 +156,6 @@ function TasteTreeDetail({ shareKey }: { shareKey: string }) {
   const tree = treeQuery.data
   if (treeQuery.isLoading) return <div className="mx-auto max-w-7xl px-4 py-10"><div className="h-[700px] animate-pulse rounded-2xl bg-stone-100" /></div>
   if (!tree) return <div className="mx-auto max-w-4xl px-4 py-20 text-center"><h1 className="text-2xl font-black">{t('tasteTree.notFound')}</h1><Link to="/taste-trees" className="mt-5 inline-block text-amber-800">{t('tasteTree.officialTrees')}</Link></div>
-
-  const requireLogin = (action: () => void) => {
-    if (isLoggedIn) action()
-    else navigate('/login', { state: { from: location } })
-  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-7 lg:py-10">

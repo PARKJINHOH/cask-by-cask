@@ -10,6 +10,7 @@ import SeoMeta from '@/shared/components/SeoMeta'
 import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
 import { toSpiritRequestForm, toPrefillDetail } from '@/domain/admin/components/spiritFormAdapters'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // ══════════════════════════════════════════════════════════════════
 //  사용자 술 등록 요청 — 관리자 등록 폼(SpiritFormFields/useSpiritForm)을
@@ -221,12 +222,12 @@ export default function SpiritRequestPage() {
                 {/* 비고 */}
                 <div className={CARD}>
                   <SectionTitle title={t('spiritRequest.form.note')} />
-                  <textarea
+                  <AutoGrowTextarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     maxLength={500}
                     rows={3}
-                    className={`${FIELD_CLS} border-neutral-300 resize-none`}
+                    className={`${FIELD_CLS} border-neutral-300`}
                     placeholder={t('spiritRequest.form.notePlaceholder')}
                   />
                   <p className={LABEL_CLS}>{t('spiritRequest.form.noteHint')}</p>

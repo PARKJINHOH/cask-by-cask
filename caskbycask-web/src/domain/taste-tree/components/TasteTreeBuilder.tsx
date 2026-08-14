@@ -14,6 +14,7 @@ import Toast from '@/shared/components/Toast'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import { useToast } from '@/shared/hooks/useToast'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const inputClass = 'w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100'
 const labelClass = 'mb-2.5 block text-xs font-black text-stone-600'
@@ -657,7 +658,7 @@ export default function TasteTreeBuilder({ mode }: { mode: TasteTreeBuilderMode 
                     className={inputClass}
                   /> : <>
                     <label className={fieldClass}><span className={labelClass}>{t('tasteTree.builder.titleKo', { max: NODE_TITLE_MAX_LENGTH })} <RequiredMark /></span><input value={selected.titleKo} required aria-required="true" maxLength={NODE_TITLE_MAX_LENGTH} onChange={(event) => updateNode(selected.key, { titleKo: event.target.value })} className={inputClass} /></label>
-                    <label className={fieldClass}><span className={labelClass}>{t('tasteTree.builder.descriptionKo', { max: NODE_DESCRIPTION_MAX_LENGTH })}</span><textarea value={selected.descriptionKo ?? ''} maxLength={NODE_DESCRIPTION_MAX_LENGTH} onChange={(event) => updateNode(selected.key, { descriptionKo: event.target.value })} rows={3} className={inputClass} /></label>
+                    <label className={fieldClass}><span className={labelClass}>{t('tasteTree.builder.descriptionKo', { max: NODE_DESCRIPTION_MAX_LENGTH })}</span><AutoGrowTextarea value={selected.descriptionKo ?? ''} maxLength={NODE_DESCRIPTION_MAX_LENGTH} onChange={(event) => updateNode(selected.key, { descriptionKo: event.target.value })} rows={3} className={inputClass} /></label>
                   </>}
                 </div>
               </section>

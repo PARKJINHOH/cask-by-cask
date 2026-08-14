@@ -8,8 +8,10 @@ import ByobCommentSection from '@/domain/byob/components/ByobCommentSection'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import RichContent from '@/shared/components/RichContent'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { loginRouteState } from '@/domain/auth/hooks/useRequireLogin'
 import type { ByobStatus, ApplyByobPayload } from '@/domain/byob/types/byob.types'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const STATUS_OPTIONS: ByobStatus[] = ['OPEN', 'CLOSED', 'CANCELLED']
 
@@ -423,13 +425,13 @@ export default function ByobDetailPage() {
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     {t('byob.memo')}
                   </label>
-                  <textarea
+                  <AutoGrowTextarea
                     value={memo}
                     onChange={(e) => setMemo(e.target.value)}
                     rows={2}
                     placeholder={t('byob.memoPlaceholder')}
                     maxLength={200}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm resize-none
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm
                       focus:outline-none focus:ring-2 focus:ring-primary-300"
                   />
                   <p className="mt-0.5 text-xs text-neutral-400 flex items-center gap-1">
@@ -473,7 +475,7 @@ export default function ByobDetailPage() {
                 {!isLoggedIn && byob.status === 'OPEN' && (
                   <div className="text-center">
                     <p className="text-sm text-neutral-500 mb-1">{t('byob.loginRequired')}</p>
-                    <Link to="/login" className="text-sm text-primary-800 font-medium hover:underline">
+                    <Link to="/login" state={loginRouteState(location)} className="text-sm text-primary-800 font-medium hover:underline">
                       {t('nav.login')}
                     </Link>
                   </div>

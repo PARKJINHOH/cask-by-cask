@@ -35,6 +35,7 @@ import CognacDetailSection, { type CognacDetailForm, DEFAULT_COGNAC } from '@/do
 import OtherDetailSection, { type OtherDetailForm, DEFAULT_OTHER } from '@/domain/admin/components/OtherDetailSection'
 import useIsDesktop from '@/shared/hooks/useIsDesktop'
 import { focusFirstError } from '@/shared/utils/focusFirstError'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // ══════════════════════════════════════════════════════════════════
 //  술 등록/수정/요청-승인 공유 폼 — 단일 소스 (SINGLE SOURCE OF TRUTH)
@@ -1170,6 +1171,11 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
 
 export type SpiritFormApi = ReturnType<typeof useSpiritForm>
 
+/**
+ * 이름처럼 한 줄로 시작해 길어지면 늘어나는 입력.
+ * 높이 계산·글자수 표시는 공용 AutoGrowTextarea 가 하고, 여기서는 값 전달 방식만 맞춘다
+ * (이 폼은 onChange 로 문자열만 받는다).
+ */
 function AutoResizeTextarea({
   value,
   onChange,
@@ -1184,22 +1190,12 @@ function AutoResizeTextarea({
   className?: string
   maxLength?: number
 } & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'>) {
-  const ref = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.style.height = 'auto'
-      ref.current.style.height = `${ref.current.scrollHeight}px`
-    }
-  }, [value])
-
   return (
-    <textarea
-      ref={ref}
+    <AutoGrowTextarea
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`${className} resize-none overflow-hidden min-h-[38px] py-2`}
+      className={`${className} min-h-[38px] py-2`}
       rows={1}
       maxLength={maxLength}
       {...rest}

@@ -69,26 +69,6 @@ public class Producer extends BaseTimeEntity {
     @Comment("웹사이트")
     private String website;
 
-    /**
-     * 로고 이미지. 포토카드에 증류소 로고를 얹기 위해 도입했다.
-     * <p>
-     * URL 만이 아니라 저장 파일명·하위 경로를 함께 들고 있는 이유: 저장 경로가 연월 디렉토리라
-     * ({@code producers/202608}) URL 만으로는 교체·삭제 시 원본 파일을 찾을 수 없다.
-     * <p>
-     * Hibernate Search 애노테이션을 붙이지 않는다 — 검색 인덱스 스키마를 건드리면 재색인이 필요하다.
-     */
-    @Column(length = 500)
-    @Comment("로고 이미지 URL")
-    private String logoImageUrl;
-
-    @Column(length = 255)
-    @Comment("로고 저장 파일명")
-    private String logoSavedFileName;
-
-    @Column(length = 200)
-    @Comment("로고 저장 하위 경로")
-    private String logoSubPath;
-
     @Column
     @Comment("설립 연도")
     private Integer foundedYear;
@@ -144,19 +124,7 @@ public class Producer extends BaseTimeEntity {
         this.searchKeywords = searchKeywords;
     }
 
-    /**
-     * 로고 교체. update() 시그니처를 건드리지 않고 별도 메서드로 둔다 —
-     * UpdateProducerRequest 가 "null = 변경 안 함" 규약이라 JSON 필드로는 '삭제'를 표현할 수 없다.
-     */
-    public void updateLogo(String imageUrl, String savedFileName, String subPath) {
-        this.logoImageUrl = imageUrl;
-        this.logoSavedFileName = savedFileName;
-        this.logoSubPath = subPath;
-    }
-
-    public void removeLogo() {
-        this.logoImageUrl = null;
-        this.logoSavedFileName = null;
-        this.logoSubPath = null;
-    }
+    // 로고는 최대 5장까지 등록할 수 있어 별도 자식 테이블(ProducerLogoImage)로 관리한다.
+    // N+1 을 피하려고 이 엔티티에는 연관관계를 걸지 않고, 필요한 곳에서
+    // ProducerLogoImageRepository 로 명시적으로 조회한다(ReviewImage 와 같은 방식).
 }

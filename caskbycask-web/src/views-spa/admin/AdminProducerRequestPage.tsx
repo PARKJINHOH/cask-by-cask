@@ -14,6 +14,7 @@ import {
 import type { MyProducerRequest } from '@/domain/producer/types/producerRequest.types'
 import type { RequestStatus } from '@/domain/spirit/types/spiritRequest.types'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const STATUS_OPTIONS: Array<{ value: RequestStatus; label: string }> = [
   { value: 'PENDING',  label: '대기 중' },
@@ -60,15 +61,16 @@ function RejectModal({ open, request, onClose }: RejectModalProps) {
                 반려 사유 입력 — {request?.nameKo}
               </DialogTitle>
               <FormFieldLabel admin required>반려 사유</FormFieldLabel>
-              <textarea
+              <AutoGrowTextarea
                 required
                 aria-required="true"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
+                maxLength={500}
                 placeholder="반려 사유를 입력하세요 (요청자에게 알림으로 전달됩니다)"
                 className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
-                  focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+                  focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={onClose}>취소</Button>
@@ -184,7 +186,7 @@ export default function AdminProducerRequestPage() {
                           {req.nameKo}
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-neutral-500">{req.nameEn}</td>
+                      <td className="max-w-[240px] px-4 py-3 text-neutral-500">{req.nameEn}</td>
                       <td className="px-4 py-3 text-neutral-500">{req.country}</td>
                       <td className="px-4 py-3">
                         <Badge variant={req.status} size="sm">

@@ -797,6 +797,60 @@
   }
 }
 
+/* ── 관리자 표 — 폭이 좁아져도 한글이 세로로 쌓이지 않게 ──────────
+   auto 레이아웃 표는 폭이 모자라면 칸을 min-content 까지 줄인다. 한글은 글자 사이 어디서나
+   줄바꿈이 되므로 min-content 가 '한 글자'다 — 창을 조금만 줄여도 글자가 세로로 쌓이고,
+   그 전 단계에서는 제목이 2~3줄로 늘어난다. 그래서 **모든 폭에서** 셀을 한 줄로 고정한다.
+   (예전에는 이 규칙이 767px 이하에만 걸려 있어 태블릿~좁은 데스크톱에서 증상이 남았다.)
+
+   한 줄로 고정하면 표가 컨테이너보다 넓어질 수 있으므로,
+     · 표를 감싼 div 가 가로 스크롤을 갖고,
+     · 길어지기 쉬운 칸(.truncate·.max-w-*)은 말줄임(…)으로 잘라 표 폭을 지킨다.
+   말줄임 규칙을 자식에도 거는 이유: 이름 칸처럼 <p> 두 줄을 담은 셀은
+   셀 자신이 아니라 그 <p> 가 넘치기 때문이다. */
+.admin-content-area th,
+.admin-content-area td {
+  white-space: nowrap;
+}
+
+.admin-content-area td.truncate,
+.admin-content-area td[class*="max-w-"],
+.admin-content-area td.truncate > *,
+.admin-content-area td[class*="max-w-"] > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-content-area div:has(> table) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 표 밖에서도 같은 증상이 난다 — 제목과 버튼이 한 행(flex)에 있으면 폭이 모자랄 때
+   flex 항목의 최소 폭이 min-content(=한글 한 글자)까지 줄어든다.
+   제목은 한 줄 + 말줄임으로, 버튼 라벨은 줄바꿈 금지로 고정한다. */
+.admin-content-area h1,
+.admin-content-area h2,
+.admin-content-area h3 {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-content-area button,
+.admin-content-area a[role="button"] {
+  white-space: nowrap;
+}
+
+/* 예외: 사용자가 쓴 글을 전문 그대로 보여 줘야 하는 상세 화면의 제목·셀.
+   말줄임보다 여러 줄이 나은 자리에 `admin-wrap` 을 붙인다. */
+.admin-content-area .admin-wrap {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
 /* ── 모바일 관리자 테이블 최적화 ────────────────────────────── */
 @media (max-width: 767px) {
   /* 제목 글꼴 축소 */
@@ -858,24 +912,17 @@
     font-size: 10px !important;
   }
   
-  /* 모바일 여백 최적화 및 텍스트 갈라짐(세로로 보임) 방지 */
+  /* 모바일 여백 최적화. 한 줄 고정(white-space)·말줄임·가로 스크롤은
+     폭에 상관없이 걸려 있으므로 여기서는 여백만 줄인다. */
   .admin-content-area th,
   .admin-content-area td {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
-    white-space: nowrap;
-  }
-  
-  /* 이메일, 요약 등 예외적으로 줄바꿈이 필요한 truncate 열의 복구 */
-  .admin-content-area td.truncate,
-  .admin-content-area td.max-w-xs {
-    white-space: normal;
-    word-break: break-all;
   }
 
-  /* 테이블을 감싸고 있는 흰색 카드 컨테이너에 가로 스크롤 부여 */
+  /* 표가 아닌 카드(폼·필터)도 좁은 화면에서는 넘치는 만큼 가로로 스크롤한다 */
   .admin-content-area .bg-white.rounded-xl.shadow-sm,
   .admin-content-area .bg-white.border.border-neutral-200.rounded-xl {
     overflow-x: auto !important;

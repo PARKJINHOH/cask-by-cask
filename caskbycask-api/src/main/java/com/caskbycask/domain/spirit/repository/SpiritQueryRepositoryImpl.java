@@ -42,6 +42,48 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         return search(condition, pageable, true);
     }
 
+    @Override
+    public long countMasters(SpiritSearchCondition condition) {
+        QSpirit spirit = QSpirit.spirit;
+        QProducer producer = QProducer.producer;
+        return countMasters(condition, buildPredicate(condition, spirit, producer), spirit, producer);
+    }
+
+    /** search() 의 COUNT 분리 쿼리와 같은 것. 조건을 두 번 만들지 않도록 predicate 를 받는다. */
+    private long countMasters(SpiritSearchCondition condition, BooleanBuilder predicate,
+                              QSpirit spirit, QProducer producer) {
+        JPAQuery<Long> countQuery = queryFactory.select(spirit.count()).from(spirit);
+        if (StringUtils.hasText(condition.keyword())) {
+            countQuery.leftJoin(spirit.producer, producer);
+        }
+        applySubTypeJoin(countQuery, condition, spirit, false);
+        Long total = countQuery.where(predicate).fetchOne();
+        return total != null ? total : 0L;
+    }
+
+    @Override
+    public long countEditions(SpiritSearchCondition condition) {
+        // spirit = 조건이 걸리는 마스터, edition = 그 아래 병입. 조건은 마스터에만 적용한다.
+        QSpirit spirit = QSpirit.spirit;
+        QSpirit edition = new QSpirit("edition");
+        QProducer producer = QProducer.producer;
+
+        BooleanBuilder predicate = buildPredicate(condition, spirit, producer);
+        if (condition.status() != null) {
+            predicate.and(edition.status.eq(condition.status()));
+        }
+
+        JPAQuery<Long> query = queryFactory.select(edition.count()).from(edition)
+                .join(edition.parent, spirit);
+        if (StringUtils.hasText(condition.keyword())) {
+            query.leftJoin(spirit.producer, producer);
+        }
+        applySubTypeJoin(query, condition, spirit, false);
+
+        Long count = query.where(predicate).fetchOne();
+        return count != null ? count : 0L;
+    }
+
     private Page<SpiritListResponse> search(SpiritSearchCondition condition, Pageable pageable, boolean includeStyle) {
         QSpirit spirit = QSpirit.spirit;
         QSpiritImage image = QSpiritImage.spiritImage;
@@ -49,7 +91,6 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
 
         BooleanBuilder predicate = buildPredicate(condition, spirit, producer);
         OrderSpecifier<?> order = buildOrder(condition.sort(), spirit);
-        boolean hasKeyword = StringUtils.hasText(condition.keyword());
 
         // ── 1. 데이터 조회 (producer fetch join + 서브타입 조건부 join) ─
         //  키워드 검색 시 생산자명/검색별칭(예: 카뮈↔까뮤)도 매칭하도록 producer 를 alias join
@@ -70,12 +111,7 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
                 .fetch();
 
         // ── 2. COUNT 분리 쿼리 ─────────────────────────────────
-        JPAQuery<Long> countQuery = queryFactory.select(spirit.count()).from(spirit);
-        if (hasKeyword) {
-            countQuery.leftJoin(spirit.producer, producer);
-        }
-        applySubTypeJoin(countQuery, condition, spirit, false);
-        Long total = countQuery.where(predicate).fetchOne();
+        long total = countMasters(condition, predicate, spirit, producer);
 
         // ── 3. 대표 이미지 IN 배치 조회 ────────────────────────
         Map<Long, String> primaryImages = fetchPrimaryImages(spirits, image);
@@ -86,7 +122,7 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
                 .map(s -> toListResponse(s, primaryImages.get(s.getId()), includeStyle, canonicalSpirits))
                 .toList();
 
-        return new PageImpl<>(content, pageable, total != null ? total : 0L);
+        return new PageImpl<>(content, pageable, total);
     }
 
     private void applyStyleFetchJoin(JPAQuery<Spirit> query, QSpirit spirit) {

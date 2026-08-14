@@ -108,8 +108,8 @@ function LogDetailModal({ logId, onClose }: { logId: number; onClose: () => void
                   <tbody className="divide-y divide-neutral-100">
                     {detail.recipients.map((r, i) => (
                       <tr key={i} className={r.success ? '' : 'bg-red-50'}>
-                        <td className="px-3 py-2 text-neutral-700">{r.email}</td>
-                        <td className="px-3 py-2 text-neutral-500">{r.nickname ?? '-'}</td>
+                        <td className="max-w-[220px] px-3 py-2 text-neutral-700">{r.email}</td>
+                        <td className="max-w-[160px] px-3 py-2 text-neutral-500">{r.nickname ?? '-'}</td>
                         <td className="px-3 py-2">
                           {r.success
                             ? <span className="text-green-600 font-medium">성공</span>

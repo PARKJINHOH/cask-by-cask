@@ -1,5 +1,6 @@
 package com.caskbycask.domain.spirit.dto;
 
+import com.caskbycask.domain.producer.dto.ProducerLogoResponse;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
@@ -26,8 +27,8 @@ public record SpiritDetailResponse(
         String producerNameKo,
         @Schema(description = "증류소 영문명")
         String producerNameEn,
-        @Schema(description = "증류소 로고 이미지 URL — 포토카드 등에서 사용")
-        String producerLogoImageUrl,
+        @Schema(description = "증류소 로고 이미지 목록(최대 5장, sortOrder 순) — 0번이 대표. 포토카드 등에서 사용")
+        List<ProducerLogoResponse> producerLogoImages,
         @Schema(description = "증류소 소재 국가")
         String producerCountry,
         @Schema(description = "빈티지 연도")
@@ -121,13 +122,14 @@ public record SpiritDetailResponse(
         @Schema(description = "하위 에디션 목록")
         List<SpiritVariantResponse> variants
 ) {
-    /** 상세 없이 기본 정보만 반환 (등록·수정 응답) */
+    /** 상세 없이 기본 정보만 반환 (등록·수정 응답) — 이 경로는 생산자 로고 목록을 조회하지 않는다. */
     public static SpiritDetailResponse of(Spirit spirit, List<SpiritImageResponse> images) {
-        return of(spirit, images, null, null, null, null, null, List.of());
+        return of(spirit, images, List.of(), null, null, null, null, null, List.of());
     }
 
     /** 전체 상세 포함 응답 (GET /api/spirits/{id}) */
     public static SpiritDetailResponse of(Spirit spirit, List<SpiritImageResponse> images,
+                                           List<ProducerLogoResponse> producerLogoImages,
                                            SpiritCommonDetailResponse commonDetail,
                                            WhiskyDetailResponse whiskyDetail,
                                            WineDetailResponse wineDetail,
@@ -142,7 +144,7 @@ public record SpiritDetailResponse(
                 spirit.getProducer() != null ? spirit.getProducer().getId() : null,
                 spirit.getProducer() != null ? spirit.getProducer().getNameKo() : null,
                 spirit.getProducer() != null ? spirit.getProducer().getNameEn() : null,
-                spirit.getProducer() != null ? spirit.getProducer().getLogoImageUrl() : null,
+                producerLogoImages,
                 spirit.getProducer() != null ? spirit.getProducer().getCountry() : null,
                 spirit.getVintageYear(),
                 spirit.getAbv(),

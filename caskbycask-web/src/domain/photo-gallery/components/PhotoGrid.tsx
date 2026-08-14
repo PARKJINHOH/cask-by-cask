@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { PostListItem } from '@/domain/community/types/community.types'
 import { columnCountFor, columnWidthFor, layoutPhotoColumns } from '../utils/columnLayout'
+import { PHOTO_GRID_SIZES, photoSrc, photoSrcSet } from '../utils/photoImageVariants'
 
 interface Props {
   posts: PostListItem[]
@@ -95,9 +96,13 @@ export default function PhotoGrid({ posts, onSelect }: Props) {
               >
                 {post.thumbnailImageUrl && (
                   <img
-                    src={post.thumbnailImageUrl}
+                    // 타일 폭은 넓어야 445px 다 — 본 이미지 대신 축소본을 받는다.
+                    src={photoSrc(post.thumbnailImageUrl, 640)}
+                    srcSet={photoSrcSet(post.thumbnailImageUrl)}
+                    sizes={PHOTO_GRID_SIZES}
                     alt={post.title}
                     loading="lazy"
+                    decoding="async"
                     onLoad={(event) => handleLoad(post.id, event.currentTarget)}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                   />

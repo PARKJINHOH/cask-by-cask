@@ -56,6 +56,31 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
     @Query("SELECT s.category, COUNT(s) FROM Spirit s WHERE s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE GROUP BY s.category")
     List<Object[]> findCategoryStats();
 
+    /**
+     * 카테고리별 등록 수를 마스터 주류와 에디션(하위 병입)으로 나눠 센다.
+     *
+     * 카탈로그 목록은 마스터만 보여 주지만(에디션은 상세 안의 배치 목록),
+     * '몇 종이 등록돼 있는가'를 말할 때는 에디션도 실제 등록된 제품이므로 함께 센다.
+     */
+    @Query("""
+            SELECT s.category,
+                   SUM(CASE WHEN s.parent IS NULL THEN 1L ELSE 0L END),
+                   SUM(CASE WHEN s.parent IS NOT NULL THEN 1L ELSE 0L END)
+            FROM Spirit s
+            WHERE s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+            GROUP BY s.category
+            """)
+    List<Object[]> findCategoryCountsWithEditions();
+
+    /** 주어진 마스터들이 거느린 에디션 수. 전문 검색으로 마스터를 찾은 경로에서 쓴다. */
+    @Query("""
+            SELECT COUNT(e) FROM Spirit e
+            WHERE e.parent.id IN :parentIds
+              AND (:status IS NULL OR e.status = :status)
+            """)
+    long countEditionsByParentIds(@Param("parentIds") List<Long> parentIds,
+                                  @Param("status") SpiritStatus status);
+
     @Query("""
             SELECT s.country, COUNT(s) FROM Spirit s
             WHERE s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE

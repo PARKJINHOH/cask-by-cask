@@ -8,6 +8,7 @@ import type { SendEmailResult, EmailTemplate } from '@/domain/admin/api/adminEma
 import { formatDate } from '@/shared/utils/format'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // ── 결과 배너 ─────────────────────────────────────────────────────
 function ResultBanner({ result, onClose }: { result: SendEmailResult; onClose: () => void }) {
@@ -239,7 +240,7 @@ export default function AdminEmailPage() {
                   템플릿으로 저장
                 </button>
               </div>
-              <textarea
+              <AutoGrowTextarea
                 required
                 aria-required="true"
                 rows={14}
@@ -248,7 +249,7 @@ export default function AdminEmailPage() {
                 onChange={(e) => setBody(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-300 bg-white
                   placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400
-                  focus:border-transparent resize-y font-mono"
+                  focus:border-transparent font-mono"
               />
               <p className="text-xs text-neutral-400 mt-1">HTML을 입력하면 HTML 이메일로 발송됩니다.</p>
             </div>

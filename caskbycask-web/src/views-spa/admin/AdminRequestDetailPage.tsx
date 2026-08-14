@@ -14,6 +14,7 @@ import {
   useRejectRequest,
 } from '@/domain/admin/hooks/useAdminSpirits'
 import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // ── 상수 ────────────────────────────────────────────────────────
 const STATUS_LABEL: Record<string, string> = {
@@ -237,9 +238,9 @@ export default function AdminRequestDetailPage() {
       {isPending && rejectMode && (
         <div className="bg-white rounded-xl shadow-sm p-5 space-y-3">
           <FormFieldLabel admin required>반려 사유</FormFieldLabel>
-          <textarea required aria-required="true" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500}
+          <AutoGrowTextarea required aria-required="true" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500}
             placeholder="반려 사유를 입력하세요..."
-            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-primary-400" />
           <p className="text-xs text-neutral-400 text-right">{rejectReason.length}/500</p>
           <div className="flex gap-2 justify-end">

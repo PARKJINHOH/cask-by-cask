@@ -2,7 +2,8 @@ import axiosInstance from '@/shared/api/axiosInstance'
 import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   CountryStats, RegionStats,
-  SpiritCategory, SpiritDetail, SpiritListItem, SpiritSearchParams, SpiritVariant,
+  SpiritCategory, SpiritCategoryStat, SpiritDetail, SpiritListItem, SpiritSearchCount,
+  SpiritSearchParams, SpiritVariant,
   SpiritAutocompleteItem, CreateSpiritVariantRequest,
 } from '../types/spirit.types'
 
@@ -29,6 +30,20 @@ export const spiritApi = {
       params,
       paramsSerializer: serializeSearchParams,
     }),
+
+  /**
+   * 같은 조건의 등록 건수. 목록의 `totalElements` 는 페이지 계산용 마스터 수라
+   * 에디션까지 더한 숫자는 이쪽으로 따로 받는다.
+   */
+  count: (params: SpiritSearchParams) =>
+    axiosInstance.get<ApiResponse<SpiritSearchCount>>('/api/spirits/count', {
+      params,
+      paramsSerializer: serializeSearchParams,
+    }),
+
+  /** 카테고리별 등록 주류 수(에디션 포함) — 메인 홈 사이드바 통계 */
+  getCategoryStats: () =>
+    axiosInstance.get<ApiResponse<SpiritCategoryStat[]>>('/api/spirits/category-stats'),
 
   getDetail: (id: number) =>
     axiosInstance.get<ApiResponse<SpiritDetail>>(`/api/spirits/${id}`),

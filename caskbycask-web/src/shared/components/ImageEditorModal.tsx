@@ -24,6 +24,7 @@ import {
 } from './imageEditorText'
 import { ensureEditorFontCssLoaded } from './imageEditorFontCss'
 import './image-editor.css'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface ImageEditorModalProps {
   open: boolean
@@ -44,6 +45,15 @@ interface ImageEditorModalProps {
   }
   recommendedResolution?: string
   showInstagramCropPreset?: boolean
+  /**
+   * 저장 포맷. **기본은 PNG 로 유지한다** — 배너·주류 이미지 등 투명도가 필요한 호출부가 있다.
+   *
+   * 사진처럼 투명도가 없는 흐름은 'image/jpeg' 로 넘길 것. PNG 는 무손실이라
+   * 2048×2048 사진이 5~10MB 로 부풀어 원본 JPEG 보다 오히려 커진다.
+   */
+  outputFormat?: 'image/png' | 'image/jpeg'
+  /** JPEG 품질(0~1). outputFormat 이 'image/jpeg' 일 때만 의미가 있다. */
+  outputQuality?: number
 }
 
 type EditMode = 'paint' | 'crop' | 'rotate' | 'resize' | 'adjust' | 'text'
@@ -149,22 +159,18 @@ function TextControls({
 
       <div className={compact ? 'grid grid-cols-2 gap-2' : 'space-y-3'}>
         <div className={compact ? 'col-span-2 space-y-1' : 'space-y-2'}>
-          <div className="flex items-center justify-between gap-2">
-            <label htmlFor={`${idPrefix}-content`} className="text-xs font-medium text-neutral-300">
-              {t('imageEditor.textContent')}
-            </label>
-            <span className="text-[10px] font-mono text-neutral-500">
-              {style.content.length}/{TEXT_MAX_LENGTH}
-            </span>
-          </div>
-          <textarea
+          {/* 글자수는 입력칸 우측 하단에 붙는다(AutoGrowTextarea) */}
+          <label htmlFor={`${idPrefix}-content`} className="block text-xs font-medium text-neutral-300">
+            {t('imageEditor.textContent')}
+          </label>
+          <AutoGrowTextarea
             id={`${idPrefix}-content`}
             rows={compact ? 2 : 3}
             maxLength={TEXT_MAX_LENGTH}
             value={style.content}
             onChange={(event) => onChange({ content: event.target.value })}
             placeholder={t('imageEditor.textPlaceholder')}
-            className="w-full resize-none rounded-lg border border-neutral-700 bg-neutral-950/50 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-primary-500 focus:outline-none"
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-950/50 px-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:border-primary-500 focus:outline-none"
           />
         </div>
 
@@ -506,6 +512,8 @@ export default function ImageEditorModal({
   fitOutputSize,
   recommendedResolution,
   showInstagramCropPreset = false,
+  outputFormat = 'image/png',
+  outputQuality = 0.92,
 }: ImageEditorModalProps) {
   const { t } = useTranslation()
   const [mode, setMode] = useState<EditMode>('paint')
@@ -1828,11 +1836,35 @@ export default function ImageEditorModal({
       }
     }
 
-    outputCanvas.toBlob((blob) => {
-      if (!blob) return
-      const file = new File([blob], 'edited_image.png', { type: 'image/png' })
-      onSave(file)
-    }, 'image/png')
+    const isJpeg = outputFormat === 'image/jpeg'
+
+    // JPEG 는 알파 채널이 없다. 투명 PNG 를 그대로 인코딩하면 브라우저가 투명 부분을
+    // 검정으로 채우므로, 흰 바탕을 먼저 깔고 그 위에 그려 평탄화한다.
+    if (isJpeg) {
+      const flattened = document.createElement('canvas')
+      flattened.width = outputCanvas.width
+      flattened.height = outputCanvas.height
+      const flattenedContext = flattened.getContext('2d')
+      if (!flattenedContext) return
+      flattenedContext.fillStyle = '#ffffff'
+      flattenedContext.fillRect(0, 0, flattened.width, flattened.height)
+      flattenedContext.drawImage(outputCanvas, 0, 0)
+      outputCanvas = flattened
+    }
+
+    // 파일명 확장자는 반드시 실제 포맷과 맞춘다 —
+    // 서버 검증(NoticeImageValidator)이 확장자와 매직 바이트의 일치를 요구한다.
+    outputCanvas.toBlob(
+      (blob) => {
+        if (!blob) return
+        const file = new File([blob], isJpeg ? 'edited_image.jpg' : 'edited_image.png', {
+          type: outputFormat,
+        })
+        onSave(file)
+      },
+      outputFormat,
+      isJpeg ? outputQuality : undefined,
+    )
   }
 
   const cropRatioOptions: CropRatioOption[] = [

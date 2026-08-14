@@ -8,6 +8,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 import type { MessageSummary } from '../types/message.types'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface Props {
   initialMessageId?: number
@@ -174,7 +175,7 @@ function ThreadPanel({
       {/* 답장 영역 */}
       <div className="flex-shrink-0 border-t border-neutral-200 p-3">
         <FormFieldLabel required className="mb-1.5 text-xs">{t('messages.content')}</FormFieldLabel>
-        <textarea
+        <AutoGrowTextarea
           required
           aria-required="true"
           value={replyText}
@@ -182,7 +183,7 @@ function ThreadPanel({
           rows={3}
           maxLength={100}
           placeholder={t('messages.contentPlaceholder', '답장을 입력하세요...')}
-          className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400"
+          className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
         />
         <div className="flex items-center justify-between mt-1">
           <span className={['text-xs', replyText.length >= 100 ? 'text-red-500' : 'text-neutral-400'].join(' ')}>

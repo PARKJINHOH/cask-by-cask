@@ -17,9 +17,6 @@ public interface ProducerRepository extends JpaRepository<Producer, Long> {
 
     List<Producer> findAllByWebsiteIsNotNull();
 
-    /** 로고 이미지 서빙용 — 저장 파일명으로 subPath 를 복원한다. */
-    Optional<Producer> findByLogoSavedFileName(String logoSavedFileName);
-
     @Query("""
             SELECT d FROM Producer d
             WHERE (:keyword IS NULL
@@ -31,7 +28,9 @@ public interface ProducerRepository extends JpaRepository<Producer, Long> {
               AND (:country IS NULL OR LOWER(d.country) LIKE LOWER(CONCAT('%', :country, '%')))
               AND (:foundedYear IS NULL OR d.foundedYear = :foundedYear)
               AND (:type IS NULL OR d.type = :type)
-              AND (:hasLogo IS NULL OR d.logoImageUrl IS NOT NULL)
+              AND (:hasLogo IS NULL OR EXISTS (
+                    SELECT 1 FROM ProducerLogoImage logo WHERE logo.producer = d
+                  ))
             """)
     Page<Producer> search(
             @Param("keyword") String keyword,

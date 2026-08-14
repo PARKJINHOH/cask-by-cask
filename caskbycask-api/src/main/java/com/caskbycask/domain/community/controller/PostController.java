@@ -1,7 +1,6 @@
 package com.caskbycask.domain.community.controller;
 
 import com.caskbycask.domain.community.dto.*;
-import com.caskbycask.domain.community.entity.PostImage;
 import com.caskbycask.domain.community.entity.PostVideo;
 import com.caskbycask.domain.community.entity.enums.BoardType;
 import com.caskbycask.domain.community.service.PostImageService;
@@ -32,6 +31,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -54,6 +54,7 @@ public class PostController {
             @RequestParam(required = false) Long authorId,
             @RequestParam(required = false) Long commentAuthorId,
             @RequestParam(required = false) Long distilleryTagId, // [패치 9] 소식 게시판 증류소 태그 필터
+            @RequestParam(required = false) Long spiritTagId,     // 이미지 갤러리 주류 태그 필터
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -61,7 +62,8 @@ public class PostController {
         Long userId = userDetails != null ? userDetails.getUserId() : null;
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(postService.getPosts(boardType, prefixId, keyword, sort,
-                        authorId, commentAuthorId, distilleryTagId, userId, page, size))));
+                        authorId, commentAuthorId, distilleryTagId, spiritTagId, userId,
+                        page, size))));
     }
 
     /** 주류 상세의 "이 술의 사진" — 해당 주류가 태그된 이미지 갤러리 글 */
@@ -316,17 +318,32 @@ public class PostController {
                 });
     }
 
-    // local 프로파일 전용 이미지 서빙
+    /**
+     * 게시글·이미지 갤러리 이미지 서빙.
+     * <p>
+     * nginx 에 {@code /api/posts/images} 정적 location 이 없어 <b>모든 프로파일에서</b> 이 핸들러가 처리한다.
+     * (과거 {@code @Profile("local")} 이 붙어 있었으나 {@code @Profile} 은 빈 정의에만 적용되고
+     * 핸들러 메서드에서는 무시되므로 실제로는 운영에서도 살아 있었다 — 오해를 없애려 제거했다.)
+     * <p>
+     * 파일명이 UUID 기반이라 내용이 바뀌면 이름도 바뀐다 → {@code immutable} 로 1년 캐시한다.
+     * 이 헤더가 없으면 Spring Security 기본 헤더 라이터가 {@code no-store} 를 박아
+     * 브라우저·Cloudflare 가 이미지를 한 장도 캐시하지 못한다(갤러리 스크롤마다 전량 재다운로드).
+     * <p>
+     * {@code {uuid}_w640.webp} 처럼 폭 접미사가 붙으면 반응형 축소본을 돌려주고,
+     * 축소본이 없는 기존 이미지는 본 이미지로 폴백한다.
+     */
     @GetMapping("/images/{savedFileName}")
-    @org.springframework.context.annotation.Profile("local")
     public ResponseEntity<Resource> serveImage(@PathVariable String savedFileName) {
         // [보안] Path Traversal 방어
         if (savedFileName.contains("..") || savedFileName.contains("/") || savedFileName.contains("\\")) {
             throw new CustomException(ErrorCode.INVALID_FILE_PATH);
         }
-        PostImage image = postImageService.findBySavedFileName(savedFileName);
-        Resource resource = postImageService.loadAsResource(savedFileName, image.getSubPath());
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(image.getMimeType())).body(resource);
+        PostImageService.ServableImage servable = postImageService.loadForServing(savedFileName);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable())
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.parseMediaType(servable.mimeType()))
+                .body(servable.resource());
     }
 
     // ─── Private ────────────────────────────────

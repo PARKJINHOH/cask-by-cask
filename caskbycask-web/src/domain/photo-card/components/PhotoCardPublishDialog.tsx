@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { communityApi } from '@/domain/community/api/communityApi'
 import PhotoCardSpiritPicker from './PhotoCardSpiritPicker'
 import type { PhotoCardSpiritInfo } from '../types/photoCard.types'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface Props {
   open: boolean
@@ -107,13 +108,13 @@ export default function PhotoCardPublishDialog({ open, onClose, previewUrl, file
                 <label htmlFor="photo-card-caption" className="mb-1.5 block text-xs font-semibold text-neutral-500">
                   {t('photoCard.postCaption')}
                 </label>
-                <textarea
+                <AutoGrowTextarea
                   id="photo-card-caption"
                   rows={6}
                   value={caption}
                   onChange={(event) => setCaption(event.target.value)}
                   placeholder={t('photoCard.postCaptionPlaceholder')}
-                  className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-primary-500 focus:outline-none"
                 />
               </div>
 

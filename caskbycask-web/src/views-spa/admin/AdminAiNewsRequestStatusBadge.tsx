@@ -24,7 +24,7 @@ export function summarizeAiNewsPrompt(prompt: string, maxLength = 70) {
 
 export default function AdminAiNewsRequestStatusBadge({ status }: { status: AiNewsDraftRequestStatus }) {
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClasses[status]}`}>
+    <span className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${statusClasses[status]}`}>
       {statusLabels[status]}
     </span>
   )

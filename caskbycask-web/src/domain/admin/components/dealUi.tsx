@@ -53,7 +53,7 @@ export function ConfidenceBadge({ score }: { score: number | null | undefined })
       ? 'bg-yellow-100 text-yellow-700'
       : 'bg-neutral-100 text-neutral-500'
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold tabular-nums ${cls}`}>
+    <span className={`inline-block shrink-0 whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-semibold tabular-nums ${cls}`}>
       {score}
     </span>
   )
@@ -61,7 +61,7 @@ export function ConfidenceBadge({ score }: { score: number | null | undefined })
 
 export function DealStatusBadge({ status }: { status: DealStatus }) {
   return (
-    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLE[status]}`}>
+    <span className={`inline-block shrink-0 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLE[status]}`}>
       {DEAL_STATUS_LABEL[status]}
     </span>
   )

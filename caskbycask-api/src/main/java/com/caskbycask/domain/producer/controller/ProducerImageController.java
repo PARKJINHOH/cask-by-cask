@@ -1,13 +1,14 @@
 package com.caskbycask.domain.producer.controller;
 
-import com.caskbycask.domain.producer.entity.Producer;
-import com.caskbycask.domain.producer.repository.ProducerRepository;
+import com.caskbycask.domain.producer.entity.ProducerLogoImage;
+import com.caskbycask.domain.producer.repository.ProducerLogoImageRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 생산자 로고 이미지 서빙.
@@ -26,6 +28,9 @@ import java.nio.file.Paths;
  * 세그먼트가 하나라 경로가 겹치지 않는다.
  * <p>
  * SecurityConfig 는 {@code GET /api/producers/**} 를 이미 permitAll 로 열어 두었다.
+ * <p>
+ * 파일명이 UUID 기반이라 내용이 바뀌면 이름도 바뀐다 → immutable 로 1년 캐시한다
+ * (다른 이미지 서빙 엔드포인트와 동일한 정책 — ReviewImageController 참고).
  */
 @Slf4j
 @RestController
@@ -33,14 +38,14 @@ import java.nio.file.Paths;
 public class ProducerImageController {
 
     private final Path basePath;
-    private final ProducerRepository producerRepository;
+    private final ProducerLogoImageRepository producerLogoImageRepository;
 
     public ProducerImageController(
             @Value("${storage.local.base-path}") String basePathStr,
-            ProducerRepository producerRepository
+            ProducerLogoImageRepository producerLogoImageRepository
     ) {
         this.basePath = Paths.get(basePathStr).toAbsolutePath().normalize();
-        this.producerRepository = producerRepository;
+        this.producerLogoImageRepository = producerLogoImageRepository;
     }
 
     @GetMapping("/{savedFileName}")
@@ -50,12 +55,12 @@ public class ProducerImageController {
             throw new CustomException(ErrorCode.INVALID_FILE_PATH);
         }
 
-        Producer producer = producerRepository.findByLogoSavedFileName(savedFileName)
-                .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_NOT_FOUND));
+        ProducerLogoImage image = producerLogoImageRepository.findBySavedFileName(savedFileName)
+                .orElseThrow(() -> new CustomException(ErrorCode.DISTILLERY_LOGO_NOT_FOUND));
 
         // [보안] Path Traversal 이중 방어: normalize 후 basePath 범위 내부인지 검증
         Path filePath = basePath
-                .resolve(producer.getLogoSubPath())
+                .resolve(image.getSubPath())
                 .resolve(savedFileName)
                 .normalize();
 
@@ -66,20 +71,13 @@ public class ProducerImageController {
 
         Resource resource = new FileSystemResource(filePath);
         if (!resource.exists() || !resource.isReadable()) {
-            throw new CustomException(ErrorCode.DISTILLERY_NOT_FOUND);
+            throw new CustomException(ErrorCode.DISTILLERY_LOGO_NOT_FOUND);
         }
 
-        // 저장 시 WebP 로 변환되므로 확장자에서 Content-Type 을 유도한다.
         return ResponseEntity.ok()
-                .contentType(mediaTypeOf(savedFileName))
+                .cacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable())
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.parseMediaType(image.getMimeType()))
                 .body(resource);
-    }
-
-    private MediaType mediaTypeOf(String fileName) {
-        String lower = fileName.toLowerCase();
-        if (lower.endsWith(".webp")) return MediaType.parseMediaType("image/webp");
-        if (lower.endsWith(".png"))  return MediaType.IMAGE_PNG;
-        if (lower.endsWith(".gif"))  return MediaType.IMAGE_GIF;
-        return MediaType.IMAGE_JPEG;
     }
 }

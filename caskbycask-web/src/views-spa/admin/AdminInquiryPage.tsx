@@ -15,6 +15,7 @@ import {
 import type { InquiryCategory, InquiryStatus } from '@/domain/inquiry/types/inquiry.types'
 import RichContent from '@/shared/components/RichContent'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const CATEGORY_OPTIONS: Array<{ value: InquiryCategory | ''; label: string }> = [
   { value: '', label: '전체' },
@@ -261,7 +262,8 @@ export default function AdminInquiryPage() {
                   </button>
                 </div>
 
-                <h2 className="text-lg font-bold text-neutral-900 leading-snug">{detail.title}</h2>
+                {/* 사용자가 쓴 문의 제목은 잘리면 안 되므로 여러 줄을 허용한다 */}
+                <h2 className="admin-wrap text-lg font-bold text-neutral-900 leading-snug">{detail.title}</h2>
 
                 {/* 발신자 정보 */}
                 <div className="bg-neutral-50 rounded-xl p-4 space-y-1.5 text-sm">
@@ -352,7 +354,7 @@ export default function AdminInquiryPage() {
                   ) : (
                     <>
                       <FormFieldLabel admin required className="mb-1.5">답변 내용</FormFieldLabel>
-                      <textarea
+                      <AutoGrowTextarea
                         required
                         aria-required="true"
                         value={replyInput}
@@ -363,7 +365,7 @@ export default function AdminInquiryPage() {
                           ? '재답변 내용을 입력하세요...'
                           : `${detail.senderEmail} 으로 발송될 답변 내용을 입력하세요...`}
                         className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
-                          focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+                          focus:outline-none focus:ring-2 focus:ring-primary-400"
                       />
                       <div className="flex items-center justify-between mt-2">
                         <p className="text-xs text-neutral-400">{replyInput.length} / 5,000</p>
@@ -397,13 +399,13 @@ export default function AdminInquiryPage() {
                   <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">
                     관리자 메모 <span className="font-normal text-neutral-400">(발송되지 않음)</span>
                   </p>
-                  <textarea
+                  <AutoGrowTextarea
                     value={noteInput || detail.adminNote || ''}
                     onChange={(e) => setNoteInput(e.target.value)}
                     rows={3}
                     placeholder="내부 메모를 입력하세요..."
                     className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
-                      focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+                      focus:outline-none focus:ring-2 focus:ring-primary-400"
                   />
                   <button
                     onClick={() => noteMutation.mutate({ id: detail.id, note: noteInput })}

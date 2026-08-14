@@ -22,6 +22,10 @@ export const reviewApi = {
       params: { size },
     }),
 
+  /** 메인 홈 사이드바 "등록된 리뷰" 총 건수 (공개 API) */
+  getReviewCount: () =>
+    axiosInstance.get<ApiResponse<number>>('/api/public/reviews/count'),
+
   getReviews: (spiritId: number, params?: { sort?: string; page?: number; size?: number }) =>
     axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>(
       `/api/spirits/${spiritId}/reviews`,

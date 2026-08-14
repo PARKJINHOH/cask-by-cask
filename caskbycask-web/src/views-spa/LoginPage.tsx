@@ -6,6 +6,7 @@ import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
+import { toReturnPath } from '@/domain/auth/hooks/useRequireLogin'
 import { authApi } from '@/domain/auth/api/authApi'
 import type { AdminCredentials } from '@/domain/auth/types/auth.types'
 import { userApi } from '@/domain/user/api/userApi'
@@ -139,11 +140,14 @@ function SuspensionBanner({ detail }: { detail: SuspensionDetail }) {
 function DormantReactivateModal({
   email,
   password,
+  returnTo,
   onClose,
   onSuccess,
 }: {
   email: string
   password: string
+  /** 휴면 해제 후 돌아갈 곳 — 로그인 화면에 들어오기 전 있던 페이지. */
+  returnTo: string
   onClose: () => void
   onSuccess: (from: string) => void
 }) {
@@ -176,7 +180,7 @@ function DormantReactivateModal({
     setSubmitting(true)
     try {
       await reactivate({ email, password, code })
-      onSuccess('/')
+      onSuccess(returnTo)
     } catch (err) {
       const msg = (err as AxiosError<ApiResponse<unknown>>)?.response?.data?.message
       setError(msg ?? '휴면 해제에 실패했습니다. 인증 코드를 확인해주세요.')
@@ -293,8 +297,10 @@ export default function LoginPage() {
   }
 
 
-  const state = location.state as { from?: { pathname: string }; signupSuccess?: boolean; verifySuccess?: boolean; passwordResetSuccess?: boolean; socialLinkNotice?: string } | null
-  const from = state?.from?.pathname ?? '/'
+  const state = location.state as { from?: unknown; signupSuccess?: boolean; verifySuccess?: boolean; passwordResetSuccess?: boolean; socialLinkNotice?: string } | null
+  // pathname 만 읽으면 ?post=123 처럼 쿼리에 화면 상태를 담는 페이지(이미지 갤러리 모달 등)로
+  // 되돌아가지 못한다. search·hash 까지 살리고, 열린 리다이렉트·로그인 루프는 걸러 낸다.
+  const from = toReturnPath(state?.from)
   const signupSuccess  = !!state?.signupSuccess
   const verifySuccess  = !!state?.verifySuccess
   const passwordResetSuccess = !!state?.passwordResetSuccess
@@ -491,6 +497,7 @@ export default function LoginPage() {
         <DormantReactivateModal
           email={dormantCreds.email}
           password={dormantCreds.password}
+          returnTo={from}
           onClose={() => setDormantCreds(null)}
           onSuccess={handleReactivateSuccess}
         />

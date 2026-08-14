@@ -2764,10 +2764,21 @@
       "previewAlt": "Photo {{number}}",
       "movePrevious": "Move earlier",
       "moveNext": "Move later",
-      "deleteConfirm": "Remove this photo?"
+      "deleteConfirm": "Remove this photo?",
+      "deleteTitle": "Remove photo",
+      "dropHint": "You can also drop files here or paste them (Ctrl+V).",
+      "dropActive": "Drop to add these photos.",
+      "preparing": "Preparing photos…",
+      "progress": "Uploading {{current}} of {{total}} · {{percent}}%",
+      "dragToReorder": "Drag to reorder"
     },
     "sortLatest": "Latest",
     "sortPopular": "Popular",
+    "searchPlaceholder": "Search photos by title or text",
+    "searchLabel": "Search photos",
+    "filterBySpirit": "Filter by spirit",
+    "clearSpiritFilter": "Clear spirit filter",
+    "filterEmpty": "No photos match these filters.",
     "empty": "No photos yet. Be the first to post a photo card.",
     "loadingMore": "Loading more…",
     "end": "That is all for now.",
@@ -2777,6 +2788,9 @@
     "linkCopied": "Link copied.",
     "noImage": "This photo could not be loaded.",
     "openViewer": "Open image viewer",
+    "downloadOriginal": "Download original photo",
+    "downloadingOriginal": "Downloading...",
+    "downloadOriginalFailed": "Download failed. Please try again in a moment.",
     "prevPost": "Previous photo",
     "nextPost": "Next photo"
   },
@@ -3164,6 +3178,10 @@
     "fontWeight": "Weight",
     "sizeUp": "Larger",
     "sizeDown": "Smaller",
-    "logoSearchTooShort": "Type at least two characters."
+    "logoSearchTooShort": "Type at least two characters.",
+    "logoVariantChoose": "Choose a logo",
+    "logoVariantChooseHint": "This distillery has several logo versions on file. Pick the one to use on this card.",
+    "logoVariantSkip": "Continue without a logo",
+    "logoVariantUse": "Use this logo"
   }
 }

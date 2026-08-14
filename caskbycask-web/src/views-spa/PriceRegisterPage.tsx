@@ -19,6 +19,7 @@ import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplay
 import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
 const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
@@ -610,13 +611,13 @@ export default function PriceRegisterPage() {
 
         {/* 설명 */}
         <Section label={t('price.register.description')}>
-          <textarea
+          <AutoGrowTextarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t('price.register.descPlaceholder')}
             rows={3}
             maxLength={500}
-            className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200 resize-none"
+            className="w-full border border-neutral-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-200"
           />
         </Section>
 

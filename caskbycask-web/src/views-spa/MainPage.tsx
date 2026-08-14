@@ -388,6 +388,92 @@ function TopRatedList({ spirits }: { spirits: SpiritListItem[] }) {
   )
 }
 
+// ── 사이드바 통계 (카테고리별 등록 수 · 등록 리뷰 수) ─────────────
+// 두 카드가 같은 골격(제목 행 + 흰 카드)을 공유하도록 한 컴포넌트로 그린다.
+function StatRow({ label, value, to }: { label: string; value: number; to?: string }) {
+  const content = (
+    <>
+      <span className="min-w-0 truncate text-sm text-neutral-700">{label}</span>
+      <span className="flex-shrink-0 text-sm font-bold tabular-nums text-primary-800">
+        {value.toLocaleString()}
+      </span>
+    </>
+  )
+
+  const rowCls = `flex items-center justify-between gap-2 px-3 py-2.5 transition-colors
+    ${to ? 'hover:bg-primary-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40' : ''}`
+
+  return (
+    <li className="border-b border-neutral-50 last:border-b-0">
+      {to ? <Link to={to} className={rowCls}>{content}</Link> : <div className={rowCls}>{content}</div>}
+    </li>
+  )
+}
+
+/** 카테고리별 등록 주류 수. 카탈로그 카드는 마스터만이지만 여기 숫자는 에디션까지 센다. */
+function CategoryCountCard() {
+  const { t } = useTranslation()
+
+  const { data: stats } = useQuery({
+    queryKey: ['home', 'categoryStats'],
+    queryFn: () => spiritApi.getCategoryStats().then((r) => r.data.data ?? []),
+    staleTime: 5 * 60_000,
+  })
+
+  if (!stats || stats.length === 0) return null
+
+  // 카테고리 순서는 하단 타일·탐색 필터와 같게 고정한다(응답 순서는 GROUP BY 에 달렸다).
+  const ordered = CATEGORY_MENU
+    .map((menu) => stats.find((stat) => stat.category === menu.key))
+    .filter((stat): stat is NonNullable<typeof stat> => Boolean(stat))
+  const total = ordered.reduce((sum, stat) => sum + stat.totalCount, 0)
+  if (total === 0) return null
+
+  return (
+    <section>
+      <SectionHeader
+        title={t('home.stats.spiritCountTitle')}
+        link="/spirits"
+        linkLabel={t('home.sections.viewAll')}
+      />
+      <ul className="overflow-hidden rounded-xl border border-neutral-100 bg-white">
+        {ordered.map((stat) => (
+          <StatRow
+            key={stat.category}
+            label={t(`spirit.category.${stat.category}`)}
+            value={stat.totalCount}
+            to={`/spirits?category=${stat.category}`}
+          />
+        ))}
+        <StatRow label={t('home.stats.total')} value={total} />
+      </ul>
+      <p className="mt-1.5 px-1 text-[11px] text-neutral-400">{t('home.stats.editionIncluded')}</p>
+    </section>
+  )
+}
+
+/** 등록된 리뷰 수. 위 카테고리 카드와 같은 골격을 쓴다. */
+function ReviewCountCard() {
+  const { t } = useTranslation()
+
+  const { data: count } = useQuery({
+    queryKey: ['home', 'reviewCount'],
+    queryFn: () => reviewApi.getReviewCount().then((r) => r.data.data ?? 0),
+    staleTime: 5 * 60_000,
+  })
+
+  if (count == null) return null
+
+  return (
+    <section>
+      <SectionHeader title={t('home.stats.reviewCountTitle')} />
+      <ul className="overflow-hidden rounded-xl border border-neutral-100 bg-white">
+        <StatRow label={t('home.stats.reviewCountLabel')} value={count} />
+      </ul>
+    </section>
+  )
+}
+
 function PostRow({ post, boardPath }: { post: PostListItem; boardPath: string }) {
   const { t } = useTranslation()
   const label = post.prefix
@@ -757,9 +843,19 @@ export default function MainPage() {
               </section>
             )}
 
+            {/* 카테고리별 등록 주류 수 (에디션 포함) */}
+            <div className="order-3">
+              <CategoryCountCard />
+            </div>
+
+            {/* 등록된 리뷰 수 — 위 카드와 같은 디자인 */}
+            <div className="order-4">
+              <ReviewCountCard />
+            </div>
+
             {/* 사이드바 배너 */}
             {sideBanners.some((banner) => banner.pcImage) && (
-              <div className="order-3 rounded-xl shadow-sm">
+              <div className="order-5 rounded-xl shadow-sm">
                 <BannerSlider
                   banners={sideBanners.filter((banner) => banner.pcImage)}
                   aspectClass="aspect-[4/5]"

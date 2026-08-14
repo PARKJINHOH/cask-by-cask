@@ -6,6 +6,7 @@ import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
 import AdminAiNewsRequestStatusBadge, { summarizeAiNewsPrompt } from './AdminAiNewsRequestStatusBadge'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const requestListPath = '/admin/community/ai-news/new?mode=ai'
 
@@ -145,13 +146,13 @@ export default function AdminAiNewsRequestDetailPage() {
           <h2 className="text-sm font-semibold text-neutral-800">AI 프롬프트</h2>
           {request.status === 'FAILED' ? (
             <>
-              <textarea
+              <AutoGrowTextarea
                 aria-label="재요청 AI 프롬프트"
                 maxLength={4000}
                 rows={8}
                 value={retryPrompt}
                 onChange={(event) => setEditedPrompt(event.target.value)}
-                className="mt-3 w-full resize-y rounded-lg border border-neutral-300 px-3 py-2 text-sm leading-7 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                className="mt-3 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm leading-7 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
               />
               <div className="mt-1 flex items-center justify-between gap-3 text-xs text-neutral-500">
                 <span>수정 내용은 새 재요청에만 적용되며 기존 실패 내역은 보존됩니다.</span>

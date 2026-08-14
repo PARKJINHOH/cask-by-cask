@@ -5,6 +5,7 @@ import CommentForm from './CommentForm'
 import { useToggleLike, useDeleteComment } from '../hooks/useComments'
 import { useCreateReport } from '@/domain/report/hooks/useReport'
 import type { CommentItem as CommentItemType } from '../types/comment.types'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 export interface CommentItemProps {
   comment: CommentItemType
@@ -157,13 +158,13 @@ export default function CommentItem({
           {!isOwner && currentUserId && reportOpen && (
             <div className="mt-2 p-3 bg-red-50 border border-red-100 rounded-lg space-y-2">
               <p className="text-xs font-medium text-red-700">{t('comment.reportTitle')}</p>
-              <textarea
+              <AutoGrowTextarea
                 value={reportReason}
                 onChange={(e) => setReportReason(e.target.value)}
                 maxLength={500}
                 rows={2}
                 placeholder={t('comment.reportPlaceholder')}
-                className="w-full px-2 py-1.5 text-xs border border-red-200 rounded-lg resize-none
+                className="w-full px-2 py-1.5 text-xs border border-red-200 rounded-lg
                   focus:outline-none focus:ring-1 focus:ring-red-400 bg-white"
               />
               {reportMutation.isError && (

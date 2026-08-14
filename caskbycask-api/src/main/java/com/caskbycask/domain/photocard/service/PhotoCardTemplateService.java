@@ -47,7 +47,8 @@ public class PhotoCardTemplateService {
     public static final int SCHEMA_VERSION = 1;
 
     private static final int MAX_LAYERS = 24;
-    private static final int MAX_TEXT_LENGTH = 200;
+    /** 리뷰 전문처럼 긴 글도 담을 수 있는 길이. 프론트 PHOTO_CARD_MAX_TEXT_LENGTH 와 같아야 한다. */
+    private static final int MAX_TEXT_LENGTH = 600;
     private static final int MAX_TEMPLATES_PER_USER = 30;
     private static final double MIN_FONT_SIZE_RATIO = 0.005;
     private static final double MAX_FONT_SIZE_RATIO = 0.30;

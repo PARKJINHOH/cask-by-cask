@@ -316,7 +316,7 @@ function EmojiTable({
             <td className="px-4 py-3">
               <EmojiPreview emoji={emoji} />
             </td>
-            <td className="px-4 py-3 font-medium text-neutral-900">{emoji.label}</td>
+            <td className="max-w-[200px] px-4 py-3 font-medium text-neutral-900">{emoji.label}</td>
             <td className="px-4 py-3 text-neutral-500 text-xs">
               {emoji.groupName ?? <span className="text-neutral-300">없음</span>}
             </td>
@@ -369,7 +369,7 @@ function SortableEmojiRow({
         </svg>
       </td>
       <td className="px-4 py-3"><EmojiPreview emoji={emoji} /></td>
-      <td className="px-4 py-3 font-medium text-neutral-900">{emoji.label}</td>
+      <td className="max-w-[200px] px-4 py-3 font-medium text-neutral-900">{emoji.label}</td>
       <td className="px-4 py-3 text-neutral-500 font-mono text-xs">{emoji.code}</td>
       <td className="px-4 py-3"><ActiveBadge active={emoji.isActive} /></td>
       <td className="px-4 py-3">

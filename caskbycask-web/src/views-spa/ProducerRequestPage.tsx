@@ -7,6 +7,7 @@ import type { RequestStatus } from '@/domain/spirit/types/spiritRequest.types'
 import CountryRegionSelector from '@/domain/location/components/CountryRegionSelector'
 import SeoMeta from '@/shared/components/SeoMeta'
 import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
   PENDING:  'bg-amber-50 text-amber-700',
@@ -269,23 +270,23 @@ export default function ProducerRequestPage() {
 
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-neutral-700">{t('producerRequest.form.descriptionKo')}</label>
-                <textarea
+                <AutoGrowTextarea
                   {...register('descriptionKo')}
                   rows={3}
                   maxLength={2000}
                   placeholder={t('producerRequest.form.descriptionKoPlaceholder', '생산자 소개를 입력해주세요.')}
-                  className={`${FIELD_CLS} bg-white border-neutral-300 resize-none`}
+                  className={`${FIELD_CLS} bg-white border-neutral-300`}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-neutral-700">{t('producerRequest.form.descriptionEn')}</label>
-                <textarea
+                <AutoGrowTextarea
                   {...register('descriptionEn')}
                   rows={3}
                   maxLength={2000}
                   placeholder="Enter producer description."
-                  className={`${FIELD_CLS} bg-white border-neutral-300 resize-none`}
+                  className={`${FIELD_CLS} bg-white border-neutral-300`}
                 />
               </div>
             </div>

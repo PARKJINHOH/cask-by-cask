@@ -21,6 +21,7 @@ import Modal from '@/shared/components/Modal'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -564,13 +565,13 @@ export default function AdminEventCalendarPage() {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">설명 <span className="text-neutral-400 font-normal">(선택)</span></label>
-              <textarea
+              <AutoGrowTextarea
                 value={form.description}
                 maxLength={2000}
                 rows={4}
                 onChange={(e) => patch({ description: e.target.value })}
                 placeholder="이벤트 내용을 입력하세요."
-                className="w-full px-3 py-2 rounded-lg border border-neutral-300 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 

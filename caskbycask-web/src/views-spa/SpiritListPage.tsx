@@ -452,34 +452,44 @@ export default function SpiritListPage() {
 
   // 쿼리
   const keyword = searchParams.get('keyword') ?? ''
+  // 목록과 건수 조회가 같은 조건을 쓰도록 한 곳에서 만든다(정렬·페이징만 목록 쪽에 더한다).
+  const filterQuery = {
+    keyword:     keyword     || undefined,
+    category:    (category as SpiritCategory) || undefined,
+    whiskyStyle: whiskyStyle.length > 0 ? whiskyStyle : undefined,
+    wineType:    wineType.length > 0    ? wineType    : undefined,
+    cognacGrade: cognacGrade.length > 0 ? cognacGrade : undefined,
+    wineSweetness: wineSweetness.length > 0 ? wineSweetness : undefined,
+    wineBody:    wineBody.length > 0    ? wineBody    : undefined,
+    wineAcidity: wineAcidity.length > 0 ? wineAcidity : undefined,
+    wineTannin:  wineTannin.length > 0  ? wineTannin  : undefined,
+    country:     country     || undefined,
+    region:      region      || undefined,
+    minAbv:    urlMinAbv   > 0   ? urlMinAbv   : undefined,
+    maxAbv:    urlMaxAbv   < 100 ? urlMaxAbv   : undefined,
+    minScore:  urlMinScore > 0   ? urlMinScore : undefined,
+    maxScore:  urlMaxScore < 100 ? urlMaxScore : undefined,
+  }
+  const filterKey = {
+    keyword, category, whiskyStyle, wineType, cognacGrade,
+    wineSweetness, wineBody, wineAcidity, wineTannin,
+    country, region,
+    minAbv: urlMinAbv, maxAbv: urlMaxAbv, minScore: urlMinScore, maxScore: urlMaxScore,
+  }
+
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
-    queryKey: ['spirits', {
-      keyword, category, whiskyStyle, wineType, cognacGrade,
-      wineSweetness, wineBody, wineAcidity, wineTannin,
-      country, region, sort, page,
-      minAbv: urlMinAbv, maxAbv: urlMaxAbv, minScore: urlMinScore, maxScore: urlMaxScore,
-    }],
+    queryKey: ['spirits', { ...filterKey, sort, page }],
     queryFn: () =>
-      spiritApi.search({
-        keyword:     keyword     || undefined,
-        category:    (category as SpiritCategory) || undefined,
-        whiskyStyle: whiskyStyle.length > 0 ? whiskyStyle : undefined,
-        wineType:    wineType.length > 0    ? wineType    : undefined,
-        cognacGrade: cognacGrade.length > 0 ? cognacGrade : undefined,
-        wineSweetness: wineSweetness.length > 0 ? wineSweetness : undefined,
-        wineBody:    wineBody.length > 0    ? wineBody    : undefined,
-        wineAcidity: wineAcidity.length > 0 ? wineAcidity : undefined,
-        wineTannin:  wineTannin.length > 0  ? wineTannin  : undefined,
-        country:     country     || undefined,
-        region:      region      || undefined,
-        sort,
-        page,
-        size: 20,
-        minAbv:    urlMinAbv   > 0   ? urlMinAbv   : undefined,
-        maxAbv:    urlMaxAbv   < 100 ? urlMaxAbv   : undefined,
-        minScore:  urlMinScore > 0   ? urlMinScore : undefined,
-        maxScore:  urlMaxScore < 100 ? urlMaxScore : undefined,
-      }).then((r) => r.data.data!),
+      spiritApi.search({ ...filterQuery, sort, page, size: 20 }).then((r) => r.data.data!),
+    staleTime: 30_000,
+  })
+
+  // 화면에 보여 주는 '총 N개' 는 에디션(배치·병입)까지 포함한 수다.
+  // 목록 카드는 마스터만 싣지만, 등록된 제품 수를 묻는 숫자이므로 에디션도 센다.
+  // 페이징에 쓰는 data.totalElements 와는 다른 값이라 별도 엔드포인트로 받는다.
+  const { data: countData } = useQuery({
+    queryKey: ['spirits', 'count', filterKey],
+    queryFn: () => spiritApi.count(filterQuery).then((r) => r.data.data!),
     staleTime: 30_000,
   })
 
@@ -618,7 +628,7 @@ export default function SpiritListPage() {
               {data && (
                 <Trans
                   i18nKey="spirit.count"
-                  values={{ n: data.totalElements }}
+                  values={{ n: countData?.totalCount ?? data.totalElements }}
                   components={[<span className="font-semibold text-neutral-900" />]}
                 />
               )}

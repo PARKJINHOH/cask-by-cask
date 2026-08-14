@@ -13,10 +13,11 @@ import java.util.List;
 public interface PostQueryRepository {
 
     // [패치 9] distilleryTagId 추가 — 소식 게시판 증류소 태그 필터
+    // spiritTagId: 이미지 갤러리 주류 태그 필터. 정렬·검색과 조합된다.
     // excludeAuthorIds: 내가 차단한 작성자(글 숨김). null/empty 면 미적용
     Page<Post> findPosts(BoardType boardType, Long prefixId, String keyword, PostSort sort,
                          Long authorId, Long commentAuthorId, Long distilleryTagId,
-                         List<Long> excludeAuthorIds, Pageable pageable);
+                         Long spiritTagId, List<Long> excludeAuthorIds, Pageable pageable);
 
     Page<Post> findBestPosts(BoardType boardType, int minLikeCount,
                              List<Long> excludeAuthorIds, Pageable pageable);

@@ -1,6 +1,7 @@
 import { useCallback, useId } from 'react'
 import { scoreColor } from '@/shared/utils/format'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 export interface ScoreInputProps {
   label: string
@@ -166,14 +167,14 @@ export default function ScoreInput({
       {/* 카테고리 노트 textarea */}
       {onNoteChange !== undefined && (
         <div>
-          <textarea
+          <AutoGrowTextarea
             value={note ?? ''}
             onChange={(e) => onNoteChange(e.target.value)}
             disabled={disabled}
             placeholder={notePlaceholder}
             maxLength={1000}
             rows={2}
-            className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl resize-y
+            className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
               focus:outline-none focus:ring-2 focus:ring-primary-400
               placeholder:text-neutral-300 leading-relaxed min-h-[4rem]"
           />

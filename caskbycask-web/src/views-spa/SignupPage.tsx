@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import type { AxiosError } from 'axios'
 import { useAuth } from '@/domain/auth/hooks/useAuth'
+import { toReturnPath } from '@/domain/auth/hooks/useRequireLogin'
 import { authApi } from '@/domain/auth/api/authApi'
 import Button from '@/shared/components/Button'
 import Input from '@/shared/components/Input'
@@ -219,8 +220,9 @@ export default function SignupPage() {
   const navigate   = useNavigate()
   const location   = useLocation()
   const { signup } = useAuth()
-  const routeState = location.state as { from?: { pathname: string } } | null
-  const returnTo = routeState?.from?.pathname ?? '/'
+  const routeState = location.state as { from?: unknown } | null
+  // 로그인 화면과 같은 규약 — search·hash 까지 살려 원래 보던 화면으로 정확히 돌려보낸다.
+  const returnTo = toReturnPath(routeState?.from)
 
   const [emailStatus,    setEmailStatus]    = useState<CheckStatus>('idle')
   const [nicknameStatus, setNicknameStatus] = useState<CheckStatus>('idle')

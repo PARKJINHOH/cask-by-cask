@@ -19,6 +19,7 @@ import { useReviews } from '@/domain/review/hooks/useReviews'
 import { buildBreadcrumbSchema, buildReviewSchema } from '@/shared/utils/seoSchema'
 import CommentList from '@/domain/comment/components/CommentList'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
+import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 import SeoMeta, { buildCanonical, SITE_URL } from '@/shared/components/SeoMeta'
 import { DEFAULT_OG_IMAGE } from '@/shared/config/site'
 import type { SpiritDetail, SpiritImage, SpiritSeo, SpiritVariant } from '@/domain/spirit/types/spirit.types'
@@ -920,6 +921,7 @@ export default function SpiritDetailPage() {
   const { id }   = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
+  const requireLogin = useRequireLogin()
   const spiritId = parseInt(id || '', 10)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
@@ -1347,7 +1349,7 @@ export default function SpiritDetailPage() {
             <Button variant="secondary" size="sm" onClick={() => setLoginModal(false)}>
               {t('common.cancel')}
             </Button>
-            <Button size="sm" onClick={() => { setLoginModal(false); navigate('/login') }}>
+            <Button size="sm" onClick={() => { setLoginModal(false); requireLogin() }}>
               {t('auth.goToLogin')}
             </Button>
           </>

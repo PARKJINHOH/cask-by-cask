@@ -184,7 +184,7 @@ export default function AdminUserPage() {
                       <td className="px-4 py-3 text-neutral-600 max-w-[200px] truncate">
                         {user.email}
                       </td>
-                      <td className="px-4 py-3 font-medium text-neutral-900">
+                      <td className="max-w-[180px] px-4 py-3 font-medium text-neutral-900">
                         {user.nickname}
                       </td>
                       <td className="px-4 py-3">

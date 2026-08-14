@@ -15,6 +15,7 @@ import {
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import { formatPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const EMPTY_FORM = {
   drinkName: '', drinkCategory: '', volumeMl: '', originalPrice: '0', dealPrice: '0',
@@ -656,15 +657,16 @@ export default function AdminDealDetailPage() {
         </div>
 
         <Field label="조건">
-          <textarea
+          <AutoGrowTextarea
             rows={2}
+            maxLength={500}
             className={inputCls}
             value={form.dealCondition}
             onChange={(e) => setForm({ ...form, dealCondition: e.target.value })}
           />
         </Field>
         <Field label="요약">
-          <textarea
+          <AutoGrowTextarea
             rows={3}
             className={inputCls}
             value={form.summaryKo}

@@ -30,6 +30,25 @@ public class ValidatedImageUploader {
         return upload(file, directory, WebpConversionMode.LOSSLESS);
     }
 
+    /**
+     * 해상도 상한 + 반응형 축소본까지 함께 만드는 업로드.
+     * 이미지 갤러리처럼 원본이 크고 목록에서는 작게 쓰이는 도메인이 사용한다.
+     */
+    public StoredImage uploadResponsive(MultipartFile file, String directory, ResponsiveImageSpec spec) {
+        String mimeType = noticeImageValidator.validate(file);
+        String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
+        String subPath = directory + "/" + YearMonth.now().format(MONTH_DIR);
+        ImageUploadResult result = fileStorageService.uploadResponsiveImage(
+                file,
+                savedFileName,
+                subPath,
+                mimeType,
+                WebpConversionMode.LOSSY,
+                spec
+        );
+        return new StoredImage(result.savedFileName(), subPath, result.mimeType(), result.imageUrl());
+    }
+
     private StoredImage upload(MultipartFile file, String directory, WebpConversionMode conversionMode) {
         String mimeType = noticeImageValidator.validate(file);
         String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 import { useEvents, useUpcomingEvents, useSuggestEvent } from '@/domain/event/hooks/useEvents'
 import EventCalendarGrid from '@/domain/event/components/EventCalendarGrid'
 import UpcomingEvents from '@/domain/event/components/UpcomingEvents'
@@ -8,12 +7,14 @@ import { CATEGORY_META, CATEGORY_ORDER } from '@/domain/event/constants/eventCat
 import type { CalendarEvent, EventCategory } from '@/domain/event/types/event.types'
 import { parseYmd } from '@/domain/event/utils/calendar'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 import Modal from '@/shared/components/Modal'
 import Button from '@/shared/components/Button'
 import DateInput from '@/shared/components/DateInput'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface SuggestForm {
   title: string
@@ -100,7 +101,7 @@ function EventDetailContent({ event, t }: { event: CalendarEvent; t: ReturnType<
 
 export default function EventCalendarPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const requireLogin = useRequireLogin()
   const { isLoggedIn } = useAuthStore()
   const { toasts, showToast, removeToast } = useToast()
   const now = new Date()
@@ -116,13 +117,12 @@ export default function EventCalendarPage() {
   const { data: upcoming = [] } = useUpcomingEvents(10)
 
   const openSuggest = () => {
-    if (!isLoggedIn) {
-      showToast(t('calendar.suggest.loginRequired'), 'info')
-      navigate('/login')
-      return
-    }
-    setSuggestError(null)
-    setSuggestForm(emptySuggestForm())
+    if (!isLoggedIn) showToast(t('calendar.suggest.loginRequired'), 'info')
+    // 로그인 후 달력으로 그대로 돌아온다.
+    requireLogin(() => {
+      setSuggestError(null)
+      setSuggestForm(emptySuggestForm())
+    })
   }
 
   const patchSuggest = (p: Partial<SuggestForm>) =>
@@ -371,13 +371,13 @@ export default function EventCalendarPage() {
                 {t('calendar.suggest.description')}{' '}
                 <span className="text-neutral-400 font-normal">{t('calendar.suggest.descriptionHint')}</span>
               </label>
-              <textarea
+              <AutoGrowTextarea
                 value={suggestForm.description}
                 maxLength={2000}
                 rows={4}
                 onChange={(e) => patchSuggest({ description: e.target.value })}
                 placeholder={t('calendar.suggest.descriptionPlaceholder')}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-300 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 rounded-lg border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>

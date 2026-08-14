@@ -109,8 +109,8 @@ export default function AdminRequestPage() {
                       onClick={() => navigate(`/admin/spirits/requests/${req.id}`, { state: detailState })}
                     >
                       <td className="px-4 py-3 text-neutral-400 tabular-nums">{req.id}</td>
-                      <td className="px-4 py-3 font-medium text-neutral-900">{req.nameKo}</td>
-                      <td className="px-4 py-3 text-neutral-500">{req.nameEn}</td>
+                      <td className="max-w-[260px] px-4 py-3 font-medium text-neutral-900">{req.nameKo}</td>
+                      <td className="max-w-[260px] px-4 py-3 text-neutral-500">{req.nameEn}</td>
                       <td className="px-4 py-3">
                         <Badge variant={req.category} size="sm">
                           {CATEGORY_LABEL[req.category] ?? req.category}

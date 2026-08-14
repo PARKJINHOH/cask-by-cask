@@ -28,6 +28,12 @@ public class PublicReviewController {
         return ResponseEntity.ok(ApiResponse.success(publicReviewService.getRecent(size)));
     }
 
+    /** 메인 홈 사이드바 "등록된 리뷰" 개수 — 정적 경로라 /{reviewId} 보다 먼저 매칭된다 */
+    @GetMapping("/count")
+    public ResponseEntity<ApiResponse<Long>> count() {
+        return ResponseEntity.ok(ApiResponse.success(publicReviewService.countAll()));
+    }
+
     @GetMapping("/{reviewId}")
     public ResponseEntity<ApiResponse<PublicReviewResponse>> get(@PathVariable Long reviewId) {
         return ResponseEntity.ok(ApiResponse.success(publicReviewService.get(reviewId)));

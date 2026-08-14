@@ -26,6 +26,8 @@ export const communityApi = {
     sort?: PostSort
     authorId?: number
     commentAuthorId?: number
+    /** 이미지 갤러리 주류 태그 필터 */
+    spiritTagId?: number
     page?: number
     size?: number
   }) => axiosInstance.get<ApiResponse<PageResponse<PostListItem>>>('/api/posts', { params }),

@@ -77,6 +77,46 @@ public class SpiritController {
                 PageResponse.from(spiritService.searchSpirits(condition, pageable))));
     }
 
+    /**
+     * 같은 조건의 등록 건수 — 목록의 '총 N개' 표기용.
+     *
+     * 목록 응답(PageResponse)의 totalElements 는 페이지 계산에 쓰이는 **마스터 수**라 건드릴 수 없어,
+     * 에디션까지 포함한 숫자는 이 엔드포인트로 따로 받는다. 정렬·페이징 파라미터는 받지 않는다.
+     */
+    @GetMapping("/count")
+    public ResponseEntity<ApiResponse<SpiritSearchCountResponse>> count(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) SpiritCategory category,
+            @RequestParam(required = false) List<WhiskyStyle> whiskyStyle,
+            @RequestParam(required = false) List<WineType> wineType,
+            @RequestParam(required = false) List<CognacGrade> cognacGrade,
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) Long producerId,
+            @RequestParam(required = false) BigDecimal minAbv,
+            @RequestParam(required = false) BigDecimal maxAbv,
+            @RequestParam(required = false) BigDecimal minScore,
+            @RequestParam(required = false) BigDecimal maxScore,
+            @RequestParam(required = false) List<WineSweetness> wineSweetness,
+            @RequestParam(required = false) List<WineBody> wineBody,
+            @RequestParam(required = false) List<WineIntensity> wineAcidity,
+            @RequestParam(required = false) List<WineIntensity> wineTannin) {
+
+        SpiritSearchCondition condition = new SpiritSearchCondition(
+                keyword, category, whiskyStyle, wineType, cognacGrade,
+                country, region, producerId, minAbv, maxAbv, minScore, maxScore,
+                SpiritStatus.ACTIVE, null,
+                wineSweetness, wineBody, wineAcidity, wineTannin);
+
+        return ResponseEntity.ok(ApiResponse.success(spiritService.countSpirits(condition)));
+    }
+
+    /** 카테고리별 등록 주류 수(에디션 포함) — 메인 홈 사이드바 통계 */
+    @GetMapping("/category-stats")
+    public ResponseEntity<ApiResponse<List<SpiritCategoryStatResponse>>> getCategoryStats() {
+        return ResponseEntity.ok(ApiResponse.success(spiritService.getCategoryStats()));
+    }
+
     @GetMapping("/countries")
     public ResponseEntity<ApiResponse<List<CountryStatsResponse>>> getCountries(
             @RequestParam(required = false) SpiritCategory category) {

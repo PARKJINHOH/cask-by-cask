@@ -23,6 +23,7 @@ import type {
   VariantReviewRequestStatus,
 } from '@/domain/admin/types/admin.types'
 import type { SpiritCategory, SpiritStatus } from '@/domain/spirit/types/spirit.types'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const CATEGORY_LABEL: Record<SpiritCategory, string> = {
   WHISKY: '위스키',
@@ -134,13 +135,13 @@ function RejectModal({
         <p className="text-sm text-neutral-600">
           반려 사유를 입력합니다. 이메일 발송을 체크하면 요청자에게 사유가 안내됩니다.
         </p>
-        <textarea
+        <AutoGrowTextarea
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           rows={4}
           maxLength={500}
           placeholder="예) 동일 에디션이 이미 존재하거나 리뷰 내용이 기준에 맞지 않음"
-          className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
         />
         <label className="flex items-center gap-2 text-sm text-neutral-700">
           <input

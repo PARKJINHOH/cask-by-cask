@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { photoCardApi } from '../../api/photoCardApi'
 import type { PhotoCardEditor } from '../../hooks/usePhotoCardEditor'
 import type { PhotoCardBinding } from '../../types/photoCard.types'
-import { PHOTO_CARD_BINDINGS } from '../../utils/layoutSchema'
+import { PHOTO_CARD_BINDINGS, PHOTO_CARD_MAX_TEXT_LENGTH } from '../../utils/layoutSchema'
 import { frameSizeOf } from '../../utils/photoCardRender'
 import { PHOTO_CARD_MAX_EDGE } from '../../constants/photoCardRatios'
 import { alignLayers, distributeLayers, type AlignMode } from '../../utils/photoCardSnap'
 import { resolveLayerText } from '../../utils/resolveBindings'
 import { ColorField, PanelButton, Section, SliderField } from './controls'
 import FontPicker from './FontPicker'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // 2800줄짜리 편집기다. 실제로 그림을 고칠 때만 내려받는다.
 const ImageEditorModal = lazy(() => import('@/shared/components/ImageEditorModal'))
@@ -155,14 +156,15 @@ export default function SelectionInspector({ editor, canvasRef }: Props) {
               {t('photoCard.content')}
               {layer.overridden && <span className="ml-1 font-bold text-primary-700">· {t('photoCard.overridden')}</span>}
             </span>
-            <textarea
+            <AutoGrowTextarea
               rows={2}
+              maxLength={PHOTO_CARD_MAX_TEXT_LENGTH}
               value={layer.overridden || !layer.binding || layer.binding === 'NONE'
                 ? (layer.text ?? '')
                 : resolveLayerText(layer, editor.dataContext)}
               onChange={(event) => patch({ text: event.target.value, overridden: true }, `text:${layer.id}`)}
               onBlur={editor.endGesture}
-              className="w-full resize-none rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs"
+              className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs"
             />
             {layer.overridden && layer.binding !== 'NONE' && (
               <button

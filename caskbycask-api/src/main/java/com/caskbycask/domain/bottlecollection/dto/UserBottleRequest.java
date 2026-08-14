@@ -48,5 +48,7 @@ public record UserBottleRequest(
 
     @NotNull BottleStatus status,
     Boolean isPublic,
-    String memo
+
+    /** 컬럼은 TEXT 지만 개인 메모라 상한을 둔다 — 화면이 남은 글자수를 보여 줄 수 있어야 한다. */
+    @Size(max = 1000, message = "메모는 1000자 이내여야 합니다.") String memo
 ) {}

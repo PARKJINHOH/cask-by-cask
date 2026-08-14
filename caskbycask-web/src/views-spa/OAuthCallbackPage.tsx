@@ -37,14 +37,24 @@ export default function OAuthCallbackPage() {
     const returnTo = sessionStorage.getItem(OAUTH_RETURN_TO_KEY) ?? '/'
     const redirectUri = oauthRedirectUri()
 
-    const fail = (msg: string, to: string) => {
+    /**
+     * 실패 시 되돌아갈 곳.
+     * link 모드는 마이페이지, auth 모드는 로그인 화면이다.
+     * 로그인 화면으로 보낼 때는 **원래 있던 페이지를 함께 실어** 다시 로그인하면 그리로 돌아가게 한다
+     * (예전에는 여기서 returnTo 가 버려져, 실패 후 재로그인하면 홈으로 떨어졌다).
+     */
+    const failTarget = mode === 'link' ? '/mypage?tab=settings' : '/login'
+    const fail = (msg: string, to: string = failTarget) => {
       clearOAuthSession()
       setError(msg)
-      setTimeout(() => navigate(to, { replace: true }), 1500)
+      setTimeout(() => navigate(to, {
+        replace: true,
+        state: to === '/login' ? { from: { pathname: returnTo } } : undefined,
+      }), 1500)
     }
 
     if (providerError || !code || !state || !provider) {
-      fail(t('auth.social.callbackError'), mode === 'link' ? '/mypage?tab=settings' : '/login')
+      fail(t('auth.social.callbackError'))
       return
     }
 
@@ -92,7 +102,7 @@ export default function OAuthCallbackPage() {
         }
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        fail(msg ?? t('auth.social.callbackError'), mode === 'link' ? '/mypage?tab=settings' : '/login')
+        fail(msg ?? t('auth.social.callbackError'))
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps

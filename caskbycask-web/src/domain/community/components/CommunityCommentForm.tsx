@@ -8,6 +8,7 @@ import Button from '@/shared/components/Button'
 import EmojiPicker from './EmojiPicker'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface Props {
   postId: number
@@ -163,7 +164,7 @@ export default function CommunityCommentForm({
       {/* 멘션 드롭다운 */}
       <div className="relative">
         <FormFieldLabel required className="mb-1.5">{t('comment.contentLabel')}</FormFieldLabel>
-        <textarea
+        <AutoGrowTextarea
           ref={textareaRef}
           required
           aria-required="true"
@@ -172,7 +173,7 @@ export default function CommunityCommentForm({
           maxLength={MAX_LENGTH}
           rows={editingComment ? 3 : 2}
           placeholder={t('comment.placeholder')}
-          className="w-full px-3.5 py-2.5 text-sm border border-neutral-300 rounded-xl resize-y min-h-[60px] max-h-[400px] focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent placeholder:text-neutral-400 transition-shadow"
+          className="w-full px-3.5 py-2.5 text-sm border border-neutral-300 rounded-xl min-h-[60px] focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent placeholder:text-neutral-400 transition-shadow"
         />
         {mentionQuery.length > 0 && mentionUsers.length > 0 && (
           <div className="absolute z-10 top-full mt-1 w-48 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden">

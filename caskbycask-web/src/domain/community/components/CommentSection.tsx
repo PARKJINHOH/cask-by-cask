@@ -1,4 +1,4 @@
-﻿import { useNavigate, useSearchParams } from 'react-router-dom'
+﻿import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useComments } from '../hooks/useComments'
 import CommunityCommentItem from './CommunityCommentItem'
@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { useToast } from '@/shared/hooks/useToast'
 import Toast from '@/shared/components/Toast'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 
 interface Props {
   postId: number
@@ -17,7 +18,7 @@ const SIZE = 30
 
 export default function CommentSection({ postId }: Props) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const requireLogin = useRequireLogin()
   const { isLoggedIn } = useAuthStore()
   const [page, setPage] = useState(0)
   const { toasts, showToast, removeToast } = useToast()
@@ -44,8 +45,9 @@ export default function CommentSection({ postId }: Props) {
     showToast(`욕설이 포함되어 있습니다: ${words.join(', ')}`, 'error')
   }
 
+  // 로그인 후 보던 글(그리고 갤러리라면 ?post= 모달까지)로 그대로 돌아온다.
   const handleLoginNeeded = () => {
-    navigate('/login')
+    requireLogin()
   }
 
   return (
@@ -63,7 +65,7 @@ export default function CommentSection({ postId }: Props) {
         </div>
       ) : (
         <div className="mb-6 py-4 text-center text-sm text-neutral-400 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
-          <button onClick={() => navigate('/login')} className="text-primary-800 hover:underline">
+          <button onClick={() => requireLogin()} className="text-primary-800 hover:underline">
             {t('post.loginToComment')}
           </button>
         </div>

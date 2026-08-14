@@ -59,7 +59,9 @@ export default function Badge({
   return (
     <span
       className={[
-        'inline-flex items-center font-medium rounded-full',
+        // shrink-0 + whitespace-nowrap 이 없으면 좁은 화면의 flex 행에서 뱃지가 먼저 찌그러져
+        // 한글이 한 글자씩 세로로 쌓인다. 뱃지는 줄지 않고, 옆의 본문 텍스트가 줄어야 한다.
+        'inline-flex shrink-0 items-center whitespace-nowrap font-medium rounded-full',
         variantClasses[variant] ?? variantClasses.neutral,
         sizeClasses[size],
         className,

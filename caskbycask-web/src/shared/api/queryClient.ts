@@ -7,9 +7,15 @@ export const queryClient = new QueryClient({
   // invalidateQueries 는 "활성(마운트된) 쿼리만 즉시 refetch" 하고 나머지는 stale 로만 표시하므로
   // 실제 재요청 부하는 현재 화면에 떠 있는 쿼리로 한정된다.
   // 특정 mutation 이 더 정교한 무효화를 하더라도 각 훅의 onSuccess 와 함께 추가로 실행되어 무해하다.
+  // 예외: meta.skipGlobalInvalidate 를 단 쿼리는 건너뛴다.
+  //   무한 쿼리는 무효화 한 번에 **로드된 모든 페이지**를 다시 요청하므로, 이미지 갤러리처럼
+  //   한 페이지가 24장인 목록은 좋아요 한 번에 수백 장이 재요청된다.
+  //   빠진 쿼리는 스스로 갱신 시점을 정한다(예: PhotoUploadDialog 가 업로드 후 직접 무효화).
   mutationCache: new MutationCache({
     onSuccess: () => {
-      queryClient.invalidateQueries()
+      queryClient.invalidateQueries({
+        predicate: (query) => query.meta?.skipGlobalInvalidate !== true,
+      })
     },
   }),
   defaultOptions: {

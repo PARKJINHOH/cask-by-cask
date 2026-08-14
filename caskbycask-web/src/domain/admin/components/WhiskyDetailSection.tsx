@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import InfoTooltip from '@/shared/components/InfoTooltip'
 import { BROAD_CASK_CATEGORIES } from '@/domain/spirit/data/whisky'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 export interface WhiskyDetailForm {
   style: string; styleOther: string; brandName: string; bottlingType: string
@@ -269,10 +270,10 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
           기타 정보
           <InfoTooltip text="출시 정보·캐스크 비율 등 참고용 메모. 예) 2021~2022 출시 제품, PX 50% 포트 20%" />
         </label>
-        <textarea value={value.notes} maxLength={500} rows={2}
+        <AutoGrowTextarea value={value.notes} maxLength={500} rows={2}
           onChange={(e) => onChange({ notes: e.target.value })}
           placeholder="예) 2021~2022 출시 제품, PX 50% 포트 20%"
-          className={`${INPUT} resize`} />
+          className={`${INPUT}`} />
       </div>
     </div>
   )

@@ -16,6 +16,7 @@ import SocialPublishFields, {
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const MAX_TITLE_LENGTH = 70
 
@@ -313,8 +314,8 @@ export default function AdminAiNewsFormPage() {
             <p className="mt-1 text-xs leading-5 text-violet-700">
               아래 추가 프롬프트는 이 원고 재작성에만 적용됩니다. 다음 AI 자동화 실행에서 기존 제목과 본문을 바탕으로 다시 작성하며, 결과는 검토 대기로 저장됩니다.
             </p>
-            <textarea required aria-required="true" maxLength={4000} rows={4} value={rewritePrompt} onChange={(e) => setRewritePrompt(e.target.value)}
-              className={`${inputCls} mt-3 resize-y`} placeholder="예: 초보자가 이해하기 쉽게 용어 설명을 보강하고, 각 단락에 구체적인 예시를 추가해주세요." />
+            <AutoGrowTextarea required aria-required="true" maxLength={4000} rows={4} value={rewritePrompt} onChange={(e) => setRewritePrompt(e.target.value)}
+              className={`${inputCls} mt-3`} placeholder="예: 초보자가 이해하기 쉽게 용어 설명을 보강하고, 각 단락에 구체적인 예시를 추가해주세요." />
             <div className="mt-2 flex items-center justify-between gap-3">
               <span className="text-xs text-violet-500">{rewritePrompt.length}/4000</span>
               <button type="button" disabled={!rewritePrompt.trim() || rewriteMut.isPending} onClick={() => {

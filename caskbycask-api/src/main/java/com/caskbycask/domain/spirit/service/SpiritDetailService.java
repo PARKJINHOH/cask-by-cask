@@ -1,5 +1,7 @@
 package com.caskbycask.domain.spirit.service;
 
+import com.caskbycask.domain.producer.dto.ProducerLogoResponse;
+import com.caskbycask.domain.producer.repository.ProducerLogoImageRepository;
 import com.caskbycask.domain.spirit.dto.*;
 import com.caskbycask.domain.spirit.entity.*;
 import com.caskbycask.domain.spirit.entity.enums.*;
@@ -25,6 +27,7 @@ public class SpiritDetailService {
     private final SpiritWineDetailRepository    wineDetailRepo;
     private final SpiritCognacDetailRepository  cognacDetailRepo;
     private final SpiritOtherDetailRepository   otherDetailRepo;
+    private final ProducerLogoImageRepository   producerLogoImageRepository;
     private final ObjectMapper objectMapper;
 
     // ── 공통 상세 저장 (create / update 공통 upsert) ───────────
@@ -374,7 +377,14 @@ public class SpiritDetailService {
             case OTHER   -> otherDetail   = buildOtherDetailResponse(spirit.getOtherDetail());
         }
 
-        return SpiritDetailResponse.of(spirit, images,
+        List<ProducerLogoResponse> producerLogoImages = spirit.getProducer() != null
+                ? producerLogoImageRepository
+                        .findByProducerIdOrderBySortOrderAscIdAsc(spirit.getProducer().getId()).stream()
+                        .map(ProducerLogoResponse::from)
+                        .toList()
+                : List.of();
+
+        return SpiritDetailResponse.of(spirit, images, producerLogoImages,
                 commonDetail, whiskyDetail, wineDetail, cognacDetail, otherDetail, variants);
     }
 

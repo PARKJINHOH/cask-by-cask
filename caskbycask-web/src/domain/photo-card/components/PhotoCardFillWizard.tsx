@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import type { PhotoCardEditor } from '../hooks/usePhotoCardEditor'
 import type { PhotoCardBinding } from '../types/photoCard.types'
 import { describeLayer } from '../utils/layerLabel'
+import { PHOTO_CARD_MAX_TEXT_LENGTH } from '../utils/layoutSchema'
 import { isSpiritBinding, resolveLayerText } from '../utils/resolveBindings'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface Props {
   editor: PhotoCardEditor
@@ -132,14 +134,15 @@ export default function PhotoCardFillWizard({ editor, onClose, onOpenSpiritPicke
           {binding === 'NONE' ? t('photoCard.binding_NONE') : describeLayer(layer, t)}
         </label>
         {binding === 'USER_MEMO' || binding === 'NONE' ? (
-          <textarea
+          <AutoGrowTextarea
             id="photo-card-fill-input"
             rows={2}
+            maxLength={PHOTO_CARD_MAX_TEXT_LENGTH}
             value={value}
             placeholder={placeholder}
             onChange={(event) => write(event.target.value)}
             onBlur={endGesture}
-            className={`${inputClass} resize-none`}
+            className={`${inputClass}`}
           />
         ) : (
           <input

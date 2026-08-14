@@ -59,6 +59,27 @@ public interface FileStorageService {
     }
 
     /**
+     * 해상도 상한과 반응형 변형본까지 함께 만드는 이미지 업로드.
+     * <p>
+     * 본 이미지는 {@link ResponsiveImageSpec#maxEdge()} 로 줄여 저장하고,
+     * 같은 디렉토리에 {@code {uuid}_w{폭}.webp} 축소본을 추가로 남긴다.
+     * 변형본 생성이 실패해도 업로드는 성공으로 본다 — 본 이미지만으로도 서빙이 가능하다.
+     * <p>
+     * 변형본을 지원하지 않는 스토리지는 일반 업로드로 동작한다(본 이미지만 저장).
+     */
+    default ImageUploadResult uploadResponsiveImage(
+            MultipartFile file,
+            String originalSavedFileName,
+            String subPath,
+            String detectedMimeType,
+            WebpConversionMode conversionMode,
+            ResponsiveImageSpec spec
+    ) {
+        return uploadImage(
+                file, originalSavedFileName, subPath, detectedMimeType, conversionMode);
+    }
+
+    /**
      * 파일 삭제. savedFileName 기준.
      * 구현체는 dual-save 로 생성된 sibling 파일({uuid}.원본확장자) 도 함께 제거해야 한다.
      */

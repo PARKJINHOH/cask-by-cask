@@ -5,6 +5,7 @@ import { useAuthStore } from '@/domain/auth/store/authStore'
 import { priceTrackerApi } from '../api/priceTrackerApi'
 import type { DiscountItemDetail, PriceReportChartDetail, PriceReportReportReason } from '../types/pricetracker.types'
 import ImageLightbox from '@/shared/components/ImageLightbox'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 const REASONS: PriceReportReportReason[] = ['FALSE_PRICE', 'DUPLICATE', 'BAD_IMAGE', 'OTHER']
 const fmt = new Intl.NumberFormat('ko-KR')
@@ -187,11 +188,13 @@ export default function PriceReportCard({ detail, isBest }: Props) {
                     ))}
                   </div>
                   {reason === 'OTHER' && (
-                    <textarea
+                    <AutoGrowTextarea
                       value={reasonDetail}
                       onChange={(e) => setReasonDetail(e.target.value)}
+                      rows={2}
+                      maxLength={500}
                       placeholder={t('price.report.detail')}
-                      className="w-full text-xs border border-neutral-300 rounded p-2 resize-none h-16 focus:outline-none focus:ring-1 focus:ring-red-300"
+                      className="w-full text-xs border border-neutral-300 rounded p-2 focus:outline-none focus:ring-1 focus:ring-red-300"
                     />
                   )}
                   <div className="flex gap-2">

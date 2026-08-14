@@ -11,12 +11,20 @@ const CSS_VAR = '--di-chrome-top'
  *
  * 값은 CSS 변수로도 얹어 둔다 — 순수 CSS(rich-text.css)에서도 같은 기준을 쓸 수 있게.
  *
+ * @param enabled 헤더·GNB 가 화면에 있는가. false 면(모바일 몰입 편집 등) 0 으로 내린다 —
+ *   숨은 뒤에도 이전 높이가 남아 있으면 sticky 툴바가 허공에 뜬 것처럼 내려간다.
  * @returns 헤더+GNB 높이(px).
  */
-export function useChromeTop(): number {
+export function useChromeTop(enabled = true): number {
   const [chromeTop, setChromeTop] = useState(0)
 
   useLayoutEffect(() => {
+    if (!enabled) {
+      setChromeTop(0)
+      document.documentElement.style.setProperty(CSS_VAR, '0px')
+      return
+    }
+
     const update = () => {
       // MainLayout 의 <header> 와 GNB <nav> — 문서에서 처음 나오는 둘이다.
       const header = document.querySelector('header')
@@ -30,7 +38,7 @@ export function useChromeTop(): number {
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
-  }, [])
+  }, [enabled])
 
   return chromeTop
 }

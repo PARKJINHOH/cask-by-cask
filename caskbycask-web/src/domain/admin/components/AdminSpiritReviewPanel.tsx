@@ -13,6 +13,7 @@ import {
 } from '../hooks/useAdminContent'
 import type { AdminReview, AdminVariantReviewRequest, ModerationPayload } from '../types/admin.types'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 type ModerationAction = 'hide' | 'delete'
 
@@ -74,13 +75,13 @@ function ModerationModal({
           <label className="mb-1.5 block text-sm font-medium text-neutral-700">
             사유
           </label>
-          <textarea
+          <AutoGrowTextarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             rows={4}
             maxLength={500}
             placeholder="예) 악의적인 점수 부여 또는 운영 정책 위반"
-            className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
         </div>
         <label className="flex items-center gap-2 text-sm text-neutral-700">
@@ -223,7 +224,7 @@ export default function AdminSpiritReviewPanel({
                   <label className="mb-1.5 block text-xs font-semibold text-red-700">
                     미승인 사유 <RequiredMark />
                   </label>
-                  <textarea
+                  <AutoGrowTextarea
                     required
                     aria-required="true"
                     value={reviewRejectReason}
@@ -231,7 +232,7 @@ export default function AdminSpiritReviewPanel({
                     rows={5}
                     maxLength={500}
                     placeholder="예) 향/맛/피니시 설명이 부족하거나 악의적 점수로 판단됩니다."
-                    className="w-full resize-none rounded-lg border border-red-100 px-3 py-2 text-xs leading-relaxed text-neutral-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    className="w-full rounded-lg border border-red-100 px-3 py-2 text-xs leading-relaxed text-neutral-700 focus:outline-none focus:ring-2 focus:ring-red-300"
                   />
                   <p className="mt-1 text-[11px] text-red-500">
                     사용자 마이페이지에 그대로 표시됩니다.

@@ -1,6 +1,6 @@
 ﻿import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuthStore } from '@/domain/auth/store/authStore'
+import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -52,8 +52,7 @@ export default function BottomNav() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
-  const { isLoggedIn, isAuthReady } = useAuthStore()
-  const canUseMemberTabs = isAuthReady && isLoggedIn
+  const requireLogin = useRequireLogin()
 
   const isHome    = location.pathname === '/'
   const isSpirits = location.pathname.startsWith('/spirits')
@@ -79,13 +78,14 @@ export default function BottomNav() {
       label:  t('wishlist.tab'),
       icon:   <HeartIcon active={isWishlist} />,
       active: isWishlist,
-      onClick: () => navigate(canUseMemberTabs ? '/mypage?tab=wishlist' : '/login'),
+      // 로그인이 필요하면 지금 보던 화면을 실어 보낸다 — 로그인 후 홈으로 떨어지지 않게.
+      onClick: () => requireLogin(() => navigate('/mypage?tab=wishlist')),
     },
     {
       label:  t('nav.mypage'),
       icon:   <PersonIcon active={isMypageMain} />,
       active: isMypageMain,
-      onClick: () => navigate(canUseMemberTabs ? '/mypage' : '/login'),
+      onClick: () => requireLogin(() => navigate('/mypage')),
     },
   ]
 

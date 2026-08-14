@@ -9,6 +9,7 @@ import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyI
 import { formatYearMonth } from '@/shared/utils/yearMonth';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel';
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface SpiritOption {
   id: number;
@@ -494,11 +495,12 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
 
           <div>
             <FieldLabel>{stripOptional(t('collection.form.memo'))}</FieldLabel>
-            <textarea
+            <AutoGrowTextarea
               value={form.memo ?? ''}
               rows={2}
+              maxLength={1000}
               onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value || undefined }))}
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm resize-none"
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
             />
           </div>
 

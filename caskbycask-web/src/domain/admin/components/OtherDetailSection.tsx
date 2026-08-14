@@ -1,6 +1,7 @@
 import type { OtherSpiritType } from '@/domain/spirit/types/spirit.types'
 import InfoTooltip from '@/shared/components/InfoTooltip'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 export interface OtherDetailForm {
   otherType: string
@@ -133,9 +134,9 @@ export default function OtherDetailSection({ value, onChange, errors }: Props) {
       {/* 기타 정보 */}
       <div>
         <label className={LABEL}>기타 정보</label>
-        <textarea value={value.notes} rows={3} maxLength={500}
+        <AutoGrowTextarea value={value.notes} rows={3} maxLength={500}
           onChange={(e) => onChange({ notes: e.target.value })}
-          className={`${INPUT} resize`} />
+          className={`${INPUT}`} />
       </div>
     </div>
   )

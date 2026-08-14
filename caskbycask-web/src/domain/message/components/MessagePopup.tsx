@@ -7,6 +7,7 @@ import type { ApiResponse } from '@/shared/types/common.types'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface UserSuggestion {
   id: number
@@ -165,7 +166,7 @@ export default function MessagePopup() {
           {/* 내용 */}
           <div>
             <FormFieldLabel required className="mb-1 text-xs">{t('messages.content')}</FormFieldLabel>
-            <textarea
+            <AutoGrowTextarea
               required
               aria-required="true"
               value={content}
@@ -173,7 +174,7 @@ export default function MessagePopup() {
               rows={4}
               maxLength={100}
               placeholder={t('messages.contentPlaceholder')}
-              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
             <p className={['text-xs text-right mt-0.5', content.length >= 100 ? 'text-red-500' : 'text-neutral-400'].join(' ')}>
               {content.length} / 100

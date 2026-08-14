@@ -306,6 +306,24 @@ export interface RegionStats {
 }
 
 /**
+ * 카테고리별 등록 주류 수.
+ * 목록에는 마스터만 실리지만 '등록 개수'는 에디션(하위 병입)까지 포함한 `totalCount` 를 쓴다.
+ */
+export interface SpiritCategoryStat {
+  category: SpiritCategory
+  spiritCount: number
+  editionCount: number
+  totalCount: number
+}
+
+/** 검색 조건에 걸린 등록 건수. `spiritCount` = 목록 카드 수, `totalCount` = 에디션 포함. */
+export interface SpiritSearchCount {
+  spiritCount: number
+  editionCount: number
+  totalCount: number
+}
+
+/**
  * 와인 산지 (백엔드 WineRegion enum 기반, 지도 표시용).
  * 코드는 백엔드가 단일 소스이며 프론트는 코드 → 기하 데이터(wineRegionMap)를 매핑한다.
  */

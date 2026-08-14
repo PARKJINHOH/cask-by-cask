@@ -87,13 +87,15 @@ public class PostService {
     public Page<PostListResponse> getPosts(BoardType boardType, Long prefixId,
                                            String keyword, PostSort sort,
                                            Long authorId, Long commentAuthorId,
-                                           Long distilleryTagId, Long userId,
+                                           Long distilleryTagId, Long spiritTagId, Long userId,
                                            int page, int size) {
         // [패치 9] distilleryTagId — 소식 게시판 증류소 태그 필터
+        // spiritTagId — 이미지 갤러리 주류 태그 필터
         // 차단한 사용자의 글은 목록에서 제외
         List<Long> blockedIds = blockedAuthorIds(userId);
         Page<Post> posts = postRepository.findPosts(boardType, prefixId, keyword, sort,
-                authorId, commentAuthorId, distilleryTagId, blockedIds, PageRequest.of(page, size));
+                authorId, commentAuthorId, distilleryTagId, spiritTagId, blockedIds,
+                PageRequest.of(page, size));
         return toPostListResponses(posts);
     }
 

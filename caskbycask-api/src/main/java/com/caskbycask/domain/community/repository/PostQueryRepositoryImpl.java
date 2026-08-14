@@ -6,6 +6,7 @@ import com.caskbycask.domain.community.entity.PostReport;
 import com.caskbycask.domain.community.entity.QPost;
 import com.caskbycask.domain.community.entity.QPostComment;
 import com.caskbycask.domain.community.entity.QPostReport;
+import com.caskbycask.domain.community.entity.QPostSpiritTag;
 import com.querydsl.jpa.JPAExpressions;
 import com.caskbycask.domain.community.entity.enums.BoardType;
 import com.caskbycask.domain.community.entity.enums.PostStatus;
@@ -29,8 +30,8 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
     @Override
     public Page<Post> findPosts(BoardType boardType, Long prefixId, String keyword,
                                 PostSort sort, Long authorId, Long commentAuthorId,
-                                Long distilleryTagId, List<Long> excludeAuthorIds,
-                                Pageable pageable) {
+                                Long distilleryTagId, Long spiritTagId,
+                                List<Long> excludeAuthorIds, Pageable pageable) {
         QPost post = QPost.post;
 
         BooleanBuilder predicate = new BooleanBuilder();
@@ -67,6 +68,17 @@ public class PostQueryRepositoryImpl implements PostQueryRepository {
         // [패치 9] 소식 게시판 증류소 태그 필터
         if (distilleryTagId != null) {
             predicate.and(post.distilleryTag.id.eq(distilleryTagId));
+        }
+        // 이미지 갤러리 주류 태그 필터.
+        // post_spirit_tags 는 다대다라 join 으로 걸면 태그가 여러 개인 글이 중복 행으로 나온다.
+        // exists 서브쿼리로 걸어야 페이지 개수와 총계가 어긋나지 않는다.
+        if (spiritTagId != null) {
+            QPostSpiritTag spiritTag = QPostSpiritTag.postSpiritTag;
+            predicate.and(JPAExpressions.selectOne()
+                    .from(spiritTag)
+                    .where(spiritTag.post.id.eq(post.id)
+                            .and(spiritTag.spirit.id.eq(spiritTagId)))
+                    .exists());
         }
         if (commentAuthorId != null) {
             QPostComment comment = QPostComment.postComment;

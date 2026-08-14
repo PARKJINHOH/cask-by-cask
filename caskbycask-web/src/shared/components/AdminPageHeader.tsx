@@ -40,18 +40,19 @@ export default function AdminPageHeader({
 
   return (
     <div className="space-y-3 mb-6">
-      {/* 브레드크럼 */}
+      {/* 브레드크럼 — 좁은 화면에서 경로가 두 줄로 늘어나거나 한글이 세로로 쌓이지 않게
+          앞쪽 항목은 줄이지 않고, 현재 위치만 말줄임으로 잘라 낸다. */}
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav className="flex items-center gap-1.5 text-xs text-neutral-400">
+        <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-neutral-400">
           {breadcrumbs.map((c, i) => (
             <Fragment key={`${c.label}-${i}`}>
-              {i > 0 && <span className="text-neutral-300">›</span>}
+              {i > 0 && <span className="shrink-0 text-neutral-300">›</span>}
               {c.to ? (
-                <Link to={c.to} className="hover:text-primary-700 transition-colors">
+                <Link to={c.to} className="shrink-0 whitespace-nowrap hover:text-primary-700 transition-colors">
                   {c.label}
                 </Link>
               ) : (
-                <span className="text-neutral-600 font-medium">{c.label}</span>
+                <span className="min-w-0 truncate font-medium text-neutral-600">{c.label}</span>
               )}
             </Fragment>
           ))}
@@ -64,8 +65,8 @@ export default function AdminPageHeader({
           <button
             type="button"
             onClick={() => (useBackToPath ? navigate(backTo) : navigate(-1))}
-            className="inline-flex items-center gap-1 h-8 pl-2 pr-3 rounded-lg border border-neutral-200
-              bg-white text-sm text-neutral-600 shadow-sm transition-colors
+            className="inline-flex shrink-0 items-center gap-1 h-8 pl-2 pr-3 whitespace-nowrap rounded-lg
+              border border-neutral-200 bg-white text-sm text-neutral-600 shadow-sm transition-colors
               hover:border-primary-300 hover:text-primary-700 hover:bg-primary-50"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -74,9 +75,11 @@ export default function AdminPageHeader({
             {backLabel}
           </button>
         )}
-        <h1 className="text-xl font-bold text-neutral-900">{title}</h1>
+        {/* min-w-0 이 없으면 flex 항목의 최소 폭이 min-content 라, 좁은 화면에서
+            한글 제목이 한 글자씩 세로로 쌓인다. 넘치는 만큼은 말줄임으로 자른다. */}
+        <h1 className="min-w-0 truncate text-xl font-bold text-neutral-900" title={title}>{title}</h1>
         {badge}
-        {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
+        {actions && <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>}
       </div>
     </div>
   )

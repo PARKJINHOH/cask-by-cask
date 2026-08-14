@@ -51,6 +51,12 @@ public class PublicReviewService {
         );
     }
 
+    /** 메인 홈 사이드바 "등록된 리뷰" 총 건수. */
+    @Transactional(readOnly = true)
+    public long countAll() {
+        return reviewRepository.countPublicReviews();
+    }
+
     /**
      * 메인 "최근 등록된 리뷰" 조회.
      * 마스터 주류 단위로 최신 리뷰 1건만 노출하며, 대표 이미지는 IN 배치 조회 후

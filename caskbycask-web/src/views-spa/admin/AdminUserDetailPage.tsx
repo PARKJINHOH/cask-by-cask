@@ -24,6 +24,7 @@ import {
   ADMIN_MENU_GROUPS, MEMBER_GROUP_LABEL, selectAllMenuPaths,
 } from '@/domain/admin/constants/adminMenu'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // 담당 증류소 선택이 필요한 역할
 const PRODUCER_ROLES: AdminUserRole[] = ['PARTNER']
@@ -117,13 +118,13 @@ function RolePermissionCard({ user }: { user: AdminUser }) {
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
             설명 <span className="ml-1 text-xs text-neutral-400 font-normal">(관리자 메모)</span>
           </label>
-          <textarea
+          <AutoGrowTextarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={500}
             rows={2}
             placeholder="역할/권한에 대한 메모를 입력하세요."
-            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
           <p className="text-right text-xs text-neutral-400 mt-0.5">{description.length}/500</p>
@@ -273,9 +274,9 @@ function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void 
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">
             징계 사유 <RequiredMark /> <span className="ml-1 text-xs text-neutral-400 font-normal">(이메일로 발송됩니다)</span>
           </label>
-          <textarea required aria-required="true" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={4}
+          <AutoGrowTextarea required aria-required="true" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={4}
             placeholder="징계 사유를 입력하세요."
-            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-400" />
+            className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400" />
           <p className="text-right text-xs text-neutral-400 mt-0.5">{reason.length}/500</p>
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}

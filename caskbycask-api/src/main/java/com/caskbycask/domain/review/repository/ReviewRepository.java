@@ -33,6 +33,19 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
     Optional<Review> findPublicById(@Param("reviewId") Long reviewId);
 
     /**
+     * 공개된 리뷰 총 건수 — 메인 홈 사이드바 통계.
+     * 숨김 처리된 리뷰와 비공개(ACTIVE 가 아닌) 주류의 리뷰는 사용자에게 보이지 않으므로 세지 않는다.
+     * 삭제 리뷰는 Review 의 @SQLRestriction 이 자동 제외한다.
+     */
+    @Query("""
+            SELECT COUNT(r) FROM Review r
+            JOIN r.spirit s
+            WHERE r.isHidden = false
+              AND s.status = com.caskbycask.domain.spirit.entity.enums.SpiritStatus.ACTIVE
+            """)
+    long countPublicReviews();
+
+    /**
      * 메인 "최근 등록된 리뷰" 용 조회.
      * 마스터 주류 단위(에디션은 부모로 묶음)로 가장 최근 리뷰 1건만 남기고 최신순으로 정렬한다.
      * createdAt 은 JPA Auditing 으로만 채워지고 수정되지 않으므로 MAX(id) 를 최신 기준으로 사용한다.

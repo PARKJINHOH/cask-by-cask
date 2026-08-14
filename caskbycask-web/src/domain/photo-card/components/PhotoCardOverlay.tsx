@@ -15,13 +15,23 @@ const REMOVE_OFFSET = 13
 export type ResizeCorner = 'nw' | 'ne' | 'se' | 'sw'
 
 export interface TransformDelta {
-  /** 시작 시점 대비 크기 배수 */
+  /** 시작 시점 대비 크기 배수(대각선 거리 기준) — 가로세로 비율을 유지하는 요소가 쓴다. */
   scale: number
+  /**
+   * 가로·세로를 축마다 따로 조절할 때 쓰는 배수(박스 전용).
+   * 요소가 회전돼 있어도 <b>요소 자신의 가로·세로 축</b> 기준으로 계산해 둔다 —
+   * 화면(전역) 좌표를 그대로 쓰면 회전한 박스에서 가로 늘이기가 세로로 새는 것처럼 보인다.
+   */
+  scaleX: number
+  scaleY: number
   /** 잡은 손잡이의 대각선 반대편 모서리 — 이 점이 제자리에 있어야 자연스럽다 */
   anchor: { x: number; y: number }
   /** 드래그 중인 모서리. 회전된 요소의 반대편 모서리를 같은 자리에 고정할 때 필요하다. */
   corner: ResizeCorner
 }
+
+/** 나누기 전 절댓값을 최소 1(캔버스 px)로 띄운다 — 시작점이 앵커에 거의 붙어 있으면 비율이 요동친다. */
+const safeDivisor = (value: number) => (Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : value)
 
 interface Props {
   size: PhotoCardCanvasSize
@@ -67,7 +77,17 @@ export default function PhotoCardOverlay({
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const dragRef = useRef<
-    | { mode: 'resize'; anchor: { x: number; y: number }; corner: ResizeCorner; startDistance: number }
+    | {
+      mode: 'resize'
+      anchor: { x: number; y: number }
+      corner: ResizeCorner
+      startDistance: number
+      /** 요소의 회전각(도) — 드래그 내내 고정. 축별 배수를 요소 로컬 좌표로 환산할 때 쓴다. */
+      rotationDeg: number
+      /** 드래그 시작 시점, 앵커 기준 손잡이 위치를 요소 로컬(회전 없는) 좌표로 환산한 값 */
+      startLocalDx: number
+      startLocalDy: number
+    }
     | { mode: 'rotate'; center: { x: number; y: number }; startAngle: number; startRotation: number }
     | null
   >(null)
@@ -108,11 +128,22 @@ export default function PhotoCardOverlay({
       y: corner === 'nw' || corner === 'ne' ? box.bottom : box.top,
     }
     const localCenter = { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 }
-    const anchor = rotatePointAround(localAnchor, localCenter, rotatesSelection ? rotation : 0)
+    const rotationDeg = rotatesSelection ? rotation : 0
+    const anchor = rotatePointAround(localAnchor, localCenter, rotationDeg)
+
+    // 앵커→손잡이 벡터를 요소의 회전이 없다고 가정한 로컬 좌표로 되돌려 둔다.
+    // handleMove 에서 같은 방식으로 '지금' 벡터를 구해 이 값과 비율을 내면, 회전 여부와
+    // 무관하게 요소 자신의 가로축·세로축을 따라 얼마나 늘었는지를 얻는다.
+    const globalDelta = { x: point.x - anchor.x, y: point.y - anchor.y }
+    const startLocal = rotatePointAround(globalDelta, { x: 0, y: 0 }, -rotationDeg)
+
     dragRef.current = {
       mode: 'resize',
       anchor,
       corner,
+      rotationDeg,
+      startLocalDx: startLocal.x,
+      startLocalDy: startLocal.y,
       // 0 으로 나누지 않게 최소값을 둔다. 손잡이를 고정점 위에 정확히 겹쳐 잡는 경우가 있다.
       startDistance: Math.max(Math.hypot(point.x - anchor.x, point.y - anchor.y), 1),
     }
@@ -144,7 +175,15 @@ export default function PhotoCardOverlay({
 
     if (drag.mode === 'resize') {
       const distance = Math.hypot(point.x - drag.anchor.x, point.y - drag.anchor.y)
-      onResize({ scale: distance / drag.startDistance, anchor: drag.anchor, corner: drag.corner })
+      const globalDelta = { x: point.x - drag.anchor.x, y: point.y - drag.anchor.y }
+      const nowLocal = rotatePointAround(globalDelta, { x: 0, y: 0 }, -drag.rotationDeg)
+      onResize({
+        scale: distance / drag.startDistance,
+        scaleX: nowLocal.x / safeDivisor(drag.startLocalDx),
+        scaleY: nowLocal.y / safeDivisor(drag.startLocalDy),
+        anchor: drag.anchor,
+        corner: drag.corner,
+      })
       return
     }
     const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x)

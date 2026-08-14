@@ -9,6 +9,7 @@ import type {
   SocialPublishSelection,
   SocialSourceType,
 } from '../types/social.types'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface Props {
   kind: 'review' | 'news'
@@ -247,10 +248,10 @@ export default function SocialPublishFields({
                   </button>
                 ))}
               </div>
-              <textarea rows={3} maxLength={200} value={selection.thumbnailText ?? ''}
+              <AutoGrowTextarea rows={3} maxLength={200} value={selection.thumbnailText ?? ''}
                 onChange={(event) => onChange({ ...selection, thumbnailText: event.target.value })}
                 placeholder={t('social.thumbnailTextPlaceholder')}
-                className="w-full resize-y rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm leading-6" />
+                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm leading-6" />
               <div className="flex items-start justify-between gap-3">
                 <p className="text-xs leading-5 text-neutral-500">
                   {t('social.thumbnailTextHelp')}

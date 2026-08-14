@@ -7,6 +7,7 @@ import Spinner from '@/shared/components/Spinner'
 import { formatDateTime } from '@/shared/utils/format'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import AdminAiNewsRequestStatusBadge, { summarizeAiNewsPrompt } from './AdminAiNewsRequestStatusBadge'
+import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 export default function AdminAiNewsRequestPanel() {
   const qc = useQueryClient()
@@ -71,9 +72,9 @@ export default function AdminAiNewsRequestPanel() {
 
         <label className="block">
           <span className="mb-1.5 block text-xs font-semibold text-neutral-700">AI 프롬프트 <RequiredMark /></span>
-          <textarea
+          <AutoGrowTextarea
             required aria-required="true" maxLength={4000} rows={7} value={prompt} onChange={(event) => setPrompt(event.target.value)}
-            className={`${inputCls} resize-y`}
+            className={`${inputCls}`}
             placeholder="예: 메타베브코리아가 최근 발표한 글렌알라키 국내 출시·행사 소식을 확인하고, 확인된 사실만으로 소개 글을 작성해 주세요."
           />
           <div className="mt-1 flex items-center justify-between gap-3 text-xs text-neutral-500">

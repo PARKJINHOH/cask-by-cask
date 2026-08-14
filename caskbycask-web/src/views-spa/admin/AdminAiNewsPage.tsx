@@ -435,7 +435,7 @@ function SourceRow({ source, onChange, onEdit, onUnblock, onDelete }: { source: 
           <span className="h-3 w-3 rounded-full bg-neutral-400" /><span className="text-xs font-semibold text-neutral-600">차단됨</span>
         </span>
       : <CrawlStatus source={source} />}</td>
-    <td className="px-4 py-3 font-semibold">{source.sourceName}
+    <td className="max-w-[200px] px-4 py-3 font-semibold">{source.sourceName}
       {source.autoDiscovered && <span className="ml-1.5 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-500">자동 등록</span>}</td>
     <td className="max-w-[320px] px-4 py-3"><a href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="block truncate text-blue-600 underline-offset-2 hover:underline" title={source.sourceUrl}>{source.sourceUrl}</a></td>
     <td className="px-4 py-3"><select disabled={locked} value={source.sourceType} onChange={(e) => onChange(payload({ sourceType: e.target.value as AiNewsSourceType }))} className={`${inputCls} disabled:bg-neutral-100`}>{Object.entries(sourceTypeLabels).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></td>

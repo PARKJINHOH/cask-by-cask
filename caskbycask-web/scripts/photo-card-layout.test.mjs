@@ -93,8 +93,10 @@ describe('포토카드 레이아웃 스키마', () => {
   })
 
   test('텍스트는 상한 길이로 자른다', () => {
+    // 상한을 올려도 깨지지 않게 상한보다 긴 입력을 만든다
     const layer = normalizeLayer({
-      id: 'x', type: 'TEXT', position: { x: 0.5, y: 0.5 }, text: 'ㄱ'.repeat(500),
+      id: 'x', type: 'TEXT', position: { x: 0.5, y: 0.5 },
+      text: 'ㄱ'.repeat(PHOTO_CARD_MAX_TEXT_LENGTH + 100),
     })
     assert.equal(layer.text.length, PHOTO_CARD_MAX_TEXT_LENGTH)
   })
