@@ -1183,6 +1183,14 @@
     "qualityWarning": "성의 없거나 불성실한 리뷰, 악의적인 점수를 부여한 리뷰는 노출이 제한되거나 예고 없이 삭제될 수 있습니다.",
     "saveError": "저장 중 오류가 발생했습니다. 다시 시도해주세요.",
     "editionUnnamed": "이름 없는 에디션",
+    "pastReviews": {
+      "title": "내가 매긴 점수",
+      "hint": "이전 점수와 비교해 보세요",
+      "empty": "이 카테고리에 작성한 리뷰가 아직 없어요.",
+      "emptySelfOnly": "이 카테고리에는 비교할 다른 리뷰가 아직 없어요.",
+      "viewAll": "전체 보기",
+      "writingNow": "지금"
+    },
     "error": {
       "noteMin": "최소 {{min}}글자 이상 작성해주세요.",
       "noteMax": "{{max}}자 이내로 작성해주세요.",

@@ -1183,6 +1183,14 @@
     "qualityWarning": "Insincere reviews or reviews with malicious scoring may be hidden or removed without notice.",
     "saveError": "An error occurred while saving. Please try again.",
     "editionUnnamed": "Unnamed edition",
+    "pastReviews": {
+      "title": "Scores You've Given",
+      "hint": "Compare with your previous scores",
+      "empty": "You haven't reviewed anything in this category yet.",
+      "emptySelfOnly": "No other reviews in this category to compare with yet.",
+      "viewAll": "View all",
+      "writingNow": "now"
+    },
     "error": {
       "noteMin": "Please write at least {{min}} characters.",
       "noteMax": "Please keep it under {{max}} characters.",

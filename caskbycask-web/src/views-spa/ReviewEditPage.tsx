@@ -12,6 +12,7 @@ import ReviewImageField, {
   reviewImageSubmission,
   type ReviewImageDraft,
 } from '@/domain/review/components/ReviewImageField'
+import MyPastReviewsPanel from '@/domain/review/components/MyPastReviewsPanel'
 import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { reviewApi } from '@/domain/review/api/reviewApi'
@@ -313,7 +314,16 @@ export default function ReviewEditPage() {
     <div className="mx-auto max-w-7xl px-4 py-6">
       <SeoMeta title={`${label.title} ${t('review.edit')}`} description="CaskByCask 리뷰 수정 페이지." noindex />
 
-      <div className="rounded-2xl border border-neutral-100 bg-white p-6 shadow-sm md:p-8">
+      <div className="lg:grid lg:grid-cols-[18rem_1fr] lg:gap-6 lg:items-start">
+      <MyPastReviewsPanel
+        spiritCategory={category}
+        excludeReviewId={review?.id}
+        currentNoseScore={noseScore}
+        currentTasteScore={tasteScore}
+        currentFinishScore={finishScore}
+      />
+
+      <div className="rounded-2xl border border-neutral-100 bg-white p-6 shadow-sm md:p-8 min-w-0">
         {/* 헤더 */}
         <div className="mb-6 border-b border-neutral-100 pb-5">
           <h1 className="text-xl font-bold text-neutral-900">
@@ -622,6 +632,7 @@ export default function ReviewEditPage() {
             </Button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   )

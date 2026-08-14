@@ -20,6 +20,7 @@ import ReviewVariantCreateModal, {
   type ReviewVariantDraft,
 } from '@/domain/review/components/ReviewVariantCreateModal'
 import ReviewVariantDraftCard from '@/domain/review/components/ReviewVariantDraftCard'
+import MyPastReviewsPanel from '@/domain/review/components/MyPastReviewsPanel'
 import { getReviewSaveErrorMessage } from '@/domain/review/utils/reviewErrors'
 import {
   EMPTY_AROMA_NOTES,
@@ -377,8 +378,17 @@ export default function ReviewFormPage() {
         onStay={cancelLeave}
         onDiscard={() => { void confirmLeave() }}
       />
+      <div className="lg:grid lg:grid-cols-[18rem_1fr] lg:gap-6 lg:items-start">
+      <MyPastReviewsPanel
+        spiritCategory={spirit?.category}
+        excludeReviewId={editingReview?.id}
+        currentNoseScore={nose}
+        currentTasteScore={taste}
+        currentFinishScore={finish}
+      />
+
       {/* 카드 래퍼 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 sm:p-6 md:p-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 sm:p-6 md:p-8 min-w-0">
 
         {/* 헤더 */}
         <div className="mb-6 pb-5 border-b border-neutral-100">
@@ -634,6 +644,7 @@ export default function ReviewFormPage() {
           }}
         />
       )}
+      </div>
       </div>
     </div>
   )
