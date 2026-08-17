@@ -364,6 +364,13 @@ export const drawPhoto = (
   const clipWidth = Math.max(0, clip.right - clip.left)
   const clipHeight = Math.max(0, clip.bottom - clip.top)
 
+  // 모서리를 투명하게 두려면 사진이 놓일 자리의 배경을 먼저 지운다.
+  // 지운 자리 위에 둥근 사진을 얹으면 깎인 모서리만 뚫린 채 남는다(PNG 로 뽑으면 실제로 비어 있다).
+  // 지우는 범위는 '사진이 실제로 그려지는 칸'이라, 전체 보기에서 생기는 띠는 배경 그대로다.
+  if (radius > 0 && layout.frame.photo.transparentCorners) {
+    ctx.clearRect(clip.left, clip.top, clipWidth, clipHeight)
+  }
+
   ctx.save()
   if (radius > 0) {
     roundedRectPath(ctx, clip.left, clip.top, clipWidth, clipHeight, radius)
@@ -464,6 +471,20 @@ const textLinesForLayer = (
   layer.widthRatio == null ? undefined : toPx(layer.widthRatio, shortSideOf(size)),
 )
 
+/**
+ * 글자 덩어리가 실제로 차지하는 폭(px). 가장 긴 줄을 기준으로 한다.
+ *
+ * 자동 줄바꿈 폭(widthRatio)을 정해 두지 않은 요소의 <b>문단 정렬 기준선</b>이다 —
+ * 왼쪽 정렬은 이 폭의 왼쪽 끝에서, 오른쪽 정렬은 오른쪽 끝에서 시작한다.
+ * 선택 상자(measureLayerBounds)와 그리기(drawTextLayer)가 같은 값을 써야
+ * 점선 상자와 글자가 어긋나지 않는다. 호출 전에 ctx.font 가 정해져 있어야 한다.
+ */
+const textBoxWidthOf = (
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  fontSize: number,
+): number => Math.max(fontSize, ...lines.map((line) => ctx.measureText(line || ' ').width))
+
 /** baseline 오프셋을 잴 때 쓰는 고정 표본. 글자 내용과 무관하게 같은 값이 나와야 줄이 맞는다. */
 const BASELINE_PROBE = 'Hxg'
 
@@ -531,7 +552,7 @@ export const measureLayerBounds = (
     const lines = textLinesForLayer(ctx, size, layer, context)
     const lineHeight = fontSize * (layer.lineHeight ?? 1.25)
     const outline = layer.outlineEnabled ? toPx(layer.outlineWidthRatio, shortSide) : 0
-    const measuredWidth = Math.max(fontSize, ...lines.map((line) => ctx.measureText(line || ' ').width)) + outline * 2
+    const measuredWidth = textBoxWidthOf(ctx, lines, fontSize) + outline * 2
     const width = layer.textAlign === 'CENTER' || layer.textAlign == null || layer.widthRatio == null
       ? measuredWidth
       : Math.max(measuredWidth, toPx(layer.widthRatio, shortSide))
@@ -639,7 +660,11 @@ const drawTextLayer = (
   const lines = textLinesForLayer(ctx, size, layer, context)
   const lineHeight = fontSize * (layer.lineHeight ?? 1.25)
   const centerX = layer.position.x * size.width
-  const textWidth = layer.widthRatio == null ? 0 : toPx(layer.widthRatio, shortSide)
+  // 정렬 기준이 되는 상자의 폭. 자동 줄바꿈 폭을 정해 두지 않았으면 글자가 차지하는 폭 그대로다 —
+  // 0 으로 두면 왼쪽 정렬한 여러 줄이 전부 중심에서 시작해 덩어리가 오른쪽으로 밀려 나간다.
+  const textWidth = layer.widthRatio == null
+    ? textBoxWidthOf(ctx, lines, fontSize)
+    : toPx(layer.widthRatio, shortSide)
   const x = layer.textAlign === 'LEFT'
     ? centerX - textWidth / 2
     : layer.textAlign === 'RIGHT' ? centerX + textWidth / 2 : centerX

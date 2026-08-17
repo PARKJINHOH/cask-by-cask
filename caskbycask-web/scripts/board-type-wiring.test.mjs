@@ -101,8 +101,11 @@ describe('PHOTO 게시판 배선', () => {
   })
 
   test('GNB 와 관리자 메뉴에 등록되어 있다', () => {
-    assert.match(read(WEB, 'src/layouts/MainLayout.tsx'), /to: '\/community\/photo'/)
-    assert.match(read(WEB, 'src/layouts/MainLayout.tsx'), /to: '\/photo-card'/)
+    // GNB 메뉴 목록은 MainLayout 이 아니라 gnbMenu.ts 카탈로그가 소유한다
+    // (관리자 노출 설정과 단일 소스를 공유하기 위해 분리했다).
+    const gnbCatalog = read(WEB, 'src/domain/gnb-menu/constants/gnbMenu.ts')
+    assert.match(gnbCatalog, /to: '\/community\/photo'/)
+    assert.match(gnbCatalog, /to: '\/photo-card'/)
     // adminMenu.ts 는 `{ path: '...', label: '...' }` 형식을 정규식으로 파싱한다.
     assert.match(read(WEB, 'src/domain/admin/constants/adminMenu.ts'),
       /\{\s*path:\s*'\/admin\/photo-cards',\s*label:\s*'포토카드 템플릿'/)

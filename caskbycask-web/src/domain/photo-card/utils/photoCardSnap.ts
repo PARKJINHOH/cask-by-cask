@@ -51,6 +51,31 @@ export type AlignMode = 'left' | 'centerX' | 'right' | 'top' | 'middleY' | 'bott
 
 export const EMPTY_SNAP: SnapResult = { dx: 0, dy: 0, guides: [] }
 
+/**
+ * 회전 손잡이가 직각(0·90·180·270°)에 이만큼(도) 가까우면 딱 맞춘다.
+ *
+ * 손으로는 89.4° 를 90° 로 맞출 수 없다 — 세워 둔 구분선이 반 도쯤 기울면 카드에서 바로 눈에 띈다.
+ */
+export const ROTATE_SNAP_TOLERANCE = 5
+/** Shift 를 누르고 돌릴 때의 눈금(도). 15의 배수라 직각·대각선이 모두 들어온다. */
+export const ROTATE_STEP = 15
+
+/**
+ * 회전 자석. 손이 만든 날각도를 화면에서 기대하는 각도로 다듬는다.
+ *
+ * @param modifiers.step Shift — 눈금(15°)에 맞춘다.
+ * @param modifiers.free Alt — 자석을 끈다. 끌기 자석과 같은 규칙이다(일부러 살짝 기울일 때).
+ */
+export const snapRotation = (
+  degrees: number,
+  modifiers: { step?: boolean; free?: boolean } = {},
+): number => {
+  if (modifiers.step) return Math.round(degrees / ROTATE_STEP) * ROTATE_STEP
+  if (modifiers.free) return degrees
+  const rightAngle = Math.round(degrees / 90) * 90
+  return Math.abs(degrees - rightAngle) <= ROTATE_SNAP_TOLERANCE ? rightAngle : degrees
+}
+
 const push = (lines: SnapLine[], axis: SnapAxis, value: number, kind: SnapKind) => {
   if (!Number.isFinite(value)) return
   // 같은 자리에 여러 선이 겹치면 화면에 같은 줄이 여러 번 그려진다. 먼저 들어온 쪽을 남긴다.

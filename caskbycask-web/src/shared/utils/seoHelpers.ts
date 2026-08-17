@@ -6,13 +6,17 @@ import {
   type SpiritSeoCategory,
 } from '@/domain/spirit/config/spiritSeo'
 import {
+  buildListPageHref,
+  hasUnsupportedPageParam,
   isBoardListNoindex,
+  readPageParam,
   type BoardListType,
   type MetadataSearchParams,
 } from '@/shared/utils/seoIndexing'
 import { appendWineVintageDisplay } from '@/domain/spirit/utils/spiritDisplayName'
 
-export { isBoardListNoindex }
+// 페이지네이션 규칙은 SPA 도 함께 써야 하므로 client-safe 한 seoIndexing 이 원본이다.
+export { isBoardListNoindex, buildListPageHref, readPageParam, hasUnsupportedPageParam }
 export type { BoardListType, MetadataSearchParams }
 
 const API_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -146,7 +150,32 @@ interface SpiritDetailResponse {
   seriesIdentifierEn?: string | null
 }
 
-interface CommunityPostResponse {
+/**
+ * 게시글에 붙은 주류 태그. 커뮤니티에서 주류 상세로 내려가는 내부 링크의 재료다.
+ * <p>canonical 경로는 담고 있지 않으므로 링크를 만들 때 SEO API 로 한 번 더 확인한다.
+ */
+interface CommunityPostSpiritTagResponse {
+  spiritId: number
+  nameKo?: string | null
+  nameEn?: string | null
+  category?: string | null
+}
+
+/**
+ * 게시글 제한 여부.
+ * <p>백엔드의 boolean 필드는 Jackson 이 접두사 `is` 를 떼고 직렬화하므로 실제 JSON 키는
+ * `locked`·`hidden` 이다. 과거 이름으로도 들어올 수 있어 양쪽을 모두 본다 —
+ * 한쪽만 보면 잠금·숨김 글이 색인 대상으로 새어 나간다.
+ */
+interface CommunityPostRestrictionFlags {
+  locked?: boolean | null
+  hidden?: boolean | null
+  isLocked?: boolean | null
+  isHidden?: boolean | null
+  adultOnly?: boolean | null
+}
+
+interface CommunityPostResponse extends CommunityPostRestrictionFlags {
   id: number
   boardType?: string | null
   prefix?: { name?: string | null } | null
@@ -159,25 +188,31 @@ interface CommunityPostResponse {
   viewCount?: number | null
   likeCount?: number | null
   commentCount?: number | null
-  isLocked?: boolean | null
-  isHidden?: boolean | null
-  adultOnly?: boolean | null
   createdAt?: string | null
   updatedAt?: string | null
   imageUrl?: string | null
   images?: Array<{ imageUrl?: string | null }> | null
   sourceUrls?: string[] | null
   hashtags?: string[] | null
+  spiritTags?: CommunityPostSpiritTagResponse[] | null
 }
 
-interface CommunityPostListItemResponse {
+interface CommunityPostListItemResponse extends CommunityPostRestrictionFlags {
   id: number
   boardType?: string | null
   title: string
-  isLocked?: boolean | null
-  adultOnly?: boolean | null
   authorNickname?: string | null
   createdAt?: string | null
+  spiritTags?: CommunityPostSpiritTagResponse[] | null
+}
+
+/** 색인·SSR 노출에서 제외해야 하는 게시글인지. */
+function isRestrictedPost(post: CommunityPostRestrictionFlags): boolean {
+  return Boolean(
+    post.adultOnly
+    || post.locked || post.isLocked
+    || post.hidden || post.isHidden,
+  )
 }
 
 interface CommunityPostCommentResponse {
@@ -244,8 +279,30 @@ export interface SeoSnapshotItem {
   meta?: string | null
 }
 
+export interface SeoPaginationLink {
+  /** 0-based 페이지 번호. 화면에는 +1 해서 보여준다. */
+  page: number
+  href: string
+  current: boolean
+}
+
+/**
+ * 목록의 SSR 페이지네이션.
+ * <p>목록 1페이지에만 링크가 걸리면 밀려난 항목은 sitemap 외에 유입 경로가 없는 고아가 된다.
+ * 크롤러가 JS 없이도 뒤 페이지로 내려갈 수 있도록 raw HTML 에 앵커를 남기는 것이 목적이다.
+ */
+export interface SeoPagination {
+  /** 0-based 현재 페이지. */
+  current: number
+  total: number
+  prevHref: string | null
+  nextHref: string | null
+  links: SeoPaginationLink[]
+}
+
 export interface SeoSnapshotData {
   kind: 'home' | 'spirit' | 'spirits-list' | 'community' | 'byob' | 'board-list' | 'notice' | 'tier-list'
+    | 'youtube'
   lang: 'ko' | 'en'
   eyebrow: string
   title: string
@@ -260,8 +317,43 @@ export interface SeoSnapshotData {
   items?: SeoSnapshotItem[]
   /** 목록 섹션의 제목. 주류 목록과 게시글 목록이 같은 문구를 쓰지 않도록 경로별로 지정한다. */
   itemsHeading?: string
+  pagination?: SeoPagination | null
   links: Array<{ label: string; href: string }>
 }
+
+/**
+ * 크롤 경로용 페이지 링크 묶음을 만든다.
+ * <p>항목이 많아도 앵커가 무한정 늘지 않도록 현재 페이지 주변만 남기고, 대신 첫/끝 페이지를
+ * 항상 포함해 어느 페이지에서 시작해도 목록 전체를 훑을 수 있게 한다.
+ */
+export function buildSeoPagination(
+  basePath: string,
+  current: number,
+  totalPages: number,
+  window = 3,
+): SeoPagination | null {
+  if (!Number.isFinite(totalPages) || totalPages <= 1) return null
+  const total = Math.floor(totalPages)
+  const safeCurrent = Math.min(Math.max(Math.floor(current), 0), total - 1)
+
+  const pages = new Set<number>([0, total - 1])
+  for (let page = safeCurrent - window; page <= safeCurrent + window; page += 1) {
+    if (page >= 0 && page < total) pages.add(page)
+  }
+
+  return {
+    current: safeCurrent,
+    total,
+    prevHref: safeCurrent > 0 ? buildListPageHref(basePath, safeCurrent - 1) : null,
+    nextHref: safeCurrent < total - 1 ? buildListPageHref(basePath, safeCurrent + 1) : null,
+    links: [...pages].sort((a, b) => a - b).map((page) => ({
+      page,
+      href: buildListPageHref(basePath, page),
+      current: page === safeCurrent,
+    })),
+  }
+}
+
 
 interface ReviewResponse {
   nickname: string | null
@@ -324,17 +416,50 @@ async function getSpiritSeo(id: string): Promise<SpiritSeoResponse | null> {
   }
 }
 
-async function fetchApiData<T>(path: string, revalidate = 3600): Promise<T | null> {
+/**
+ * SSR 기본 응답 대기 상한(ms).
+ *
+ * 이 값이 없으면 undici 기본값(300초)까지 기다린다. API 가 "죽은" 상태는 즉시 거절되어
+ * 문제가 없지만, **살아 있는데 느린** 상태(배포 직후 Lucene 대량 색인 중 등)에서는 렌더가
+ * 그만큼 붙들린다. 메타데이터가 빠진 페이지가 안 뜨는 페이지보다 낫다.
+ */
+const SSR_FETCH_TIMEOUT_MS = 10_000
+
+async function fetchApiData<T>(
+  path: string,
+  revalidate = 3600,
+  timeoutMs = SSR_FETCH_TIMEOUT_MS,
+): Promise<T | null> {
   try {
     const res = await fetch(`${API_URL}${path}`, {
       next: { revalidate },
+      signal: AbortSignal.timeout(timeoutMs),
     })
     if (!res.ok) return null
     const responseData = await res.json() as ApiResponse<T>
     return responseData.data ?? null
   } catch {
+    // 타임아웃(AbortError)도 여기로 온다 — 호출 측은 null 을 "데이터 없음"으로 처리한다.
     return null
   }
+}
+
+/**
+ * 관리자가 숨긴 GNB 메뉴 키. RootLayout 이 `window.__GNB_HIDDEN__` 시드로 심는다.
+ *
+ * SPA 는 마운트 첫 프레임에 노출 설정을 모르기 때문에, 이 시드가 없으면 숨긴 메뉴가
+ * 매 페이지 로드마다 잠깐 보였다가 사라진다. 실패하면 빈 배열 = 전 메뉴 노출이다
+ * (메뉴가 통째로 사라지는 것보다 안전한 방향).
+ *
+ * revalidate 60초 — `useGnbHiddenKeys` 의 staleTime 과 맞춰 두 경로가 어긋나는 창을 줄인다.
+ *
+ * 대기 상한은 기본값보다 짧게 잡는다. RootLayout 이 **모든 페이지**에서 이 호출을 기다리므로,
+ * 여기서 오래 붙들리면 데이터가 필요 없는 페이지까지 첫 바이트가 늦어진다.
+ * 못 받아도 빈 배열(= 전 메뉴 노출)이라 화면은 정상 동작한다 — 기다릴 이유가 크지 않다.
+ */
+export async function getHiddenGnbMenuKeys(): Promise<string[]> {
+  const keys = await fetchApiData<string[]>('/api/gnb-menus/hidden', 60, 3_000)
+  return Array.isArray(keys) ? keys : []
 }
 
 function stripHtmlToText(htmlStr: string): string {
@@ -575,14 +700,22 @@ function localLabels(lang: 'ko' | 'en') {
 
 interface ParsedPath {
   type: 'home' | 'spirits-list' | 'spirit-detail' | 'community-list' | 'community-detail'
-    | 'notices-list' | 'notice-detail' | 'byob-detail' | 'tier-list' | 'noindex' | 'default' | 'not-found'
+    | 'notices-list' | 'notice-detail' | 'byob-detail' | 'tier-list'
+    | 'youtube-list' | 'youtube-detail' | 'youtube-channel' | 'review-detail'
+    | 'noindex' | 'default' | 'not-found'
   lang: 'ko' | 'en' | null
   spiritId?: string
+  /** 공개 리뷰 상세의 리뷰 id. 정본은 그 리뷰가 달린 주류 상세다. */
+  reviewId?: string
   boardType?: string
   boardListType?: BoardListType
   postId?: string
   canonicalPath?: string
   tierListShareKey?: string
+  /** 유튜브 영상 ID (11자). DB PK 가 아니라 유튜브 쪽 식별자다. */
+  youtubeVideoKey?: string
+  /** 채널 식별자 — 핸들(@ 제외) 또는 채널 ID. */
+  youtubeChannelRef?: string
   /** Public API resource used only to distinguish a real 404 from restricted/unavailable content. */
   resourcePath?: string
 }
@@ -612,14 +745,15 @@ function isKnownAdminPath(segments: string[]): boolean {
   const path = segments.slice(1).join('/')
   const exact = new Set([
     '', 'users', 'users/nickname-bad-words', 'spirits', 'spirits/new',
-    'spirits/requests', 'spirits/variant-requests', 'producers', 'producers/requests',
+    'spirits/requests', 'spirits/variant-requests', 'spirits/wine-crawler',
+    'producers', 'producers/requests',
     'reports', 'notices', 'notices/new', 'popups', 'popups/new', 'banners',
-    'banners/new', 'events', 'community/post-reports', 'community/ai-news',
+    'banners/new', 'gnb-menus', 'events', 'community/post-reports', 'community/ai-news',
     'community/ai-news/new', 'community/bad-words', 'community/emojis',
     'community/prefixes', 'social', 'price-reports', 'stores', 'deals', 'score/points',
     'score/levels', 'legal', 'legal/new', 'emails/send', 'emails/history',
     'inquiries', 'logs', 'faq', 'faq/new', 'taste-trees', 'taste-trees/new',
-    'photo-cards',
+    'photo-cards', 'youtube',
   ])
   if (exact.has(path)) return true
   return [
@@ -729,11 +863,40 @@ export function parsePath(segments: string[]): ParsedPath {
     return { type: 'default', lang, canonicalPath: remaining.join('/') }
   }
 
+  if (remaining[0] === 'youtube') {
+    if (remaining.length === 1) {
+      return { type: 'youtube-list', lang, canonicalPath: 'youtube' }
+    }
+    // 채널 페이지. 식별자는 핸들(@ 제외) 또는 채널 ID 다.
+    if (remaining.length === 3 && remaining[1] === 'channels'
+        && /^[A-Za-z0-9._-]{3,64}$/.test(remaining[2])) {
+      return {
+        type: 'youtube-channel',
+        lang,
+        canonicalPath: remaining.join('/'),
+        youtubeChannelRef: remaining[2],
+        resourcePath: `/api/youtube/channels/${encodeURIComponent(remaining[2])}`,
+      }
+    }
+    // 영상 ID 는 11자 고정이다. 형식이 다르면 API 를 두드리기 전에 404 로 끊는다.
+    if (remaining.length === 2 && /^[A-Za-z0-9_-]{11}$/.test(remaining[1])) {
+      return {
+        type: 'youtube-detail',
+        lang,
+        canonicalPath: remaining.join('/'),
+        youtubeVideoKey: remaining[1],
+        resourcePath: `/api/youtube/videos/${remaining[1]}`,
+      }
+    }
+    return { type: 'not-found', lang }
+  }
+
   if (remaining[0] === 'reviews') {
     if (remaining.length === 2 && /^\d+$/.test(remaining[1])) {
       return {
-        type: 'default',
+        type: 'review-detail',
         lang,
+        reviewId: remaining[1],
         canonicalPath: remaining.join('/'),
         resourcePath: `/api/public/reviews/${remaining[1]}`,
       }
@@ -899,22 +1062,34 @@ export function getNoindexMetadata(
   }
 }
 
-export function getBoardListMetadata(
+export async function getBoardListMetadata(
   board: BoardListType,
   lang: 'ko' | 'en' | null,
   noindex = false,
-): Metadata {
+  pageNumber = 0,
+): Promise<Metadata> {
   const resolvedLang = normalizeLang(lang)
+  // 범위를 벗어난 페이지는 빈 목록이라 색인 가치가 없다. 링크 추적은 계속 허용한다.
+  // (조회는 스냅샷 렌더링과 같은 요청·같은 캐시 키를 쓰므로 왕복이 늘지 않는다)
+  const outOfRange = pageNumber > 0 && (await fetchBoardListPage(board, pageNumber)).outOfRange
   const config = BOARD_LIST_CONFIG[board]
-  const title = config.title[resolvedLang]
+  const brandedTitle = config.title[resolvedLang]
+  const title = pageNumber > 0
+    ? `${withPageSuffix(
+        brandedTitle.replace(/\s+—\s+CaskByCask$/, ''), pageNumber, resolvedLang,
+      )} — CaskByCask`
+    : brandedTitle
   const description = config.description[resolvedLang]
   // 게시판 본문은 별도 영문 번역 데이터가 없으므로 검색 신호를 한국어 원문으로 통합한다.
-  const canonical = `${SITE_URL}/ko${config.path}`
+  // 페이지네이션은 self-canonical 이다 — 뒤 페이지를 1페이지로 정규화하면 그 페이지에만
+  // 실린 게시글이 색인 대상에서 통째로 사라진다.
+  // 다만 실재하지 않는 페이지는 형식이 어긋난 page 값과 마찬가지로 기본 목록으로 모은다.
+  const canonical = `${SITE_URL}${buildListPageHref(`/ko${config.path}`, outOfRange ? 0 : pageNumber)}`
 
   return {
     title,
     description,
-    robots: buildRobots(!noindex),
+    robots: buildRobots(!noindex && !outOfRange),
     alternates: { canonical },
     openGraph: {
       title,
@@ -934,19 +1109,34 @@ export function getBoardListMetadata(
   }
 }
 
-export async function getBoardListSeoSnapshot(
+interface BoardListPageData {
+  items: SeoSnapshotItem[]
+  totalElements?: number
+  totalPages: number
+  /** 존재하지 않는 페이지를 요청했는지. 빈 목록을 색인시키지 않으려고 본다. */
+  outOfRange: boolean
+}
+
+/**
+ * 게시판 목록 한 페이지를 읽는다.
+ * <p>metadata 와 SSR 스냅샷이 같은 판단(범위·항목)을 내려야 하므로 조회를 한 곳으로 모은다.
+ * 두 호출은 같은 요청 안에서 같은 URL·같은 revalidate 를 쓰므로 fetch 캐시가 합쳐 준다.
+ */
+async function fetchBoardListPage(
   board: BoardListType,
-  lang: 'ko' | 'en' | null,
-): Promise<SeoSnapshotData> {
-  const resolvedLang = normalizeLang(lang)
-  const config = BOARD_LIST_CONFIG[board]
-  const canonicalPath = `/ko${config.path}`
-  let totalElements: number | undefined
+  pageNumber: number,
+): Promise<BoardListPageData> {
   let items: SeoSnapshotItem[] = []
+  let totalElements: number | undefined
+  let totalPages = 0
+  let loaded = false
 
   if (board === 'notices') {
-    const page = await fetchApiData<PageResponse<NoticeListItemResponse>>('/api/notices?page=0&size=20', 300)
+    const page = await fetchApiData<PageResponse<NoticeListItemResponse>>(
+      `/api/notices?page=${pageNumber}&size=20`, 300)
+    loaded = page != null
     totalElements = page?.totalElements
+    totalPages = page?.totalPages ?? 0
     items = (page?.content || []).map((notice) => ({
       title: notice.title,
       href: `/ko/notices/${notice.id}`,
@@ -954,8 +1144,11 @@ export async function getBoardListSeoSnapshot(
       meta: formatDateOnly(notice.createdAt),
     }))
   } else if (board === 'byob') {
-    const page = await fetchApiData<PageResponse<ByobListItemResponse>>('/api/byob?page=0&size=12', 60)
+    const page = await fetchApiData<PageResponse<ByobListItemResponse>>(
+      `/api/byob?page=${pageNumber}&size=12`, 60)
+    loaded = page != null
     totalElements = page?.totalElements
+    totalPages = page?.totalPages ?? 0
     items = (page?.content || [])
       .filter((byob) => byob.status !== 'CANCELLED')
       .map((byob) => ({
@@ -968,12 +1161,14 @@ export async function getBoardListSeoSnapshot(
     const boardType = board === 'notice' ? 'NOTICE'
       : board === 'free' ? 'FREE'
       : board === 'photo' ? 'PHOTO' : null
-    const query = new URLSearchParams({ page: '0', size: '20', sort: 'LATEST' })
+    const query = new URLSearchParams({ page: String(pageNumber), size: '20', sort: 'LATEST' })
     if (boardType) query.set('boardType', boardType)
     const page = await fetchApiData<PageResponse<CommunityPostListItemResponse>>(`/api/posts?${query.toString()}`, 60)
+    loaded = page != null
     totalElements = page?.totalElements
+    totalPages = page?.totalPages ?? 0
     items = (page?.content || [])
-      .filter((post) => !post.isLocked && !post.adultOnly)
+      .filter((post) => !isRestrictedPost(post))
       .map((post) => {
         const pathBoard = (post.boardType || 'FREE').toLowerCase()
         return {
@@ -985,6 +1180,23 @@ export async function getBoardListSeoSnapshot(
       })
   }
 
+  // API 장애 중에는 범위를 판정하지 않는다. 일시 장애를 noindex 로 바꾸면 색인이 빠진다.
+  const outOfRange = loaded && pageNumber > 0
+    && (totalPages > 0 ? pageNumber >= totalPages : items.length === 0)
+  return { items, totalElements, totalPages, outOfRange }
+}
+
+export async function getBoardListSeoSnapshot(
+  board: BoardListType,
+  lang: 'ko' | 'en' | null,
+  searchParams: MetadataSearchParams = {},
+): Promise<SeoSnapshotData> {
+  const resolvedLang = normalizeLang(lang)
+  const config = BOARD_LIST_CONFIG[board]
+  const canonicalPath = `/ko${config.path}`
+  const pageNumber = readPageParam(searchParams)
+  const { items, totalElements, totalPages } = await fetchBoardListPage(board, pageNumber)
+
   const countLabel = resolvedLang === 'en' ? 'Public posts' : '공개 글'
   const itemsHeading = board === 'notices'
     ? (resolvedLang === 'en' ? 'Notices' : '공지사항 목록')
@@ -995,7 +1207,11 @@ export async function getBoardListSeoSnapshot(
     kind: 'board-list',
     lang: resolvedLang,
     eyebrow: config.eyebrow[resolvedLang],
-    title: config.title[resolvedLang].replace(/\s+—\s+CaskByCask$/, ''),
+    title: withPageSuffix(
+      config.title[resolvedLang].replace(/\s+—\s+CaskByCask$/, ''),
+      pageNumber,
+      resolvedLang,
+    ),
     description: config.description[resolvedLang],
     image: null,
     metrics: totalElements == null
@@ -1004,6 +1220,7 @@ export async function getBoardListSeoSnapshot(
     details: [],
     items,
     itemsHeading,
+    pagination: buildSeoPagination(canonicalPath, pageNumber, totalPages),
     links: [
       { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko' },
       { label: config.eyebrow[resolvedLang], href: canonicalPath },
@@ -1016,6 +1233,10 @@ export function buildBoardListJsonLd(
   snapshot: SeoSnapshotData,
 ): object | null {
   if (snapshot.lang === 'en') return null
+  // 커뮤니티는 2순위다. 뒤 페이지까지 CollectionPage·ItemList 를 반복해서 내보내면
+  // 1순위인 주류 카탈로그의 구조화 데이터와 같은 무게로 경쟁하게 된다.
+  // 게시글로 내려가는 크롤 경로는 SSR 앵커가 이미 맡고 있으므로 1페이지에만 붙인다.
+  if ((snapshot.pagination?.current ?? 0) > 0) return null
 
   const config = BOARD_LIST_CONFIG[board]
   const canonical = `${SITE_URL}/ko${config.path}`
@@ -1066,6 +1287,359 @@ export function buildBoardListJsonLd(
         'numberOfItems': itemListElements.length,
         'itemListElement': itemListElements,
       }] : []),
+    ],
+  }
+}
+
+// ─── 유튜브 갤러리 ──────────────────────────────────────────
+//
+// 영상은 유튜브에 있고 우리는 임베드해 보여 준다. 그래서 구조화 데이터의 publisher 는
+// 우리가 아니라 채널이고, contentUrl(호스팅 파일 주소)은 쓰지 않는다.
+// 재생시간·조회수는 수집하지 않으므로 duration·interactionStatistic 도 넣지 않는다 —
+// 모르는 값을 채우면 구조화 데이터에 거짓을 심게 된다.
+
+interface YoutubeVideoSeoResponse {
+  videoKey: string
+  title: string
+  description: string | null
+  thumbnailUrl: string | null
+  videoType: string
+  publishedAt: string
+  embedUrl: string
+  channel: { title: string; handle: string | null; channelUrl: string }
+  spiritTags: Array<{ spiritId: number; nameKo: string; nameEn: string | null }>
+}
+
+const YOUTUBE_SEO_TEXT = {
+  ko: {
+    eyebrow: '주류 유튜브',
+    title: '위스키·와인·꼬냑 유튜브 갤러리 — CaskByCask',
+    description: '허락을 받고 소개하는 국내 주류 유튜브 채널의 최신 영상과 숏츠를 한곳에서 모아 봅니다.',
+    heading: '최신 영상',
+  },
+  en: {
+    eyebrow: 'Spirits on YouTube',
+    title: 'Whisky, Wine and Cognac YouTube Gallery — CaskByCask',
+    description: 'Latest videos and shorts from Korean spirits YouTube channels, featured with their creators’ permission.',
+    heading: 'Latest videos',
+  },
+} as const
+
+/** 목록·상세가 공유하는 메타데이터 조립. 게시판 목록(getBoardListMetadata)과 같은 모양이다. */
+function buildYoutubeMetadata(options: {
+  title: string
+  description: string
+  canonical: string
+  lang: 'ko' | 'en'
+  index: boolean
+  image?: string
+  ogType?: 'website' | 'article'
+}): Metadata {
+  const image = options.image || DEFAULT_OG_IMAGE
+  // 유튜브 갤러리는 ko/en 양쪽이 sitemap 에 등재된 다국어 경로다. hreflang 을 빼면 두 언어판이
+  // 서로를 모르는 채 색인되고, SPA 는 이미 hreflang 을 내보내므로 렌더링 전후 신호도 어긋난다.
+  const koCanonical = options.canonical.replace(`${SITE_URL}/en/`, `${SITE_URL}/ko/`)
+  const enCanonical = options.canonical.replace(`${SITE_URL}/ko/`, `${SITE_URL}/en/`)
+  return {
+    title: options.title,
+    description: options.description,
+    robots: buildRobots(options.index),
+    alternates: {
+      canonical: options.canonical,
+      languages: { ko: koCanonical, en: enCanonical, 'x-default': koCanonical },
+    },
+    openGraph: {
+      title: options.title,
+      description: options.description,
+      url: options.canonical,
+      type: options.ogType ?? 'website',
+      siteName: 'CaskByCask',
+      locale: options.lang === 'en' ? 'en_US' : 'ko_KR',
+      images: [{ url: image, alt: options.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: options.title,
+      description: options.description,
+      images: [image],
+    },
+  }
+}
+
+export function getYoutubeListMetadata(lang: 'ko' | 'en' | null, noindex = false): Metadata {
+  const resolvedLang = normalizeLang(lang)
+  const text = YOUTUBE_SEO_TEXT[resolvedLang]
+  return buildYoutubeMetadata({
+    title: text.title,
+    description: text.description,
+    canonical: `${SITE_URL}/${resolvedLang}/youtube`,
+    lang: resolvedLang,
+    index: !noindex,
+  })
+}
+
+async function getYoutubeVideo(videoKey: string): Promise<YoutubeVideoSeoResponse | null> {
+  if (!/^[A-Za-z0-9_-]{11}$/.test(videoKey)) return null
+  return fetchApiData<YoutubeVideoSeoResponse>(`/api/youtube/videos/${videoKey}`, 300)
+}
+
+export async function getYoutubeVideoMetadata(
+  videoKey: string,
+  lang: 'ko' | 'en' | null,
+): Promise<Metadata> {
+  const video = await getYoutubeVideo(videoKey)
+  const resolvedLang = normalizeLang(lang)
+  if (!video) {
+    return getNoindexMetadata(lang, resolvedLang === 'en'
+      ? 'Video not found — CaskByCask'
+      : '존재하지 않는 영상 — CaskByCask')
+  }
+  return buildYoutubeMetadata({
+    title: `${video.title} — ${video.channel.title} | CaskByCask`,
+    description: video.description?.slice(0, 200) || YOUTUBE_SEO_TEXT[resolvedLang].description,
+    canonical: `${SITE_URL}/${resolvedLang}/youtube/${video.videoKey}`,
+    lang: resolvedLang,
+    index: true,
+    image: video.thumbnailUrl ?? undefined,
+    ogType: 'article',
+  })
+}
+
+export async function getYoutubeVideoJsonLd(videoKey: string): Promise<object | null> {
+  const video = await getYoutubeVideo(videoKey)
+  if (!video) return null
+
+  const canonical = `${SITE_URL}/ko/youtube/${video.videoKey}`
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    'name': video.title,
+    'description': video.description || video.title,
+    'thumbnailUrl': [video.thumbnailUrl ?? `https://i.ytimg.com/vi/${video.videoKey}/hqdefault.jpg`],
+    'uploadDate': video.publishedAt,
+    'embedUrl': video.embedUrl,
+    'url': canonical,
+    'publisher': {
+      '@type': 'Organization',
+      'name': video.channel.title,
+      'url': video.channel.channelUrl,
+    },
+    ...(video.spiritTags.length > 0 ? {
+      'about': video.spiritTags.map((tag) => ({
+        '@type': 'Product',
+        'name': tag.nameKo,
+        'url': `${SITE_URL}/ko/spirits/${tag.spiritId}`,
+      })),
+    } : {}),
+  }
+}
+
+interface YoutubeChannelSeoResponse {
+  id: number
+  channelKey: string
+  handle: string | null
+  title: string
+  description: string | null
+  descriptionEn: string | null
+  thumbnailUrl: string | null
+  channelUrl: string
+  videoCount: number
+}
+
+async function getYoutubeChannel(ref: string): Promise<YoutubeChannelSeoResponse | null> {
+  if (!/^[A-Za-z0-9._-]{3,64}$/.test(ref)) return null
+  return fetchApiData<YoutubeChannelSeoResponse>(
+    `/api/youtube/channels/${encodeURIComponent(ref)}`, 300)
+}
+
+/** 채널 페이지의 정본 주소 조각. 핸들이 있으면 사람이 읽는 쪽을 쓴다. */
+function youtubeChannelRef(channel: YoutubeChannelSeoResponse): string {
+  return channel.handle ?? channel.channelKey
+}
+
+export async function getYoutubeChannelMetadata(
+  ref: string,
+  lang: 'ko' | 'en' | null,
+): Promise<Metadata> {
+  const channel = await getYoutubeChannel(ref)
+  const resolvedLang = normalizeLang(lang)
+  if (!channel) {
+    return getNoindexMetadata(lang, resolvedLang === 'en'
+      ? 'Channel not found — CaskByCask'
+      : '존재하지 않는 채널 — CaskByCask')
+  }
+
+  const description = (resolvedLang === 'en' ? channel.descriptionEn : channel.description)
+    || channel.description
+  return buildYoutubeMetadata({
+    title: resolvedLang === 'en'
+      ? `Videos from ${channel.title} — CaskByCask`
+      : `${channel.title} 영상 모음 — CaskByCask`,
+    description: description
+      || (resolvedLang === 'en'
+        ? `The latest videos and shorts from ${channel.title}.`
+        : `${channel.title} 채널의 최신 영상과 숏츠를 모았습니다.`),
+    canonical: `${SITE_URL}/${resolvedLang}/youtube/channels/${youtubeChannelRef(channel)}`,
+    lang: resolvedLang,
+    index: true,
+    image: channel.thumbnailUrl ?? undefined,
+  })
+}
+
+/**
+ * 채널 페이지 구조화 데이터.
+ * <p>`about` 이 채널(Organization)이고 `sameAs` 로 유튜브 채널 홈을 가리킨다 —
+ * 이 페이지가 <b>채널을 소개하는 페이지</b>임을 밝히고, 우리가 채널 본인인 척하지 않는다.
+ */
+export async function getYoutubeChannelJsonLd(ref: string): Promise<object | null> {
+  const channel = await getYoutubeChannel(ref)
+  if (!channel) return null
+
+  const canonical = `${SITE_URL}/ko/youtube/channels/${youtubeChannelRef(channel)}`
+  const videos = await fetchApiData<PageResponse<YoutubeVideoSeoResponse>>(
+    `/api/youtube/videos?page=0&size=24&channelId=${channel.id}`, 300)
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    'name': channel.title,
+    'description': channel.description || undefined,
+    'url': canonical,
+    'inLanguage': 'ko-KR',
+    'about': {
+      '@type': 'Organization',
+      'name': channel.title,
+      'url': channel.channelUrl,
+      'sameAs': [channel.channelUrl],
+      ...(channel.thumbnailUrl ? { logo: channel.thumbnailUrl } : {}),
+    },
+    ...(videos?.content?.length
+      ? {
+        'mainEntity': {
+          '@type': 'ItemList',
+          'numberOfItems': videos.content.length,
+          'itemListElement': videos.content.map((video, index) => ({
+            '@type': 'ListItem',
+            'position': index + 1,
+            'name': video.title,
+            'url': `${SITE_URL}/ko/youtube/${video.videoKey}`,
+          })),
+        },
+      }
+      : {}),
+  }
+}
+
+export async function getYoutubeChannelSeoSnapshot(
+  ref: string,
+  lang: 'ko' | 'en' | null,
+): Promise<SeoSnapshotData | null> {
+  const channel = await getYoutubeChannel(ref)
+  if (!channel) return null
+  const resolvedLang = normalizeLang(lang)
+
+  const videos = await fetchApiData<PageResponse<YoutubeVideoSeoResponse>>(
+    `/api/youtube/videos?page=0&size=20&channelId=${channel.id}`, 300)
+  const items: SeoSnapshotItem[] = (videos?.content || []).map((video) => ({
+    title: video.title,
+    href: `/${resolvedLang}/youtube/${video.videoKey}`,
+    description: video.channel.title,
+    meta: formatDateOnly(video.publishedAt),
+  }))
+
+  return {
+    kind: 'youtube',
+    lang: resolvedLang,
+    eyebrow: YOUTUBE_SEO_TEXT[resolvedLang].eyebrow,
+    title: channel.title,
+    subtitle: channel.handle ? `@${channel.handle}` : null,
+    description: (resolvedLang === 'en' ? channel.descriptionEn : channel.description)
+      || channel.description,
+    image: channel.thumbnailUrl,
+    metrics: [{
+      label: resolvedLang === 'en' ? 'Videos' : '영상',
+      value: channel.videoCount.toLocaleString(resolvedLang === 'en' ? 'en-US' : 'ko-KR'),
+    }],
+    details: [],
+    items,
+    itemsHeading: resolvedLang === 'en' ? 'Videos from this channel' : '이 채널의 영상',
+    links: [
+      { label: resolvedLang === 'en' ? 'Home' : '홈', href: `/${resolvedLang}` },
+      { label: YOUTUBE_SEO_TEXT[resolvedLang].eyebrow, href: `/${resolvedLang}/youtube` },
+    ],
+  }
+}
+
+export async function getYoutubeListSeoSnapshot(lang: 'ko' | 'en' | null): Promise<SeoSnapshotData> {
+  const resolvedLang = normalizeLang(lang)
+  const text = YOUTUBE_SEO_TEXT[resolvedLang]
+  const page = await fetchApiData<PageResponse<YoutubeVideoSeoResponse>>(
+    '/api/youtube/videos?page=0&size=20', 300)
+
+  const items: SeoSnapshotItem[] = (page?.content || []).map((video) => ({
+    title: video.title,
+    href: `/${resolvedLang}/youtube/${video.videoKey}`,
+    description: video.channel.title,
+    meta: formatDateOnly(video.publishedAt),
+  }))
+
+  return {
+    kind: 'youtube',
+    lang: resolvedLang,
+    eyebrow: text.eyebrow,
+    title: text.title.replace(/\s+—\s+CaskByCask$/, ''),
+    description: text.description,
+    image: null,
+    metrics: page?.totalElements == null ? [] : [{
+      label: resolvedLang === 'en' ? 'Videos' : '영상',
+      value: page.totalElements.toLocaleString(resolvedLang === 'en' ? 'en-US' : 'ko-KR'),
+    }],
+    details: [],
+    items,
+    itemsHeading: text.heading,
+    links: [
+      { label: resolvedLang === 'en' ? 'Home' : '홈', href: `/${resolvedLang}` },
+      { label: text.eyebrow, href: `/${resolvedLang}/youtube` },
+    ],
+  }
+}
+
+export async function getYoutubeVideoSeoSnapshot(
+  videoKey: string,
+  lang: 'ko' | 'en' | null,
+): Promise<SeoSnapshotData | null> {
+  const video = await getYoutubeVideo(videoKey)
+  if (!video) return null
+  const resolvedLang = normalizeLang(lang)
+
+  return {
+    kind: 'youtube',
+    lang: resolvedLang,
+    eyebrow: YOUTUBE_SEO_TEXT[resolvedLang].eyebrow,
+    title: video.title,
+    subtitle: video.channel.title,
+    description: video.description,
+    image: video.thumbnailUrl,
+    metrics: [],
+    details: [
+      {
+        label: resolvedLang === 'en' ? 'Channel' : '채널',
+        value: video.channel.handle ? `@${video.channel.handle}` : video.channel.title,
+      },
+      {
+        label: resolvedLang === 'en' ? 'Published' : '게시일',
+        value: formatDateOnly(video.publishedAt) ?? '',
+      },
+    ],
+    // 태그된 주류로 이어지는 내부 링크 — 갤러리와 카탈로그를 잇는 자리다.
+    items: video.spiritTags.map((tag) => ({
+      title: resolvedLang === 'en' ? tag.nameEn || tag.nameKo : tag.nameKo,
+      href: `/${resolvedLang}/spirits/${tag.spiritId}`,
+    })),
+    itemsHeading: resolvedLang === 'en' ? 'Featured spirits' : '영상에 나온 주류',
+    links: [
+      { label: resolvedLang === 'en' ? 'Home' : '홈', href: `/${resolvedLang}` },
+      { label: YOUTUBE_SEO_TEXT[resolvedLang].eyebrow, href: `/${resolvedLang}/youtube` },
     ],
   }
 }
@@ -1124,7 +1698,10 @@ export async function getNoticeDetailSeoSnapshot(
 
   const numericId = extractLeadingId(id)!
   const resolvedLang = normalizeLang(lang)
-  const description = stripHtmlAndSummarize(notice.contentSanitized || '', 220)
+  const bodyHtml = notice.contentSanitized || ''
+  const description = stripHtmlAndSummarize(bodyHtml, 220)
+  // 공지도 같은 에디터를 쓰므로 본문에 주류 카드가 들어온다. 게시글과 같은 처리를 한다.
+  const spiritLinks = await getSpiritLinksForPost(parseSpiritEmbeds(bodyHtml), resolvedLang)
   return {
     kind: 'notice',
     lang: resolvedLang,
@@ -1141,7 +1718,11 @@ export async function getNoticeDetailSeoSnapshot(
       { label: resolvedLang === 'en' ? 'Published' : '작성일', value: formatDateOnly(notice.createdAt) },
       { label: resolvedLang === 'en' ? 'Updated' : '수정일', value: formatDateOnly(notice.updatedAt) },
     ]),
-    bodyHtml: notice.contentSanitized || null,
+    bodyHtml: linkSpiritEmbeds(bodyHtml, spiritLinks.hrefBySpiritId) || null,
+    items: spiritLinks.items.length > 0 ? spiritLinks.items : undefined,
+    itemsHeading: spiritLinks.items.length > 0
+      ? (resolvedLang === 'en' ? 'Spirits mentioned in this notice' : '이 글에서 언급한 주류')
+      : undefined,
     links: [
       { label: resolvedLang === 'en' ? 'Home' : '홈', href: '/ko' },
       { label: resolvedLang === 'en' ? 'Notices' : '공지사항', href: '/ko/notices' },
@@ -1393,7 +1974,7 @@ function firstNonBlank(...values: Array<string | null | undefined>): string | nu
  * (영문 alternate 를 내보내면 같은 한국어 콘텐츠가 두 URL 로 색인되는 잘못된 신호가 된다)
  * SNS 짧은 링크(`/s/{code}`)의 착지 경로이므로 OG 태그도 함께 채운다.
  */
-async function getPublicReviewMetadata(
+export async function getPublicReviewMetadata(
   id: string,
   lang: 'ko' | 'en' | null,
 ): Promise<Metadata | null> {
@@ -1428,18 +2009,24 @@ async function getPublicReviewMetadata(
     : [scoreText && `평점 ${scoreText}점.`, noteText || `${spiritName} 시음 노트입니다.`]
       .filter(Boolean).join(' ')
 
-  const canonical = `${SITE_URL}/ko/reviews/${review.id}`
+  // 리뷰 본문의 정본은 그 리뷰가 달린 주류 상세다. 리뷰마다 URL 을 따로 색인시키면 같은 내용이
+  // 주류 페이지와 경쟁한다. SPA(PublicReviewPage)도 같은 판정을 내므로 여기서 어긋나면
+  // 렌더링 전후로 색인 신호가 뒤집힌다.
+  const spiritPath = normalizeLang(lang) === 'en' ? review.canonicalPathEn : review.canonicalPathKo
+  const canonical = `${SITE_URL}${spiritPath ?? `/ko/reviews/${review.id}`}`
+  // 공유 링크의 착지 화면이라 OG 는 그대로 채운다 — noindex 는 OG 미리보기에 영향을 주지 않는다.
+  const shareUrl = `${SITE_URL}/ko/reviews/${review.id}`
   const ogImage = toAbsoluteImageUrl(review.imageUrl) || DEFAULT_OG_IMAGE
 
   return {
     title,
     description,
-    robots: buildRobots(true),
+    robots: buildRobots(false),
     alternates: { canonical },
     openGraph: {
       title,
       description,
-      url: canonical,
+      url: shareUrl,
       type: 'article',
       siteName: 'CaskByCask',
       locale: 'ko_KR',
@@ -1802,9 +2389,14 @@ interface SpiritsListSeoState {
   canonical: string
   canonicalKo: string
   canonicalEn: string
+  /** 페이지 파라미터를 제외한 목록 경로. 페이지 앵커를 만드는 기준이 된다. */
+  basePath: string
+  /** 0-based 현재 페이지. */
+  pageNumber: number
+  totalPages: number
   indexable: boolean
   meta: typeof SPIRIT_CATEGORY_META[SpiritSeoCategory | '']
-  page: PageResponse<SpiritListSeoItemResponse> | null
+  pageData: PageResponse<SpiritListSeoItemResponse> | null
 }
 
 function hasTierListEditorId(searchParams: MetadataSearchParams): boolean {
@@ -1850,6 +2442,17 @@ function singleSearchParam(value: string | string[] | undefined): string | null 
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
+/** 주류 목록 SEO 스냅샷의 페이지 크기. canonical·totalPages 계산이 화면과 어긋나지 않게 한 곳에서 정한다. */
+const SPIRITS_SEO_PAGE_SIZE = 20
+
+/** 2페이지부터는 제목에 페이지 번호를 붙여 목록 페이지끼리 제목이 겹치지 않게 한다. */
+function withPageSuffix(title: string, pageNumber: number, lang: 'ko' | 'en'): string {
+  if (pageNumber <= 0) return title
+  return lang === 'en'
+    ? `${title} (Page ${pageNumber + 1})`
+    : `${title} (${pageNumber + 1}페이지)`
+}
+
 async function resolveSpiritsListSeoState(
   lang: 'ko' | 'en' | null,
   searchParams: MetadataSearchParams = {},
@@ -1863,7 +2466,11 @@ async function resolveSpiritsListSeoState(
   const suppliedKeys = Object.entries(searchParams)
     .filter(([, value]) => value !== undefined)
     .map(([key]) => key)
-  const hasUnsupportedQuery = suppliedKeys.some((key) => key !== 'category')
+  // 카탈로그는 1순위 색인 대상이라 page 를 정식 facet 으로 받는다.
+  // (뒤 페이지가 noindex 면 카탈로그 하위 주류로 내려가는 링크 신호가 오래 못 간다)
+  const pageNumber = readPageParam(searchParams)
+  const hasUnsupportedQuery = suppliedKeys.some((key) => key !== 'category' && key !== 'page')
+    || hasUnsupportedPageParam(searchParams)
     || (suppliedCategory !== undefined && (
       Array.isArray(suppliedCategory)
       || singleCategory === null
@@ -1871,27 +2478,48 @@ async function resolveSpiritsListSeoState(
       || singleCategory !== category
     ))
   const suffix = category ? `?category=${category}` : ''
-  const canonicalKo = `${SITE_URL}/ko/spirits${suffix}`
-  const canonicalEn = `${SITE_URL}/en/spirits${suffix}`
+  const basePathKo = `/ko/spirits${suffix}`
+  const basePathEn = `/en/spirits${suffix}`
 
-  let page: PageResponse<SpiritListSeoItemResponse> | null = null
-  if (category || includeItems) {
-    const query = new URLSearchParams({ page: '0', size: includeItems ? '20' : '1' })
+  let pageData: PageResponse<SpiritListSeoItemResponse> | null = null
+  // 뒤 페이지를 요청받으면 항목 수와 무관하게 실제 페이지 크기로 조회해야 totalPages 가 의미를 갖는다.
+  const needsFullPage = includeItems || pageNumber > 0
+  if (category || needsFullPage) {
+    const query = new URLSearchParams({
+      page: String(pageNumber),
+      size: needsFullPage ? String(SPIRITS_SEO_PAGE_SIZE) : '1',
+    })
     if (category) query.set('category', category)
-    page = await fetchApiData<PageResponse<SpiritListSeoItemResponse>>(`/api/spirits?${query.toString()}`, 300)
+    pageData = await fetchApiData<PageResponse<SpiritListSeoItemResponse>>(`/api/spirits?${query.toString()}`, 300)
   }
 
   // API 일시 장애 시 기존 index 상태를 보존하고, 실제 0건이 확인된 카테고리만 noindex 한다.
-  const categoryHasContent = !category || page == null || (page.totalElements ?? page.content.length) > 0
+  const categoryHasContent = !category || pageData == null
+    || (pageData.totalElements ?? pageData.content.length) > 0
+  const totalPages = pageData?.totalPages ?? 0
+  // 범위를 벗어난 페이지는 빈 목록이라 색인 가치가 없다. 링크 추적은 계속 허용한다.
+  const pageOutOfRange = pageNumber > 0 && pageData != null
+    && (totalPages > 0 ? pageNumber >= totalPages : pageData.content.length === 0)
+
+  // 실재하지 않는 페이지에는 self-canonical 을 걸지 않는다. 형식이 어긋난 page 값과 마찬가지로
+  // 기본 목록으로 신호를 모은다 — 그러지 않으면 readPageParam 의 상한 때문에 canonical 이
+  // 자기 자신도 기본 경로도 아닌 제3의 주소(예: page=10000)를 가리키게 된다.
+  const canonicalPage = pageOutOfRange ? 0 : pageNumber
+  const canonicalKo = `${SITE_URL}${buildListPageHref(basePathKo, canonicalPage)}`
+  const canonicalEn = `${SITE_URL}${buildListPageHref(basePathEn, canonicalPage)}`
+
   return {
     lang: resolvedLang,
     category,
     canonical: resolvedLang === 'en' ? canonicalEn : canonicalKo,
     canonicalKo,
     canonicalEn,
-    indexable: !hasUnsupportedQuery && categoryHasContent,
+    basePath: resolvedLang === 'en' ? basePathEn : basePathKo,
+    pageNumber,
+    totalPages,
+    indexable: !hasUnsupportedQuery && categoryHasContent && !pageOutOfRange,
     meta: SPIRIT_CATEGORY_META[category ?? ''],
-    page,
+    pageData,
   }
 }
 
@@ -1901,7 +2529,11 @@ export async function getSpiritsListMetadata(
 ): Promise<Metadata> {
   const state = await resolveSpiritsListSeoState(lang, searchParams)
   const isEn = state.lang === 'en'
-  const title = `${isEn ? state.meta.titleEn : state.meta.titleKo} — CaskByCask`
+  const title = `${withPageSuffix(
+    isEn ? state.meta.titleEn : state.meta.titleKo,
+    state.pageNumber,
+    state.lang,
+  )} — CaskByCask`
   const description = isEn ? state.meta.descEn : state.meta.descKo
 
   return {
@@ -1941,7 +2573,7 @@ export async function getSpiritsListSeoSnapshot(
 ): Promise<SeoSnapshotData> {
   const state = await resolveSpiritsListSeoState(lang, searchParams, true)
   const isEn = state.lang === 'en'
-  const items = (state.page?.content ?? []).map((spirit) => ({
+  const items = (state.pageData?.content ?? []).map((spirit) => ({
     title: appendWineVintageDisplay(
       isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
       spirit,
@@ -1953,13 +2585,17 @@ export async function getSpiritsListSeoSnapshot(
       ? (spirit.producerNameEn || spirit.producerNameKo)
       : spirit.producerNameKo,
   }))
-  const count = state.page?.totalElements
+  const count = state.pageData?.totalElements
 
   return {
     kind: 'spirits-list',
     lang: state.lang,
     eyebrow: isEn ? 'CaskByCask catalog' : 'CaskByCask 주류 정보',
-    title: isEn ? state.meta.titleEn : state.meta.titleKo,
+    title: withPageSuffix(
+      isEn ? state.meta.titleEn : state.meta.titleKo,
+      state.pageNumber,
+      state.lang,
+    ),
     description: isEn ? state.meta.descEn : state.meta.descKo,
     metrics: count == null ? [] : [{
       label: isEn ? 'Spirits' : '등록 주류',
@@ -1970,6 +2606,7 @@ export async function getSpiritsListSeoSnapshot(
     itemsHeading: isEn
       ? (state.category ? `${state.meta.titleEn} list` : 'Spirits in the catalog')
       : (state.category ? `${state.meta.titleKo} 목록` : '등록된 주류'),
+    pagination: buildSeoPagination(state.basePath, state.pageNumber, state.totalPages),
     links: [
       { label: isEn ? 'Home' : '홈', href: `/${state.lang}` },
       ...(state.category
@@ -1987,9 +2624,10 @@ export async function getSpiritsListJsonLd(
   if (!state.indexable) return null
 
   const isEn = state.lang === 'en'
-  const items = (state.page?.content ?? []).map((spirit, index) => ({
+  const items = (state.pageData?.content ?? []).map((spirit, index) => ({
     '@type': 'ListItem',
-    position: index + 1,
+    // 페이지를 넘어가도 위치가 이어지도록 전역 순번으로 매긴다.
+    position: state.pageNumber * SPIRITS_SEO_PAGE_SIZE + index + 1,
     name: appendWineVintageDisplay(
       isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
       spirit,
@@ -2011,7 +2649,11 @@ export async function getSpiritsListJsonLd(
       },
       {
         '@type': 'CollectionPage',
-        name: isEn ? state.meta.titleEn : state.meta.titleKo,
+        name: withPageSuffix(
+          isEn ? state.meta.titleEn : state.meta.titleKo,
+          state.pageNumber,
+          state.lang,
+        ),
         description: isEn ? state.meta.descEn : state.meta.descKo,
         url: state.canonical,
         mainEntity: items.length > 0 ? { '@type': 'ItemList', itemListElement: items } : undefined,
@@ -2346,6 +2988,27 @@ function formatPriceObservation(
     .join(' · ')
 }
 
+/**
+ * 해당 주류가 태그된 커뮤니티 글.
+ * <p>게시판 목록은 최신 글로 계속 밀려나므로, 주류 상세처럼 주소가 고정된 페이지에서
+ * 링크를 걸어 주어야 오래된 글도 크롤 경로를 잃지 않는다.
+ * 커뮤니티 본문은 한국어만 있으므로 영문 주류 페이지에서도 한국어 글을 가리킨다.
+ * <p>일반 목록 API(`/api/posts`)를 쓰지 않는 이유: boardType 을 주지 않으면 서버가
+ * NOTICE+FREE 로 좁히기 때문에 정작 주류 태그가 가장 많이 달린 이미지 갤러리 글이 통째로 빠진다.
+ */
+async function getPostsTaggedWithSpirit(spiritId: string): Promise<SeoSnapshotItem[]> {
+  const page = await fetchApiData<PageResponse<CommunityPostListItemResponse>>(
+    `/api/seo/spirits/${spiritId}/posts?page=0&size=10`, 300)
+  return (page?.content || [])
+    .filter((post) => !isRestrictedPost(post))
+    .map((post) => ({
+      title: post.title,
+      href: `/ko/community/${(post.boardType || 'FREE').toLowerCase()}/${post.id}`,
+      description: post.authorNickname || null,
+      meta: formatDateOnly(post.createdAt),
+    }))
+}
+
 export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null): Promise<SeoSnapshotData | null> {
   const numericId = extractLeadingId(id)
   if (!numericId) return null
@@ -2353,9 +3016,10 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
   const resolvedLang = normalizeLang(lang)
   const isEn = resolvedLang === 'en'
   const labels = localLabels(resolvedLang)
-  const [seo, spirit] = await Promise.all([
+  const [seo, spirit, relatedPosts] = await Promise.all([
     getSpiritSeo(numericId),
     fetchApiData<SpiritDetailResponse>(`/api/spirits/${numericId}`),
+    getPostsTaggedWithSpirit(numericId),
   ])
   if (!spirit) return null
 
@@ -2447,6 +3111,10 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: isEn ? 'Recently approved special price' : '최근 승인 특가', value: recentHotDeal },
     ]),
     sourceUrls: hotDealSource ? [hotDealSource] : [],
+    items: relatedPosts.length > 0 ? relatedPosts : undefined,
+    itemsHeading: relatedPosts.length > 0
+      ? (isEn ? 'Community posts about this bottle' : '이 주류를 언급한 글')
+      : undefined,
     links: [
       { label: labels.home, href: `/${resolvedLang}` },
       { label: labels.spirits, href: `/${resolvedLang}/spirits` },
@@ -2461,6 +3129,89 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
   }
 }
 
+function decodeHtmlAttr(value: string): string {
+  return value
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, '&')
+}
+
+/** 임베드 앵커 하나에서 속성값을 읽는다. `data-spirit-name` 은 `-en` 변형과 겹치지 않는다. */
+function embedAttr(tag: string, name: string): string | null {
+  const match = tag.match(new RegExp(`\\b${name}="([^"]*)"`))
+  return match ? decodeHtmlAttr(match[1]) : null
+}
+
+/** 본문 리치텍스트에 삽입된 주류 카드 임베드. 태그 응답과 같은 모양으로 맞춰 함께 다룬다. */
+function parseSpiritEmbeds(html: string): CommunityPostSpiritTagResponse[] {
+  const refs = new Map<number, CommunityPostSpiritTagResponse>()
+  for (const match of html.matchAll(/<a\b[^>]*\bdata-spirit-id="?(\d+)"?[^>]*>/g)) {
+    const spiritId = Number(match[1])
+    if (!Number.isFinite(spiritId) || refs.has(spiritId)) continue
+    refs.set(spiritId, {
+      spiritId,
+      nameKo: embedAttr(match[0], 'data-spirit-name'),
+      nameEn: embedAttr(match[0], 'data-spirit-name-en'),
+      category: embedAttr(match[0], 'data-spirit-category'),
+    })
+  }
+  return [...refs.values()]
+}
+
+/**
+ * 주류 카드 임베드에 실제 href 를 채운다.
+ * <p>에디터가 만드는 임베드 앵커에는 href 가 없고 이동은 JS 클릭 핸들러가 맡는다. 그래서
+ * 크롤러에게는 막다른 길이 되고, 본문이 그 주류를 다루고 있다는 신호가 주류 상세로 가지 않는다.
+ * 저장된 원문은 그대로 두고 SSR 로 내보내는 본문에서만 채운다.
+ */
+function linkSpiritEmbeds(html: string, hrefBySpiritId: Map<number, string>): string {
+  return html.replace(
+    /<a\b([^>]*\bdata-spirit-id="?(\d+)"?[^>]*)>/g,
+    (tag, attrs: string, rawId: string) => {
+      if (/\shref\s*=/.test(attrs)) return tag
+      const href = hrefBySpiritId.get(Number(rawId))
+      return href ? `<a href="${escapeHtml(href)}"${attrs}>` : tag
+    },
+  )
+}
+
+/**
+ * 게시글이 가리키는 주류로 나가는 링크.
+ * <p>커뮤니티에서 모인 링크 신호를 1순위 색인 대상인 주류 상세로 흘려보낸다.
+ * 주류 태그(이미지 갤러리 전용)와 본문 임베드(모든 게시판)를 함께 본다 — 태그를 달 수 없는
+ * 게시판의 글도 본문에서 주류를 지목하고 있으면 링크가 이어져야 한다.
+ * 정본 주소는 SEO API 로 확인한다. `/spirits/{id}` 로 바로 걸면 매번 301 을 한 번 더 탄다.
+ */
+async function getSpiritLinksForPost(
+  tags: CommunityPostSpiritTagResponse[] | null | undefined,
+  lang: 'ko' | 'en',
+): Promise<{ items: SeoSnapshotItem[]; hrefBySpiritId: Map<number, string> }> {
+  const unique = [...new Map(
+    (tags || [])
+      .filter((tag) => tag?.spiritId != null)
+      .map((tag) => [tag.spiritId, tag] as const),
+  ).values()].slice(0, 8)
+  const hrefBySpiritId = new Map<number, string>()
+  if (unique.length === 0) return { items: [], hrefBySpiritId }
+
+  const resolved = await Promise.all(unique.map(async (tag): Promise<SeoSnapshotItem | null> => {
+    const seo = await getSpiritSeo(String(tag.spiritId))
+    const name = lang === 'en' ? (tag.nameEn || tag.nameKo) : (tag.nameKo || tag.nameEn)
+    const href = seo
+      ? (lang === 'en' ? seo.canonicalPathEn : seo.canonicalPathKo)
+      : `/${lang}/spirits/${tag.spiritId}`
+    if (!name || !href) return null
+    hrefBySpiritId.set(tag.spiritId, href)
+    return { title: name, href, description: categoryLabel(tag.category, lang) }
+  }))
+  return {
+    items: resolved.filter((item): item is SeoSnapshotItem => item !== null),
+    hrefBySpiritId,
+  }
+}
+
 export async function getCommunityPostSeoSnapshot(
   boardType: string,
   id: string,
@@ -2471,13 +3222,19 @@ export async function getCommunityPostSeoSnapshot(
   const numericId = extractLeadingId(id)
   if (!numericId) return null
   const post = await fetchApiData<CommunityPostResponse>(`/api/posts/${numericId}`, 60)
-  if (!post || post.adultOnly || post.isLocked || post.isHidden) return null
+  if (!post || isRestrictedPost(post)) return null
 
   const bodyHtml = getPostContentHtml(post)
   const boardName = boardLabel(post.boardType || boardType, resolvedLang)
   const canonicalBoard = post.boardType?.toUpperCase() === 'NOTICE' ? 'notice' : 'free'
   const description = stripHtmlAndSummarize(bodyHtml, 220)
   const image = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl)
+  // 주류 태그는 이미지 갤러리에만 붙는다. 그 외 게시판은 본문 임베드가 유일한 연결 고리다.
+  const spiritLinks = await getSpiritLinksForPost(
+    [...(post.spiritTags || []), ...parseSpiritEmbeds(bodyHtml)],
+    resolvedLang,
+  )
+  const linkedBodyHtml = linkSpiritEmbeds(bodyHtml, spiritLinks.hrefBySpiritId)
 
   return {
     kind: 'community',
@@ -2498,9 +3255,13 @@ export async function getCommunityPostSeoSnapshot(
       { label: resolvedLang === 'en' ? 'Published' : '작성일', value: formatDateOnly(post.createdAt) },
       { label: resolvedLang === 'en' ? 'Updated' : '수정일', value: formatDateOnly(post.updatedAt) },
     ]),
-    bodyHtml: bodyHtml || null,
+    bodyHtml: linkedBodyHtml || null,
     sourceUrls: post.sourceUrls || [],
     hashtags: post.hashtags || [],
+    items: spiritLinks.items.length > 0 ? spiritLinks.items : undefined,
+    itemsHeading: spiritLinks.items.length > 0
+      ? (resolvedLang === 'en' ? 'Spirits mentioned in this post' : '이 글에서 언급한 주류')
+      : undefined,
     links: [
       { label: labels.home, href: '/ko' },
       { label: labels.community, href: '/ko/community/all' },
@@ -2570,7 +3331,7 @@ export async function getCommunityPostMetadata(boardType: string, id: string, la
     || 'CaskByCask 커뮤니티 게시글 상세 페이지입니다.'
   const canonical = `${SITE_URL}/ko/community/${canonicalBoard}/${numericId}`
   const ogImage = toAbsoluteImageUrl(post.imageUrl || post.images?.[0]?.imageUrl) || DEFAULT_OG_IMAGE
-  const restricted = Boolean(post.adultOnly || post.isLocked || post.isHidden)
+  const restricted = isRestrictedPost(post)
 
   return {
     title,
@@ -2607,7 +3368,7 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
   if (!numericId || (boardType !== 'notice' && boardType !== 'free' && boardType !== 'photo')) return null
 
   const post = await fetchApiData<CommunityPostResponse>(`/api/posts/${numericId}`, 60)
-  if (!post || post.adultOnly || post.isLocked || post.isHidden) return null
+  if (!post || isRestrictedPost(post)) return null
 
   const body = getPostContentHtml(post)
   const text = stripHtmlToText(body)

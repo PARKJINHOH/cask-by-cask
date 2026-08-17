@@ -6,7 +6,7 @@ import {
 } from '@/shared/components/imageEditorText'
 import type { PhotoCardEditor } from '../hooks/usePhotoCardEditor'
 import { NO_ZOOM_ATTRIBUTE } from '../hooks/usePhotoCardViewport'
-import type { PhotoCardLayer } from '../types/photoCard.types'
+import type { PhotoCardLayer, PhotoCardTextAlign } from '../types/photoCard.types'
 import {
   PHOTO_CARD_MAX_FONT_SIZE_RATIO, PHOTO_CARD_MIN_FONT_SIZE_RATIO,
 } from '../utils/layoutSchema'
@@ -29,8 +29,18 @@ const SIZE_STEP = 0.004
 /** 크기 칸에 적는 단위 — 비율을 %로 보여 준다(속성 패널의 표시와 같다). */
 const MIN_SIZE_PERCENT = PHOTO_CARD_MIN_FONT_SIZE_RATIO * 100
 const MAX_SIZE_PERCENT = PHOTO_CARD_MAX_FONT_SIZE_RATIO * 100
-/** 바의 대략적인 반폭(화면 px) — 카드 밖으로 밀려나지 않게 가둘 때 쓴다. */
-const BAR_HALF_WIDTH = 235
+/**
+ * 바의 대략적인 반폭(화면 px) — 카드 밖으로 밀려나지 않게 가둘 때 쓴다.
+ * 글꼴 목록·굵기·크기·정렬·색·삭제가 모두 들어간 가장 넓은 상태(약 620px)를 기준으로 잡았다.
+ */
+const BAR_HALF_WIDTH = 310
+
+/** 문단 정렬 — 여러 줄일 때 줄을 어느 쪽에 붙일지. 24×24 뷰박스의 가로줄 아이콘이다. */
+const TEXT_ALIGNS: { value: PhotoCardTextAlign; labelKey: string; icon: string }[] = [
+  { value: 'LEFT', labelKey: 'photoCard.textAlignLeft', icon: 'M3 5h18v2H3V5zm0 4h12v2H3V9zm0 4h18v2H3v-2zm0 4h12v2H3v-2z' },
+  { value: 'CENTER', labelKey: 'photoCard.textAlignCenter', icon: 'M3 5h18v2H3V5zm3 4h12v2H6V9zm-3 4h18v2H3v-2zm3 4h12v2H6v-2z' },
+  { value: 'RIGHT', labelKey: 'photoCard.textAlignRight', icon: 'M3 5h18v2H3V5zm6 4h12v2H9V9zm-6 4h18v2H3v-2zm6 4h12v2H9v-2z' },
+]
 
 /**
  * 이 요소에 빠른 편집 바가 뜨는가.
@@ -149,6 +159,29 @@ export default function PhotoCardQuickBar({
       <span className="shrink-0 text-[11px] text-neutral-400">%</span>
       <button type="button" className={button} title={t('photoCard.sizeUp')}
         onClick={() => stepSize(SIZE_STEP)}>＋</button>
+
+      {divider}
+
+      {/* 문단 정렬 — 고른 글자 위에서 바로 바꾼다. 지금 걸린 쪽은 눌린 상태로 남는다. */}
+      {TEXT_ALIGNS.map((align) => (
+        <button
+          key={align.value}
+          type="button"
+          title={t(align.labelKey)}
+          aria-label={t(align.labelKey)}
+          aria-pressed={(layer.textAlign ?? 'CENTER') === align.value}
+          onClick={() => patch({ textAlign: align.value })}
+          className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${
+            (layer.textAlign ?? 'CENTER') === align.value
+              ? 'bg-primary-100 text-primary-700'
+              : 'text-neutral-500 hover:bg-neutral-100'
+          }`}
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+            <path d={align.icon} />
+          </svg>
+        </button>
+      ))}
 
       {divider}
 

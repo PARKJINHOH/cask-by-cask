@@ -60,6 +60,14 @@ public record PhotoCardLayout(
             /** COVER(잘라서 채움) | CONTAIN(다 보이게) */
             String fit,
             Double radius,
+            /**
+             * 둥글게 깎인 모서리를 투명하게 둘 것인가.
+             * <p>
+             * 기본(null/false)은 깎인 자리에 카드 배경이 비친다. 켜면 그 자리를 뚫어
+             * PNG 로 뽑았을 때 실제로 비어 있게 된다. 켜지 않은 카드는 null 이라 직렬화에서 빠진다
+             * (기존 템플릿 JSON 이 그대로다).
+             */
+            Boolean transparentCorners,
             /** 사진 영역 중심과 크기 — 프레임 대비 비율 */
             Double x, Double y, Double w, Double h
     ) {}

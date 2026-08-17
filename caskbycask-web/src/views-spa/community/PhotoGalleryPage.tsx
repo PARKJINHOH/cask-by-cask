@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SeoMeta from '@/shared/components/SeoMeta'
+import { buildCanonical } from '@/shared/config/site'
+import { isBoardListNoindex, metadataSearchParamsFromUrl } from '@/shared/utils/seoIndexing'
 import type { PostSort } from '@/domain/community/types/community.types'
 import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
@@ -113,14 +115,23 @@ export default function PhotoGalleryPage() {
   }, [posts, patchParams])
 
   const hasFilter = Boolean(keywordParam || spiritTagId)
+  // 하이드레이션 이후에도 SSR 이 내린 색인 판정을 유지해야 한다.
+  // 이 값을 넘기지 않으면 SeoMeta 기본값이 robots 를 index 로 되돌려 SSR 신호를 덮어쓴다.
+  const seoNoindex = isBoardListNoindex('photo', metadataSearchParamsFromUrl(searchParams))
+  // SSR(seoHelpers 의 BOARD_LIST_CONFIG.photo)과 같은 문구를 쓴다 — 하이드레이션 전후로
+  // description 이 바뀌거나 사라지면 크롤러가 보는 요약이 흔들린다.
+  const seoDescription = t(
+    'photoGallery.seoDesc',
+    '오늘의 한 잔, 바에서의 한 컷. 촬영 정보와 주류 정보를 함께 담은 회원들의 사진을 모았습니다.',
+  )
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 py-6 lg:px-6">
       <SeoMeta
         title={t('photoGallery.title')}
-        canonical="/community/photo"
-        alternateKo="/ko/community/photo"
-        alternateEn="/en/community/photo"
+        description={seoDescription}
+        canonical={buildCanonical('/ko/community/photo')}
+        noindex={seoNoindex}
       />
 
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

@@ -56,6 +56,8 @@ export default function PhotoPostView({
   onViewerOpenChange,
   fill = false,
 }: Props) {
+  // onClose 가 있으면 모달로 열린 것이다(Props 주석 참고). 그때는 상위 화면에 이미 H1 이 있다.
+  const TitleHeading = onClose ? 'h2' : 'h1'
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -361,7 +363,11 @@ export default function PhotoPostView({
 
         {/* 본문 + 댓글 — 모달에서는 이 칸만 스크롤된다 */}
         <div className={['flex-1 px-4 py-4', fill ? 'min-h-0 overflow-y-auto' : ''].join(' ')}>
-          <h1 className="text-base font-bold text-neutral-900">{post.title}</h1>
+          {/*
+            단독 페이지에서는 이 제목이 문서의 유일한 H1 이다. 반면 모달로 열리면 갤러리 목록의
+            H1 아래에 겹쳐 들어가므로 한 단계 낮춘다 — H1 이 둘이면 문서 주제가 흐려진다.
+          */}
+          <TitleHeading className="text-base font-bold text-neutral-900">{post.title}</TitleHeading>
 
           {post.isHidden && !post.contentSanitized ? (
             <p className="mt-3 rounded-xl bg-neutral-100 px-4 py-6 text-center text-sm text-neutral-500">

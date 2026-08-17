@@ -32,6 +32,7 @@ import TextPanel from '@/domain/photo-card/components/panels/TextPanel'
 import { PHOTO_CARD_EXPORT_SIZES, PHOTO_CARD_MAX_EDGE } from '@/domain/photo-card/constants/photoCardRatios'
 import { REVIEW_SHARE_SYSTEM_EXPORT_SIZE_KEY } from '@/domain/photo-card/constants/systemTemplates'
 import type { PhotoCardTool } from '@/domain/photo-card/constants/photoCardTools'
+import { usePhotoCardAutoSave } from '@/domain/photo-card/hooks/usePhotoCardAutoSave'
 import { usePhotoCardEditor } from '@/domain/photo-card/hooks/usePhotoCardEditor'
 import { usePhotoCardShortcuts } from '@/domain/photo-card/hooks/usePhotoCardShortcuts'
 import { usePhotoCardViewport } from '@/domain/photo-card/hooks/usePhotoCardViewport'
@@ -42,6 +43,10 @@ import {
   PHOTO_CARD_MAX_TEMPLATES, normalizeLayout,
 } from '@/domain/photo-card/utils/layoutSchema'
 import {
+  needsPhotoUpload, PHOTO_CARD_DRAFT_LIMIT_CODE,
+  type AutoSaveOutcome, type AutoSavePhotoState, type AutoSaveStopReason,
+} from '@/domain/photo-card/utils/photoCardAutoSave'
+import {
   buildPhotoCardDraft, clearPhotoCardDraft, loadPhotoCardDraft, savePhotoCardDraft,
 } from '@/domain/photo-card/utils/photoCardDraft'
 import {
@@ -50,6 +55,7 @@ import {
 } from '@/domain/photo-card/utils/photoCardServerDraft'
 import { frameSizeOf } from '@/domain/photo-card/utils/photoCardRender'
 import { useAuthStore } from '@/domain/auth/store/authStore'
+import { extractApiErrorCode, extractApiErrorStatus } from '@/shared/utils/apiError'
 import type { ReviewPhotoCardRouteState } from '@/domain/review/share/reviewShare.types'
 import {
   REVIEW_SHARE_OFFICIAL_TEMPLATE_APPLIED_KEY,
@@ -77,8 +83,15 @@ const apiMessage = (error: unknown): string | null => {
   return typeof message === 'string' && message.trim() ? message : null
 }
 
-const isNotFound = (error: unknown): boolean =>
-  (error as { response?: { status?: number } })?.response?.status === 404
+const isNotFound = (error: unknown): boolean => extractApiErrorStatus(error) === 404
+const isUnauthorized = (error: unknown): boolean => extractApiErrorStatus(error) === 401
+
+/** 자동 저장이 멈춘 이유마다 보여 줄 문구. */
+const AUTO_SAVE_STOP_KEYS: Record<AutoSaveStopReason, string> = {
+  full: 'photoCard.autoSaveStoppedFull',
+  auth: 'photoCard.autoSaveStoppedAuth',
+  error: 'photoCard.autoSaveStoppedError',
+}
 
 /**
  * 도구 내용을 선택 속성보다 <b>위에</b> 두는 도구들.
@@ -138,6 +151,20 @@ export default function PhotoCardPage() {
   // busy 는 상태 갱신이 비동기라 아주 빠른 더블클릭이 두 번 통과할 수 있다.
   // 실제 중복 실행 차단은 ref 로 한다(렌더와 무관하게 즉시 반영된다).
   const runningRef = useRef(false)
+  /** 마지막으로 서버에 넣은 편집 내용. 자동 저장은 이것과 같으면 요청을 보내지 않는다. */
+  const savedContentRef = useRef<string | null>(null)
+  /** 서버가 지금 그 칸에 대해 들고 있는 사진. 같은 사진이면 다시 올리지 않는다. */
+  const savedPhotoRef = useRef<AutoSavePhotoState | null>(null)
+  /** 자동 저장이 시작됐다는 안내를 이미 했는가(세션당 한 번). */
+  const autoSaveNoticedRef = useRef(false)
+  /**
+   * 서버 임시저장을 막 불러왔을 때 그 id.
+   *
+   * 불러온 직후에는 editor 가 아직 이전 값이라, "이미 저장돼 있는 내용"이라는 도장은
+   * 상태가 갱신된 다음 렌더에서 찍어야 한다. 그러지 않으면 손대지도 않은 임시저장을
+   * 자동 저장이 곧바로 덮어쓰고 사진까지 다시 올린다.
+   */
+  const loadedDraftRef = useRef<number | null>(null)
   const incomingReviewDraft = (
     location.state as Partial<ReviewPhotoCardRouteState> | null
   )?.reviewPhotoCardDraft
@@ -207,7 +234,8 @@ export default function PhotoCardPage() {
     setNotice(null)
     // HEIC 는 Safari 만 디코딩한다. 확장자로 미리 막지 않고 실제로 열어 본 뒤 안내한다 —
     // 아이폰 사진을 그대로 올리는 흐름을 Safari 에서까지 막을 이유는 없다.
-    const ok = await editor.setPhoto(file)
+    // 아직 아무것도 얹지 않았다면 카드를 이 사진 비율로 잡아 준다(잘린 사진으로 편집을 시작하지 않게).
+    const ok = await editor.setPhoto(file, { fitCard: true })
     if (!ok) setNotice(t('photoCard.errorDecode'))
   }
 
@@ -341,6 +369,66 @@ export default function PhotoCardPage() {
   // 브라우저에 잠시 맡기는 위쪽 임시저장과는 쓰임이 다르다. 그쪽은 로그인하러 다녀오는 동안의
   // 자동 보관(한 칸)이고, 이쪽은 "여기까지 해 두고 다음에 이어서" 하려고 사용자가 직접 남기는
   // 목록이다. 편집 중인 사진까지 함께 올라가므로 회원만 쓸 수 있고, 보관 기간이 정해져 있다.
+
+  /** 지금 편집 내용. 저장할 값이자 자동 저장의 변경 감지 기준이다. */
+  const draftContent = () => buildDraftContent({
+    layout: editor.layout,
+    photoTransform: editor.photoTransform,
+    exif: editor.exif,
+    spirit: editor.spirit,
+    review: editor.review,
+    userInput: editor.userInput,
+    photoFile: editor.photoFile,
+  })
+
+  /**
+   * 임시저장에 지금 상태를 넣는다. 수동 저장과 자동 저장이 같은 길을 쓴다.
+   *
+   * 사진은 includePhoto 일 때만 올린다 — 서버는 photo 파트가 없으면 들고 있던 사진을 그대로 둔다.
+   * 배치만 고친 저장에서 최대 9MB 를 다시 올릴 이유가 없다(자동 저장은 3분마다 돌아온다).
+   *
+   * @returns 결과와, 서버가 이유를 알려 준 경우 그 문구.
+   */
+  const putDraft = async (
+    { asNew, includePhoto }: { asNew: boolean; includePhoto: boolean },
+  ): Promise<{ outcome: AutoSaveOutcome; message: string | null }> => {
+    const content = draftContent()
+    const photo = includePhoto
+      ? await buildDraftPhotoFile(editor.photoFile, editor.photoImage)
+      : null
+    // 올려야 하는데 만들지 못했으면 멈춘다 — 사진 없는 임시저장은 되살려도 빈 카드다.
+    if (includePhoto && !photo) return { outcome: 'retry', message: null }
+
+    try {
+      const saved = await photoCardDraftApi.save({
+        id: asNew ? undefined : currentDraftId ?? undefined,
+        name: suggestDraftName(editor.spirit, editor.userInput),
+        content,
+        thumbnail: await buildDraftThumbnail(editor.renderToBlob),
+        photo,
+      })
+      if (!saved?.id) return { outcome: 'retry', message: null }
+      setCurrentDraftId(saved.id)
+      savedContentRef.current = content
+      // 사진을 올렸을 때만 갱신한다. 안 올렸다면 서버가 들고 있는 것은 그대로다.
+      if (photo) savedPhotoRef.current = { draftId: saved.id, file: editor.photoFile }
+      await queryClient.invalidateQueries({ queryKey: PHOTO_CARD_DRAFTS_QUERY_KEY })
+      return { outcome: 'saved', message: null }
+    } catch (error) {
+      // 덮어쓰려던 것이 이미 없다면(다른 기기에서 지웠거나 기간이 지났다) 연결을 끊는다 —
+      // 그대로 두면 누를 때마다 같은 실패를 되풀이한다. 다음 저장은 새 항목으로 들어간다.
+      if (isNotFound(error)) {
+        setCurrentDraftId(null)
+        savedPhotoRef.current = null
+      }
+      const outcome: AutoSaveOutcome = extractApiErrorCode(error) === PHOTO_CARD_DRAFT_LIMIT_CODE
+        ? 'full'
+        : isUnauthorized(error) ? 'auth' : 'retry'
+      // 개수 제한처럼 서버가 이유를 아는 것은 그 문구를 그대로 보여 준다.
+      return { outcome, message: apiMessage(error) }
+    }
+  }
+
   const saveServerDraft = (asNew: boolean) => runOnce(async () => {
     if (!isLoggedIn) {
       setGate('draft')
@@ -351,37 +439,64 @@ export default function PhotoCardPage() {
       setNotice(t('photoCard.draftNeedsPhoto'))
       return
     }
-    const photo = await buildDraftPhotoFile(editor.photoFile, editor.photoImage)
-    if (!photo) {
-      setNotice(t('photoCard.draftSaveFailed'))
-      return
-    }
-    try {
-      const saved = await photoCardDraftApi.save({
-        id: asNew ? undefined : currentDraftId ?? undefined,
-        name: suggestDraftName(editor.spirit, editor.userInput),
-        content: buildDraftContent({
-          layout: editor.layout,
-          photoTransform: editor.photoTransform,
-          exif: editor.exif,
-          spirit: editor.spirit,
-          review: editor.review,
-          userInput: editor.userInput,
-          photoFile: editor.photoFile,
-        }),
-        thumbnail: await buildDraftThumbnail(editor.renderToBlob),
-        photo,
-      })
-      if (saved?.id) setCurrentDraftId(saved.id)
-      await queryClient.invalidateQueries({ queryKey: PHOTO_CARD_DRAFTS_QUERY_KEY })
-      setNotice(t('photoCard.draftServerSaved', { days: PHOTO_CARD_DRAFT_RETENTION_DAYS }))
-    } catch (error) {
-      // 덮어쓰려던 것이 이미 없다면(다른 기기에서 지웠거나 기간이 지났다) 연결을 끊는다 —
-      // 그대로 두면 누를 때마다 같은 실패를 되풀이한다. 다음 저장은 새 항목으로 들어간다.
-      if (isNotFound(error)) setCurrentDraftId(null)
-      // 개수 제한처럼 서버가 이유를 아는 것은 그 문구를 그대로 보여 준다.
-      setNotice(apiMessage(error) ?? t('photoCard.draftSaveFailed'))
-    }
+    const { outcome, message } = await putDraft({
+      asNew,
+      // 새 칸에는 사진이 없다. 이어서 덮어쓰는 칸은 사진이 바뀌었을 때만 다시 올린다.
+      includePhoto: asNew
+        || needsPhotoUpload(currentDraftId, editor.photoFile, savedPhotoRef.current),
+    })
+    setNotice(outcome === 'saved'
+      ? t('photoCard.draftServerSaved', { days: PHOTO_CARD_DRAFT_RETENTION_DAYS })
+      : message ?? t('photoCard.draftSaveFailed'))
+  })
+
+  /**
+   * 3분마다 돌아오는 자동 저장.
+   *
+   * 수동 저장과 같은 칸을 덮어쓴다 — 임시저장 목록이 자동 저장으로 채워지면 사용자가 남긴
+   * 항목이 밀려난다(1인 5칸). busy 는 켜지 않는다: 3분마다 화면의 단추가 잠깐씩 꺼지면
+   * 사용자는 이유를 알 수 없다. 대신 runningRef 는 공유해 수동 저장과 겹치지 않게 한다.
+   */
+  const autoSave = usePhotoCardAutoSave({
+    readState: () => ({
+      isLoggedIn,
+      hasPhoto: editor.photoImage != null,
+      busy: runningRef.current,
+      content: draftContent(),
+      savedContent: savedContentRef.current,
+      currentDraftId,
+      photoFile: editor.photoFile,
+      savedPhoto: savedPhotoRef.current,
+    }),
+    save: async ({ includePhoto }) => {
+      runningRef.current = true
+      try {
+        const { outcome } = await putDraft({ asNew: false, includePhoto })
+        // 사용자가 만들지 않은 항목이 목록에 조용히 생기면 안 된다. 처음 한 번만 알린다.
+        if (outcome === 'saved' && !autoSaveNoticedRef.current) {
+          autoSaveNoticedRef.current = true
+          setNotice(t('photoCard.autoSaveStarted'))
+        }
+        return outcome
+      } finally {
+        runningRef.current = false
+      }
+    },
+  })
+
+  // 멈춘 이유는 사용자가 손을 써야 풀린다(자리를 비우거나, 다시 로그인하거나, 연결을 고치거나).
+  useEffect(() => {
+    if (autoSave.stoppedReason) setNotice(t(AUTO_SAVE_STOP_KEYS[autoSave.stoppedReason]))
+  }, [autoSave.stoppedReason, t])
+
+  // 불러온 임시저장에 "이미 저장돼 있음" 도장을 찍는다. 편집기 상태가 갱신된 뒤라야 맞는 값이 나오므로
+  // 의존성 없이 매 렌더 확인하고(플래그 하나 보는 비용뿐이다) 한 번만 찍는다.
+  useEffect(() => {
+    const draftId = loadedDraftRef.current
+    if (draftId == null) return
+    loadedDraftRef.current = null
+    savedContentRef.current = draftContent()
+    savedPhotoRef.current = { draftId, file: editor.photoFile }
   })
 
   const loadServerDraft = (id: number) => runOnce(async () => {
@@ -401,6 +516,8 @@ export default function PhotoCardPage() {
         return
       }
       setCurrentDraftId(id)
+      // 방금 불러온 그대로는 이미 서버에 있는 내용이다. 다음 렌더에서 도장을 찍는다.
+      loadedDraftRef.current = id
       // 되살린 배치는 어느 템플릿에서 왔는지 알 수 없다 — 이전 표시를 남기면 거짓말이 된다.
       setAppliedTemplate(null)
       setReviewOfficialLayout(null)
@@ -517,6 +634,7 @@ export default function PhotoCardPage() {
             isLoggedIn={isLoggedIn}
             busy={busy || draftBusy}
             currentDraftId={currentDraftId}
+            autoSave={autoSave}
             onSave={({ asNew }) => { void saveServerDraft(asNew) }}
             onLoad={(id) => { void loadServerDraft(id) }}
             onDeleted={(id) => setCurrentDraftId((current) => (current === id ? null : current))}
@@ -705,7 +823,8 @@ export default function PhotoCardPage() {
           onSave={async (edited) => {
             // 보정 결과는 캔버스에서 나온 이미지라 EXIF 가 없다.
             // 그대로 다시 읽으면 카드에 넣으려던 촬영 정보가 통째로 사라진다.
-            await editor.setPhoto(edited, true)
+            // 잘라 낸 사진은 비율이 달라졌으므로, 빈 카드라면 새 비율에 다시 맞춘다.
+            await editor.setPhoto(edited, { keepExif: true, fitCard: true })
             setPhotoEditorOpen(false)
           }}
         />

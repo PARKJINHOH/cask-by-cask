@@ -47,6 +47,7 @@ public class SitemapService {
         for (long bucket : contentBuckets()) {
             appendSitemap(sb, "/sitemaps/content-" + bucket + ".xml");
         }
+        appendSitemap(sb, "/sitemaps/youtube.xml");
         List<Long> spiritBuckets = spiritBuckets();
         for (String lang : List.of("ko", "en")) {
             for (long bucket : spiritBuckets) {
@@ -75,6 +76,7 @@ public class SitemapService {
         appendKoreanUrl(sb, "/community/notice", null);
         appendKoreanUrl(sb, "/community/byob", null);
         appendKoreanUrl(sb, "/community/photo", null);
+        appendMultilingualUrl(sb, "/youtube", null);
         appendMultilingualUrl(sb, "/ranking", null);
         appendMultilingualUrl(sb, "/faq", null);
         appendMultilingualUrl(sb, "/calendar", null);
@@ -192,6 +194,45 @@ public class SitemapService {
                 .getResultList();
         for (Object[] row : byobs) {
             appendKoreanUrl(sb, "/community/byob/" + row[0], (LocalDateTime) row[1]);
+        }
+        return finishUrlSet(sb);
+    }
+
+    /**
+     * 유튜브 갤러리 영상 상세.
+     * <p>
+     * 채널당 최신 15편씩만 쌓이는 목록이라 버킷을 나누지 않는다 — 5만 URL 상한에 닿으려면
+     * 채널이 3천 개를 넘어야 한다. 그때가 오면 주류 사이트맵처럼 샤딩할 것.
+     * 노출 채널 × 노출 영상 교집합만 담아 색인과 화면이 어긋나지 않게 한다.
+     */
+    @Transactional(readOnly = true)
+    public String generateYoutubeSitemap() {
+        StringBuilder sb = startUrlSet();
+
+        // 채널 랜딩 페이지가 먼저다 — 영상 상세보다 상위 개념이고 수가 적어 크롤러가 일찍 만난다.
+        @SuppressWarnings("unchecked")
+        List<Object[]> channels = em.createQuery("""
+                SELECT c.handle, c.channelKey, c.updatedAt FROM YoutubeChannel c
+                WHERE c.isVisible = true AND c.permissionConfirmed = true
+                ORDER BY c.sortOrder, c.id
+                """)
+                .getResultList();
+        for (Object[] row : channels) {
+            String ref = row[0] != null ? (String) row[0] : (String) row[1];
+            appendMultilingualUrl(sb, "/youtube/channels/" + ref, (LocalDateTime) row[2]);
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> videos = em.createQuery("""
+                SELECT v.videoKey, v.updatedAt FROM YoutubeVideo v
+                JOIN v.channel c
+                WHERE v.isVisible = true
+                  AND c.isVisible = true AND c.permissionConfirmed = true
+                ORDER BY v.publishedAt DESC
+                """)
+                .getResultList();
+        for (Object[] row : videos) {
+            appendMultilingualUrl(sb, "/youtube/" + row[0], (LocalDateTime) row[1]);
         }
         return finishUrlSet(sb);
     }

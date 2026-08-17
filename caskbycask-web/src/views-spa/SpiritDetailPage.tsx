@@ -34,6 +34,7 @@ import { useState as useStateForPrice } from 'react'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
+import SpiritYoutubeSection from '@/domain/youtube/components/SpiritYoutubeSection'
 
 // 가격 차트는 recharts(약 313KB)를 끌어오지만 기본 탭이 '리뷰'라 첫 화면에서는 쓰이지 않는다.
 // 가격 탭을 열 때만 내려받도록 지연 로드한다.
@@ -1331,6 +1332,8 @@ export default function SpiritDetailPage() {
       </div>
       </div>
 
+        {/* 이 주류가 나온 유튜브 영상 — 태그된 영상이 없으면 섹션째 사라진다. */}
+        <SpiritYoutubeSection spiritId={masterSpiritId} />
 
       </div>
 

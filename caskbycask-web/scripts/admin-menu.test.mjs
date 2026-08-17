@@ -69,3 +69,31 @@ test('사용자 가격 카드에 한글 하드코딩이 남아 있지 않다', (
   assert.equal(card.includes('핫딜'), false, 'PriceReportCard 에 핫딜 하드코딩 잔존')
   assert.ok(card.includes("t('price.panel.hotDeal'"), '번역키 사용이 있어야 한다')
 })
+
+// 회귀 배경: 관리자 라우트를 App.tsx 와 adminMenu.ts 에만 등록하고 seoHelpers 의
+// isKnownAdminPath 화이트리스트에 빠뜨리면, SPA 안에서 이동할 때는 멀쩡한데
+// 그 주소를 직접 열거나 새로고침하면 SSR 이 not-found 로 판정해 404 가 뜬다.
+// 화면을 열어 보기 전에는 드러나지 않아 여기서 잡는다. (/admin/youtube 가 실제로 이랬다)
+test('사이드바의 모든 관리자 메뉴 경로가 SSR 색인 판정에 등록되어 있다', () => {
+  // 파일이 CRLF 라 '\n}\n' 로는 함수 끝을 찾지 못한다. 줄 단위로 훑어 여는 중괄호가
+  // 다시 닫히는 지점까지를 함수 본문으로 잡는다.
+  const lines = read('src/shared/utils/seoHelpers.ts').split(/\r?\n/)
+  const start = lines.findIndex((line) => line.startsWith('function isKnownAdminPath'))
+  assert.notEqual(start, -1, 'isKnownAdminPath 함수를 찾지 못했다')
+  const end = lines.findIndex((line, index) => index > start && line === '}')
+  assert.notEqual(end, -1, 'isKnownAdminPath 함수의 끝을 찾지 못했다')
+  const block = lines.slice(start, end).join('\n')
+
+  // 화이트리스트는 따옴표 문자열, 나머지는 /^…$/ 정규식으로 적혀 있다.
+  const quoted = new Set([...block.matchAll(/'([^']*)'/g)].map((m) => m[1]))
+  const patterns = [...block.matchAll(/\/\^(.+?)\$\//g)]
+    .map((m) => new RegExp(`^${m[1]}$`))
+  assert.ok(quoted.size > 10, `화이트리스트 추출 실패 (${quoted.size}건)`)
+
+  const missing = menuEntries()
+    .map((entry) => entry.path.replace(/^\/admin\/?/, ''))
+    .filter((path) => !quoted.has(path) && !patterns.some((re) => re.test(path)))
+
+  assert.deepEqual(missing, [],
+    `isKnownAdminPath 에 누락된 경로: ${missing.join(', ')} — 새로고침 시 404 가 난다`)
+})

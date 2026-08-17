@@ -15,11 +15,7 @@ import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import { formatBoardDate } from '@/shared/utils/format'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
-import {
-  isBoardListNoindex,
-  metadataSearchParamsFromUrl,
-  type BoardListType,
-} from '@/shared/utils/seoIndexing'
+import { isBoardListNoindex, listPageHrefWithParams, metadataSearchParamsFromUrl, type BoardListType } from '@/shared/utils/seoIndexing'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 
 const PAGE_SIZE = 20
@@ -629,6 +625,7 @@ export default function BoardListPage({ boardType, title }: Props) {
                 currentPage={pageParam}
                 totalPages={totalPages}
                 onPageChange={(p) => setParam('page', String(p))}
+                buildHref={(p) => listPageHrefWithParams(`/ko/community/${boardPath}`, searchParams, p)}
                 scrollTarget="page"
               />
             </div>

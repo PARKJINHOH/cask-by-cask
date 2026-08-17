@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
+import { getHiddenGnbMenuKeys } from '@/shared/utils/seoHelpers'
 // Pretendard 는 self-host 한다(가변 + dynamic subset, 92조각).
 // 번들된 CSS 로 들어가므로 서드파티 연결과 별도 CSS 요청이 모두 사라진다.
 // 자산 갱신은 `npm run fonts:sync` — 생성 파일은 직접 편집하지 않는다.
@@ -46,6 +47,9 @@ export default async function RootLayout({
 }) {
   const requestHeaders = await headers()
   const lang = requestHeaders.get('x-caskbycask-lang') === 'en' ? 'en' : 'ko'
+  // GNB 노출 설정을 SPA 첫 프레임보다 먼저 심어 숨긴 메뉴가 깜빡이지 않게 한다.
+  // 실패해도 빈 배열이라 렌더를 막지 않는다.
+  const hiddenGnbMenus = await getHiddenGnbMenuKeys()
 
   return (
     <html lang={lang} suppressHydrationWarning>
@@ -53,6 +57,12 @@ export default async function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `document.documentElement.classList.add('js-enabled');`,
+          }}
+        />
+        {/* `<` 이스케이프는 </script> 조기 종료를 막기 위한 것이므로 제거하지 말 것. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__GNB_HIDDEN__=${JSON.stringify(hiddenGnbMenus).replace(/</g, '\\u003c')};`,
           }}
         />
         <style

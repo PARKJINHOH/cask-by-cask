@@ -156,7 +156,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/banners/**").permitAll()
+                        // GNB 메뉴 노출 설정은 비회원 화면도 그대로 따라야 한다 — 인증을 걸면 비회원 GNB 가 어긋난다.
+                        .requestMatchers(HttpMethod.GET, "/api/gnb-menus/hidden").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
+                        // 유튜브 갤러리는 전부 읽기 전용 공개 API 다 (/api/admin/youtube/** 는 관리자 전용).
+                        .requestMatchers(HttpMethod.GET, "/api/youtube/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/byob").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/byob/{id:[0-9]+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()

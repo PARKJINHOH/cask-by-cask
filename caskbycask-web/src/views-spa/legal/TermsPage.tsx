@@ -14,6 +14,8 @@ export default function TermsPage() {
         title="이용약관"
         description="CaskByCask 서비스 이용약관."
         canonical={buildCanonical(`${langPrefix}/terms`)}
+        alternateKo={buildCanonical('/ko/terms')}
+        alternateEn={buildCanonical('/en/terms')}
       />
       <div className="w-full max-w-7xl mx-auto">
         <div className="mb-6">

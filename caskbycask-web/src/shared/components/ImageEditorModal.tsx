@@ -408,6 +408,24 @@ const nextTextLayerPosition = (index: number): TextPosition => ({
 })
 
 /** 밝기/대비/채도/선명도 기본값(%) — 100 = 원본 그대로 */
+/**
+ * 기울기 조절 폭과 눈금(도).
+ *
+ * 0.05도 단위 — 수평선을 맞추는 작업에서 1도는 너무 거칠다(가로 3000px 사진이면
+ * 한 눈금에 양 끝이 50px 넘게 움직인다). 슬라이더로 대충 잡고 칸에 숫자를 적어 다듬는다.
+ */
+const TILT_MIN = -45
+const TILT_MAX = 45
+const TILT_STEP = 0.05
+
+/** 각자의 「적용」을 눌러야 캔버스에 반영되는 편집 — 저장 직전에 확인한다. */
+type PendingEdit = 'crop' | 'resize'
+
+const PENDING_EDIT_LABEL_KEYS: Record<PendingEdit, string> = {
+  crop: 'imageEditor.pendingCrop',
+  resize: 'imageEditor.pendingResize',
+}
+
 const ADJUST_DEFAULT = 100
 
 type AdjustKey = 'brightness' | 'contrast' | 'saturation' | 'sharpness'
@@ -935,9 +953,34 @@ export default function ImageEditorModal({
     setTiltAngle(0)
   }
 
+  /**
+   * 기울기 값을 바꾼다.
+   *
+   * 0.05도 단위로 잡는다 — 수평선을 맞출 때 1도는 너무 크다(가로 3000px 사진에서 한 눈금이
+   * 양 끝 50px 차이다). 부동소수 오차가 쌓여 0.30000000000000004 같은 값이 되지 않게 반올림한다.
+   */
   const handleTiltSliderChange = (angle: number) => {
-    setTiltAngle(angle)
-    applyTiltAngle(angle)
+    const snapped = Math.max(
+      TILT_MIN,
+      Math.min(TILT_MAX, Math.round(angle / TILT_STEP) * TILT_STEP),
+    )
+    // -0 은 화면에 "-0.00" 으로 보인다.
+    const next = snapped === 0 ? 0 : Number(snapped.toFixed(2))
+    setTiltAngle(next)
+    applyTiltAngle(next)
+  }
+
+  /** 칸에 적는 동안의 글자. null 이면 확정된 값을 그대로 보여 준다. */
+  const [tiltDraft, setTiltDraft] = useState<string | null>(null)
+  /** 저장을 누른 순간 발견한, 아직 적용되지 않은 편집. 비어 있지 않으면 확인 창이 뜬다. */
+  const [pendingApply, setPendingApply] = useState<PendingEdit[] | null>(null)
+
+  const handleTiltInputChange = (raw: string) => {
+    setTiltDraft(raw)
+    // 다 적기 전의 "-", "0." 같은 중간 상태에서는 값을 건드리지 않는다.
+    const typed = Number(raw)
+    if (raw.trim() === '' || !Number.isFinite(typed)) return
+    handleTiltSliderChange(typed)
   }
 
   // ── Brightness / Contrast / Saturation / Sharpness ──────────────────
@@ -1801,8 +1844,53 @@ export default function ImageEditorModal({
   }
 
   // Handle Save
+  /**
+   * 적용 버튼을 누르지 않아 저장에 <b>반영되지 않는</b> 편집.
+   *
+   * 기울기·밝기 같은 미리보기는 캔버스에 직접 그려지므로 저장하면 그대로 담기지만,
+   * 자르기 틀과 크기 칸은 각자의 「적용」을 눌러야 캔버스가 바뀐다. 그 전에 「적용하기」를 누르면
+   * 방금 맞춰 둔 것이 아무 말 없이 사라진다 — 무엇이 빠지는지 먼저 알린다.
+   */
+  const pendingEditsOf = (): PendingEdit[] => {
+    const canvas = canvasRef.current
+    const list: PendingEdit[] = []
+    if (mode === 'crop') list.push('crop')
+    if (mode === 'resize' && canvas) {
+      const targetW = Math.round(parseFloat(resizeW))
+      const targetH = Math.round(parseFloat(resizeH))
+      if (Number.isFinite(targetW) && Number.isFinite(targetH)
+        && (targetW !== canvas.width || targetH !== canvas.height)) {
+        list.push('resize')
+      }
+    }
+    return list
+  }
+
   const handleSaveClick = async () => {
     if (isApplyingText) return
+    const pending = pendingEditsOf()
+    if (pending.length > 0) {
+      setPendingApply(pending)
+      return
+    }
+    await runSave()
+  }
+
+  /**
+   * 안 누른 「적용」을 대신 눌러 주고 저장한다.
+   *
+   * 아래 적용 함수들은 캔버스를 그 자리에서 바꾸므로(상태 갱신을 기다리지 않는다)
+   * 이어서 저장하면 반영된 결과가 나간다.
+   */
+  const applyPendingAndSave = async () => {
+    const pending = pendingApply ?? []
+    setPendingApply(null)
+    if (pending.includes('crop')) handleApplyCrop()
+    if (pending.includes('resize')) handleApplyResize()
+    await runSave()
+  }
+
+  const runSave = async () => {
     // 예약된 밝기/선명도 미리보기가 남아 있으면 먼저 캔버스에 반영
     flushAdjustRender()
 
@@ -1973,7 +2061,7 @@ export default function ImageEditorModal({
                 (모바일은 하단 툴 시트가 화면을 나눠 쓰므로 기존 비율을 유지) */}
             {/* 높이는 vh 가 아니라 dvh 다 — vh 는 주소창이 펼쳐진 상태를 반영하지 못해
                 모바일에서 패널 아래쪽(저장 버튼)이 화면 밖으로 잘린다. */}
-            <DialogPanel className="w-full max-w-5xl md:max-w-6xl xl:max-w-7xl bg-neutral-900 text-neutral-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90dvh]">
+            <DialogPanel className="relative w-full max-w-5xl md:max-w-6xl xl:max-w-7xl bg-neutral-900 text-neutral-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90dvh]">
               
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900/50 backdrop-blur">
@@ -2266,12 +2354,42 @@ export default function ImageEditorModal({
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
                             <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t('imageEditor.tilt')}</span>
-                            <span className="text-xs font-mono text-neutral-300">{tiltAngle}°</span>
+                            {/* 슬라이더로 대충 잡고 여기에 적어 다듬는다 — 0.05도까지 맞출 수 있다. */}
+                            <span className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleTiltSliderChange(tiltAngle - TILT_STEP)}
+                                disabled={tiltAngle <= TILT_MIN}
+                                aria-label={`${t('imageEditor.tilt')} -${TILT_STEP}`}
+                                className="h-6 w-6 rounded border border-neutral-700 bg-neutral-800/40 text-xs font-bold text-neutral-300 hover:bg-neutral-800 disabled:opacity-30"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={tiltDraft ?? tiltAngle.toFixed(2)}
+                                onChange={(e) => handleTiltInputChange(e.target.value)}
+                                onBlur={() => setTiltDraft(null)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                aria-label={t('imageEditor.tilt')}
+                                className="w-14 bg-neutral-800 border border-neutral-700 rounded px-1 py-0.5 text-right text-xs font-mono text-neutral-100 focus:outline-none focus:border-primary-500"
+                              />
+                              <span className="text-xs font-mono text-neutral-400">°</span>
+                              <button
+                                onClick={() => handleTiltSliderChange(tiltAngle + TILT_STEP)}
+                                disabled={tiltAngle >= TILT_MAX}
+                                aria-label={`${t('imageEditor.tilt')} +${TILT_STEP}`}
+                                className="h-6 w-6 rounded border border-neutral-700 bg-neutral-800/40 text-xs font-bold text-neutral-300 hover:bg-neutral-800 disabled:opacity-30"
+                              >
+                                ＋
+                              </button>
+                            </span>
                           </div>
                           <input
                             type="range"
-                            min="-45"
-                            max="45"
+                            min={TILT_MIN}
+                            max={TILT_MAX}
+                            step={TILT_STEP}
                             value={tiltAngle}
                             onChange={(e) => handleTiltSliderChange(Number(e.target.value))}
                             className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
@@ -2770,17 +2888,45 @@ export default function ImageEditorModal({
 
                   {mode === 'rotate' && (
                     <div className="flex flex-col gap-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-neutral-400 shrink-0">{t('imageEditor.tilt')}</span>
                         <input
                           type="range"
-                          min="-45"
-                          max="45"
+                          min={TILT_MIN}
+                          max={TILT_MAX}
+                          step={TILT_STEP}
                           value={tiltAngle}
                           onChange={(e) => handleTiltSliderChange(Number(e.target.value))}
                           className="flex-1 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
                         />
-                        <span className="text-xs font-mono text-neutral-300 w-10 text-right">{tiltAngle}°</span>
+                        {/* 좁은 화면에서도 숫자를 적어 0.05도까지 맞출 수 있어야 한다 — 손가락으로
+                            슬라이더를 짚어 반 도를 맞추는 것은 사실상 불가능하다. */}
+                        <button
+                          onClick={() => handleTiltSliderChange(tiltAngle - TILT_STEP)}
+                          disabled={tiltAngle <= TILT_MIN}
+                          aria-label={`${t('imageEditor.tilt')} -${TILT_STEP}`}
+                          className="h-7 w-7 shrink-0 rounded border border-neutral-700 bg-neutral-800/40 text-xs font-bold text-neutral-300 disabled:opacity-30"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={tiltDraft ?? tiltAngle.toFixed(2)}
+                          onChange={(e) => handleTiltInputChange(e.target.value)}
+                          onBlur={() => setTiltDraft(null)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                          aria-label={t('imageEditor.tilt')}
+                          className="w-12 shrink-0 bg-neutral-800 border border-neutral-700 rounded px-1 py-0.5 text-right text-xs font-mono text-neutral-100 focus:outline-none focus:border-primary-500"
+                        />
+                        <button
+                          onClick={() => handleTiltSliderChange(tiltAngle + TILT_STEP)}
+                          disabled={tiltAngle >= TILT_MAX}
+                          aria-label={`${t('imageEditor.tilt')} +${TILT_STEP}`}
+                          className="h-7 w-7 shrink-0 rounded border border-neutral-700 bg-neutral-800/40 text-xs font-bold text-neutral-300 disabled:opacity-30"
+                        >
+                          ＋
+                        </button>
                       </div>
 
                       <p className="text-[11px] leading-relaxed text-neutral-400">
@@ -2957,6 +3103,45 @@ export default function ImageEditorModal({
                   )}
                 </button>
               </div>
+
+              {/* 적용하지 않은 편집이 있을 때 — 그대로 저장하면 사라지는 것을 먼저 알린다.
+                  「적용하고 저장」이 첫 번째다: 대개는 적용을 깜빡한 것이지 버리려던 게 아니다. */}
+              {pendingApply && pendingApply.length > 0 && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center bg-neutral-950/75 p-6">
+                  <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-neutral-900 p-5 shadow-2xl">
+                    <h3 className="text-sm font-semibold text-neutral-100">
+                      {t('imageEditor.pendingTitle')}
+                    </h3>
+                    <p className="mt-2 text-xs leading-relaxed text-neutral-300">
+                      {t('imageEditor.pendingBody', {
+                        edits: pendingApply.map((key) => t(PENDING_EDIT_LABEL_KEYS[key])).join(' · '),
+                      })}
+                    </p>
+                    <div className="mt-4 flex flex-col gap-2">
+                      <button
+                        onClick={() => { void applyPendingAndSave() }}
+                        className="w-full rounded-xl bg-primary-600 hover:bg-primary-500 px-4 py-2.5 text-xs font-semibold text-white transition-colors"
+                      >
+                        {t('imageEditor.pendingApplyAndSave')}
+                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setPendingApply(null)}
+                          className="flex-1 rounded-xl border border-neutral-700 px-4 py-2.5 text-xs font-medium text-neutral-200 hover:bg-neutral-800 transition-colors"
+                        >
+                          {t('imageEditor.pendingKeepEditing')}
+                        </button>
+                        <button
+                          onClick={() => { setPendingApply(null); void runSave() }}
+                          className="flex-1 rounded-xl border border-neutral-700 px-4 py-2.5 text-xs font-medium text-neutral-400 hover:bg-neutral-800 transition-colors"
+                        >
+                          {t('imageEditor.pendingSaveAnyway')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </DialogPanel>
           </TransitionChild>

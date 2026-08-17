@@ -7,7 +7,7 @@ import type { NoticeCategory } from '@/domain/notice/types/notice.types'
 import Pagination from '@/shared/components/Pagination'
 import RecommendBadge from '@/shared/components/RecommendBadge'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
-import { isBoardListNoindex, metadataSearchParamsFromUrl } from '@/shared/utils/seoIndexing'
+import { isBoardListNoindex, listPageHrefWithParams, metadataSearchParamsFromUrl } from '@/shared/utils/seoIndexing'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
 
 const PAGE_SIZE = 20
@@ -234,7 +234,13 @@ export default function NoticePage() {
 
           {totalPages > 1 && (
             <div className="mt-8 flex justify-center">
-              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} scrollTarget="page" />
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                buildHref={(p) => listPageHrefWithParams('/ko/notices', searchParams, p)}
+                scrollTarget="page"
+              />
             </div>
           )}
         </>

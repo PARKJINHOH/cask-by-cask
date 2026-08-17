@@ -535,9 +535,15 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `SOCIAL_THREADS_APP_ID` / `SOCIAL_THREADS_APP_SECRET` | Threads API 앱 키. Threads 제거·삭제 `signed_request` 검증에도 사용 |
 | `SOCIAL_THREADS_API_BASE_URL` / `SOCIAL_THREADS_TOKEN_API_BASE_URL` | Threads 게시·토큰 API 호스트. 기본값은 모두 `https://graph.threads.net` |
 | `SEO_SITE_URL` | canonical·sitemap·IndexNow 공개 기준 URL. 운영값은 `https://www.caskbycask.net`으로 유지 |
-| `INDEXNOW_ENABLED` | 네이버 IndexNow 비동기 통지 활성화. 키 파일 확인 전에는 `false` 유지 |
+| `INDEXNOW_ENABLED` | IndexNow 비동기 통지 활성화. 키 파일 확인 전에는 `false` 유지 |
 | `INDEXNOW_KEY` | 공개 소유 확인 키(8~128자의 a-f/A-F/0-9/-). 활성화 시 `/indexnow-key.txt`에 노출되는 것이 정상 |
-| `INDEXNOW_ENDPOINT` | 기본값 `https://searchadvisor.naver.com/indexnow`. 장애 대응 외에는 변경하지 않음 |
+| `INDEXNOW_ENDPOINTS` | 쉼표로 구분한 통지 대상. 기본값 `https://www.bing.com/indexnow,https://searchadvisor.naver.com/indexnow`. 장애 대응 외에는 변경하지 않음 |
+| `INDEXNOW_ENDPOINT` | (구버전 호환) 단일 대상. 값이 있으면 위 목록에 더해 함께 보내며 중복 주소는 한 번만 통지한다. 기존 서버 값을 지우지 않아도 무방 |
+| `YOUTUBE_SYNC_CRON` | 유튜브 갤러리 정기 수집 주기. **Spring 6필드 cron**(맨 앞이 초), 기본값 `0 25 */3 * * *`(3시간마다) |
+| `YOUTUBE_FEED_CONNECT_TIMEOUT_MS` / `YOUTUBE_FEED_READ_TIMEOUT_MS` | 유튜브 RSS·oEmbed 연결/응답 제한 시간. 기본값 3000ms/10000ms |
+| `YOUTUBE_AVAILABILITY_CRON` | 삭제·비공개 영상 자동 숨김 점검 주기. **Spring 6필드 cron**, 기본값 `0 40 4 * * *`(매일 04:40) |
+| `YOUTUBE_AVAILABILITY_MAX_PER_RUN` | 1회 점검에서 확인할 영상 수 상한. 기본값 300 |
+| `YOUTUBE_AVAILABILITY_DELAY_MS` | 점검 시 영상 사이 대기. 기본값 150ms |
 | `SLACK_WEBHOOK_URL` | (선택) 운영/백업 알림 |
 | `PROD_DB_READONLY_USERNAME` / `PROD_DB_READONLY_PASSWORD` | (선택) 운영 스냅샷 dump 전용 읽기 계정 |
 | `DEV_REFRESH_DB_USERNAME` / `DEV_REFRESH_DB_PASSWORD` | (선택) 운영 스냅샷을 `caskbycask_dev` 로 갱신할 때 사용하는 교체 권한 계정 |
@@ -570,6 +576,56 @@ EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS=1000
 ```bash
 curl -fsS 'https://api.frankfurter.dev/v2/rates?base=EUR&quotes=KRW,USD,JPY,CNY,TWD'
 sudo journalctl -u caskbycask-api --since '12 hours ago' | grep -E 'Exchange rates refreshed|Exchange-rate refresh failed'
+```
+
+### 유튜브 갤러리 수집·가용성 점검
+
+관리자가 **허락을 받고 등록한** 채널의 최신 영상을 공개 RSS로 따라잡아 `/youtube` 갤러리에 노출한다.
+운영 배포는 Flyway `V88`~`V89` 적용이 전제다.
+
+- **Data API 키가 없다.** 공개 RSS(`youtube.com/feeds/videos.xml`)와 oEmbed만 쓰므로 할당량·키 관리가 없다.
+  대신 조회수·재생시간은 수집하지 않으며, 피드는 **채널당 최신 15편**만 담는다.
+  옛 영상은 관리자가 영상 URL로 직접 등록한다.
+- **정기 수집**: 기본 3시간마다(`0 25 */3 * * *`, Asia/Seoul). 급할 때는 관리자 화면의 `지금 수집`을 쓴다.
+  수집은 넣거나 갱신만 하고 지우지 않으므로, RSS 창 밖으로 밀려난 영상도 DB에는 남는다.
+- **가용성 점검**: 기본 매일 `04:40`. oEmbed 응답 코드로 판정해 404(삭제)·401/403(비공개)만 자동 숨김하고,
+  429·5xx·네트워크 오류는 `UNKNOWN`으로 두어 **아무것도 바꾸지 않는다**. 다시 재생 가능해지면 자동 복구한다.
+  관리자가 직접 숨긴 영상은 점검이 건드리지 않는다.
+- 두 작업은 `youtube-sync-scheduling-` **단일 스레드 스케줄러를 공유**하므로 서로 겹쳐 돌지 않는다.
+  환율 갱신 등 다른 배치와도 스레드를 나눠 쓰지 않아 서로 밀지 않는다.
+- **아웃바운드 허용 대상**: `www.youtube.com`, `youtube.com`(RSS·채널 페이지·oEmbed).
+  재생 임베드는 브라우저가 `www.youtube-nocookie.com`으로 직접 요청하므로 서버 방화벽과 무관하다.
+- 노출 조건은 **채널 노출 + 채널 허락 확인 + 영상 노출** 셋이 모두 참일 때다.
+  창작자가 동의를 철회하면 관리자 화면에서 그 채널 하나만 내리면 소속 영상이 전부 사라진다.
+
+기존 운영 서버의 `/app/env/api.env`는 배포 시 자동 교체되지 않는다. 아래는 전부 애플리케이션
+기본값과 같으므로 **생략해도 동작한다.** 주기를 조정할 때만 추가한 뒤 API를 재시작한다.
+
+```dotenv
+YOUTUBE_SYNC_CRON=0 25 */3 * * *
+YOUTUBE_FEED_CONNECT_TIMEOUT_MS=3000
+YOUTUBE_FEED_READ_TIMEOUT_MS=10000
+YOUTUBE_AVAILABILITY_CRON=0 40 4 * * *
+YOUTUBE_AVAILABILITY_MAX_PER_RUN=300
+YOUTUBE_AVAILABILITY_DELAY_MS=150
+```
+
+> ⚠️ `*_CRON`은 **Spring 6필드 형식**(맨 앞이 초)이다. Unix 5필드로 적으면 API가 기동에 실패한다.
+> 시간대는 코드에서 `Asia/Seoul`로 고정되어 있어 별도 설정이 필요 없다.
+
+- 상태 확인:
+
+```bash
+# 공개 목록이 응답하는지 (200 기대)
+curl -fsS 'https://www.caskbycask.net/api/youtube/videos?page=0&size=1' -o /dev/null -w '%{http_code}\n'
+
+# 정기 수집 / 가용성 점검 결과
+sudo journalctl -u caskbycask-api --since '1 day ago' \
+  | grep -E '유튜브 갤러리 수집 완료|유튜브 영상 가용성 점검 완료'
+
+# 실패 흔적 (채널별 실패는 해당 채널 행에도 기록된다)
+sudo journalctl -u caskbycask-api --since '1 day ago' \
+  | grep -E '유튜브 피드 수집 실패|유튜브 갤러리 정기 수집이 중단|유튜브 영상 가용성 점검이 중단'
 ```
 
 ### Instagram·Threads 자동 게시
@@ -689,6 +745,10 @@ journalctl -u caskbycask-api -f
 journalctl -u caskbycask-web -f
 tail -f /app/logs/caskbycask-api-error.log
 tail -f /app/caskbycask-crawler/logs/wine-cron.log
+
+# 앱 내부 배치 결과 (환율 / 유튜브 갤러리)
+sudo journalctl -u caskbycask-api --since '1 day ago' \
+  | grep -E 'Exchange rates refreshed|유튜브 갤러리 수집 완료|유튜브 영상 가용성 점검 완료'
 
 # DB 로컬 백업
 /app/scripts/backup-db.sh

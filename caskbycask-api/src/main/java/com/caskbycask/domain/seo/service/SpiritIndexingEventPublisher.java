@@ -1,6 +1,6 @@
 package com.caskbycask.domain.seo.service;
 
-import com.caskbycask.domain.seo.event.SpiritIndexingEvent;
+import com.caskbycask.domain.seo.event.IndexingEvent;
 import com.caskbycask.domain.seo.util.SpiritSlugUtils;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +40,7 @@ public class SpiritIndexingEventPublisher {
                     spirit.getCategory(), spirit.getVintageYear(), vintageStatus));
         }
         if (!urls.isEmpty()) {
-            eventPublisher.publishEvent(new SpiritIndexingEvent(List.copyOf(urls)));
+            eventPublisher.publishEvent(new IndexingEvent("spirit", List.copyOf(urls)));
         }
     }
 

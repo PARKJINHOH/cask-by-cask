@@ -43,3 +43,4 @@ caskbycask-api/lucene/
 Thumbs.db
 desktop.ini
 caskbycask-web/tsconfig.tsbuildinfo
+.claude/launch.json

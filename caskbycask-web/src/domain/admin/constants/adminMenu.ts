@@ -35,6 +35,7 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     items: [
       { path: '/admin/notices',  label: '공지사항' },
       { path: '/admin/banners',  label: '배너',     exact: true },
+      { path: '/admin/gnb-menus', label: '사용자 메뉴 노출', exact: true },
       { path: '/admin/events',   label: '이벤트 달력', exact: true },
       { path: '/admin/popups',   label: '팝업',     exact: true },
       { path: '/admin/legal',    label: '약관 관리', exact: true },
@@ -102,6 +103,7 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     groupIcon: '💬',
     items: [
       { path: '/admin/community/ai-news',      label: '소식(AI)', exact: true },
+      { path: '/admin/youtube',                label: '유튜브 갤러리', exact: true },
       { path: '/admin/social',                 label: 'SNS 게시 관리', exact: true },
       { path: '/admin/photo-cards',            label: '포토카드 템플릿', exact: true },
       { path: '/admin/community/post-reports', label: '게시글·댓글 신고' },

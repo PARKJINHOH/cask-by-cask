@@ -54,6 +54,8 @@ export default function FaqPage() {
         title="자주 묻는 질문 (FAQ)"
         description="위스키, 와인, 꼬냑 등 주류에 대한 자주 묻는 질문 — NAS, 캐스크 타입, 피티드, VSOP/XO 등급, 빈티지 등 핵심 용어 정리. CaskByCask FAQ."
         canonical={buildCanonical(`${langPrefix}/faq`)}
+        alternateKo={buildCanonical('/ko/faq')}
+        alternateEn={buildCanonical('/en/faq')}
         keywords="위스키 FAQ, 꼬냑 FAQ, 와인 FAQ, NAS, VSOP, XO, 캐스크, 피티드, 빈티지, whisky FAQ, cognac grade, single malt, bourbon"
         jsonLd={[breadcrumbJsonLd]}
       />

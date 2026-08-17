@@ -110,6 +110,12 @@ public class RateLimitConfig {
                         "guest-tier-list-image-upload",
                         pp.matcher(HttpMethod.POST, "/api/tier-list-drafts/images"),
                         10, Duration.ofMinutes(1), RateLimitRule.KeyType.IP),
+                // 포토카드 편집기가 3분마다 자동 저장한다(정상 사용은 시간당 20회 남짓).
+                // 사진 파일이 함께 올라올 수 있는 경로라, 고장 난 클라이언트가 반복 업로드하는 것만 막는다.
+                new RateLimitRule(
+                        "photo-card-draft-save",
+                        pp.matcher(HttpMethod.POST, "/api/photo-cards/drafts"),
+                        20, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),
                 new RateLimitRule(
                         "post-write",
                         pp.matcher(HttpMethod.POST, "/api/posts"),

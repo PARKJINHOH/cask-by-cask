@@ -476,7 +476,7 @@ public class PhotoCardTemplateService {
         }
 
         PhotoCardLayout.Photo photo = frame.photo() != null ? frame.photo()
-                : new PhotoCardLayout.Photo("COVER", 0.0, 0.5, 0.5, 1.0, 1.0);
+                : new PhotoCardLayout.Photo("COVER", 0.0, null, 0.5, 0.5, 1.0, 1.0);
         String fit = photo.fit() != null ? photo.fit().toUpperCase(Locale.ROOT) : "COVER";
         if (!PHOTO_FITS.contains(fit)) {
             throw invalid("사진 배치 방식이 올바르지 않습니다.");
@@ -484,6 +484,8 @@ public class PhotoCardTemplateService {
         PhotoCardLayout.Photo safePhoto = new PhotoCardLayout.Photo(
                 fit,
                 ratio(photo.radius(), 0.0, 0.0, 0.5, "사진 모서리"),
+                // 켜지 않은 카드는 필드를 남기지 않는다(NON_NULL 직렬화).
+                Boolean.TRUE.equals(photo.transparentCorners()) ? Boolean.TRUE : null,
                 ratio(photo.x(), 0.5, 0.0, 1.0, "사진 위치"),
                 ratio(photo.y(), 0.5, 0.0, 1.0, "사진 위치"),
                 ratio(photo.w(), 1.0, 0.01, 1.0, "사진 크기"),

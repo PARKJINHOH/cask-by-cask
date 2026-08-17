@@ -60,6 +60,7 @@ const AdminNoticePreviewPage = lazy(() => import('@/views-spa/admin/AdminNoticeP
 const AdminPopupListPage = lazy(() => import('@/views-spa/admin/AdminPopupListPage'))
 const AdminPopupFormPage = lazy(() => import('@/views-spa/admin/AdminPopupFormPage'))
 const AdminBannerListPage = lazy(() => import('@/views-spa/admin/AdminBannerListPage'))
+const AdminGnbMenuPage = lazy(() => import('@/views-spa/admin/AdminGnbMenuPage'))
 const AdminBannerFormPage = lazy(() => import('@/views-spa/admin/AdminBannerFormPage'))
 const AdminPostReportPage = lazy(() => import('@/views-spa/admin/AdminPostReportPage'))
 const AdminBadWordPage = lazy(() => import('@/views-spa/admin/AdminBadWordPage'))
@@ -110,6 +111,10 @@ const AdminSocialPage = lazy(() => import('@/views-spa/admin/AdminSocialPage'))
 const AdminPhotoCardTemplatePage = lazy(() => import('@/views-spa/admin/AdminPhotoCardTemplatePage'))
 const PublicReviewPage = lazy(() => import('@/views-spa/PublicReviewPage'))
 const SocialHubPage = lazy(() => import('@/views-spa/SocialHubPage'))
+const YoutubeGalleryPage = lazy(() => import('@/views-spa/YoutubeGalleryPage'))
+const YoutubeVideoDetailPage = lazy(() => import('@/views-spa/YoutubeVideoDetailPage'))
+const YoutubeChannelPage = lazy(() => import('@/views-spa/YoutubeChannelPage'))
+const AdminYoutubePage = lazy(() => import('@/views-spa/admin/AdminYoutubePage'))
 
 export default function App() {
   return (
@@ -158,6 +163,12 @@ export default function App() {
             <Route path="producers/:id" element={<ProducerDetailPage />} />
             <Route path="reviews/:reviewId" element={<PublicReviewPage />} />
             <Route path="social" element={<SocialHubPage />} />
+            {/* 유튜브 갤러리 — 영상 상세는 DB PK 가 아니라 유튜브 영상 ID 를 경로에 쓴다
+                (공유한 주소가 유튜브 쪽 ID 와 그대로 맞물리도록). */}
+            <Route path="youtube" element={<YoutubeGalleryPage />} />
+            {/* 채널 페이지는 2세그먼트라 :videoKey 와 겹치지 않는다 */}
+            <Route path="youtube/channels/:channelRef" element={<YoutubeChannelPage />} />
+            <Route path="youtube/:videoKey" element={<YoutubeVideoDetailPage />} />
             <Route path="price-tracker" element={<PriceTrackerPage />} />
             <Route path="price-tracker/spirits/:id" element={<SpiritPriceDetailPage />} />
             <Route element={<PrivateRoute />}>
@@ -226,6 +237,7 @@ export default function App() {
               <Route path="banners" element={<AdminBannerListPage />} />
               <Route path="banners/new" element={<AdminBannerFormPage />} />
               <Route path="banners/:id/edit" element={<AdminBannerFormPage />} />
+              <Route path="gnb-menus" element={<AdminGnbMenuPage />} />
               <Route path="events" element={<AdminEventCalendarPage />} />
               <Route path="community/post-reports" element={<AdminPostReportPage />} />
               <Route path="community/ai-news" element={<AdminAiNewsPage />} />
@@ -233,6 +245,7 @@ export default function App() {
               <Route path="community/ai-news/requests/:requestId" element={<AdminAiNewsRequestDetailPage />} />
               <Route path="community/ai-news/:id/edit" element={<AdminAiNewsFormPage />} />
               <Route path="social" element={<AdminSocialPage />} />
+              <Route path="youtube" element={<AdminYoutubePage />} />
               <Route path="photo-cards" element={<AdminPhotoCardTemplatePage />} />
               <Route path="community/bad-words" element={<AdminBadWordPage />} />
               <Route path="community/emojis" element={<AdminEmojiPage />} />

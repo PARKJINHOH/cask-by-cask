@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Suspense, lazy } from 'react'
+import { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react'
 import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import RouteFallback from '@/shared/components/RouteFallback'
@@ -16,6 +16,9 @@ import { useImmersiveEditing } from '@/shared/hooks/useImmersiveEditing'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
+import { GNB_MENUS, filterVisibleGnbMenus, isGnbGroup } from '@/domain/gnb-menu/constants/gnbMenu'
+import type { GnbChild, GnbItem } from '@/domain/gnb-menu/constants/gnbMenu'
+import { useGnbHiddenKeys } from '@/domain/gnb-menu/hooks/useGnbMenus'
 import NotificationBell from '@/domain/notification/components/NotificationBell'
 import MessagePopup from '@/domain/message/components/MessagePopup'
 import LevelBadge from '@/shared/components/LevelBadge'
@@ -146,11 +149,7 @@ function PasswordChangeBanner() {
 }
 
 // ── GNB (글로벌 내비게이션 바) ────────────────────────────────
-
-type GNBChild = { key: string; label: string; to: string; comingSoon?: boolean }
-type GNBItem =
-  | { key: string; label: string; to: string }
-  | { key: string; label: string; children: GNBChild[] }
+// 메뉴 목록은 gnbMenu.ts 카탈로그가 소유하고, 노출 여부만 관리자 설정(DB)이 정한다.
 
 /**
  * 마우스 hover 로만 드롭다운을 열고 닫기 위한 포인터 판별.
@@ -192,44 +191,15 @@ function GNB() {
   const lastSeenId = Number(localStorage.getItem(SEEN_KEY) ?? 0)
   const hasUnread = latestNotice != null && latestNotice.id > lastSeenId
 
-  const menus: GNBItem[] = [
-    { key: 'spirits', label: t('nav.spirits'), to: '/spirits' },
-    {
-      key: 'request',
-      label: t('menu.request'),
-      children: [
-        { key: 'requestSpirit',     label: t('menu.requestSpirit'),     to: '/request/spirit' },
-        { key: 'requestProducer', label: t('menu.requestProducer'), to: '/request/producer' },
-        { key: 'requestFeedback', label: t('menu.requestFeedback'), to: '/request/feedback' },
-      ],
-    },
-    { key: 'notice', label: t('menu.notice'), to: '/notices' },
-    {
-      key: 'community',
-      label: t('menu.community'),
-      children: [
-        { key: 'communityAll',   label: t('menu.communityAll'),   to: '/community/all' },
-        { key: 'communityNews',  label: t('menu.communityNews'),  to: '/community/notice' },
-        { key: 'communityBoard', label: t('menu.communityBoard'), to: '/community/free' },
-        { key: 'communityByob',  label: t('menu.communityByob'),  to: '/community/byob' },
-        { key: 'communityPhoto', label: t('photoGallery.title'),  to: '/community/photo' },
-        // 포토카드 편집기는 갤러리 목록 안의 버튼으로만 갈 수 있었다 —
-        // 만들러 들어온 사람이 목록을 한 번 거쳐야 해서 GNB 에도 바로 연다.
-        { key: 'photoCard',      label: t('photoGallery.createCta'), to: '/photo-card' },
-      ],
-    },
-    {
-      key: 'tasteExplorer',
-      label: t('menu.tasteExplorer'),
-      children: [
-        { key: 'tierList', label: t('menu.tierList'), to: '/tier-lists' },
-        { key: 'tasteTree', label: t('menu.tasteTree'), to: '/taste-trees' },
-      ],
-    },
-  ]
+  // 관리자가 숨긴 메뉴는 여기서 걸러진다. 조회 실패 시 빈 배열 → 전 메뉴 노출.
+  const { data: hiddenKeys } = useGnbHiddenKeys()
+  const menus = useMemo(
+    () => filterVisibleGnbMenus(GNB_MENUS, new Set(hiddenKeys ?? [])),
+    [hiddenKeys],
+  )
 
   const activeDropdown = open
-    ? menus.find((menu): menu is Extract<GNBItem, { children: GNBChild[] }> => menu.key === open && 'children' in menu)
+    ? menus.find((menu): menu is Extract<GnbItem, { children: GnbChild[] }> => menu.key === open && isGnbGroup(menu))
     : undefined
 
   const isPathActive = (to: string) => {
@@ -237,7 +207,7 @@ function GNB() {
     return location.pathname === to || location.pathname.startsWith(`${to}/`)
   }
 
-  const isGroupActive = (children: GNBChild[]) => children.some((child) => isPathActive(child.to))
+  const isGroupActive = (children: GnbChild[]) => children.some((child) => isPathActive(child.to))
 
   const openDropdown = (key: string, anchor: HTMLElement) => {
     const nav = navRef.current
@@ -271,9 +241,9 @@ function GNB() {
       >
         <ul className="flex min-w-max items-center gap-0.5 py-1 sm:gap-1">
           {menus.map(menu => {
-            if ('to' in menu) {
-              const isNotice  = menu.key === 'notice'
-              const isSpirits = menu.key === 'spirits'
+            if (!isGnbGroup(menu)) {
+              const isNotice  = menu.badge === 'notice'
+              const isSpirits = menu.variant === 'cta'
               const isActive = isPathActive(menu.to)
               return (
                 <li
@@ -289,7 +259,7 @@ function GNB() {
                         : itemCls(isActive)
                     }
                   >
-                    {menu.label}
+                    {t(menu.labelKey)}
                     {isNotice && hasUnread && (
                       <span
                         className="absolute top-1.5 right-0.5 w-1.5 h-1.5 rounded-full bg-red-500"
@@ -319,7 +289,7 @@ function GNB() {
                   aria-haspopup="true"
                   aria-expanded={isOpen}
                 >
-                  {menu.label}
+                  {t(menu.labelKey)}
                   <svg
                     className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -351,6 +321,27 @@ function GNB() {
         </ul>
       </div>
 
+      {/*
+        드롭다운은 열린 메뉴 하나만 마운트되므로, 하위 메뉴 주소가 평소에는 DOM 에 존재하지 않는다.
+        크롤러는 hover 도 클릭도 하지 않기 때문에 이미지 갤러리·자유게시판 같은 섹션이
+        렌더링된 문서에서 유입 링크 0개가 되어 sitemap 말고는 발견 경로가 없어진다.
+        화면 구성은 그대로 두고, DOM 에는 항상 남는 목록을 함께 둔다
+        (스크린리더에는 읽히므로 섹션 이동 수단으로도 쓰인다).
+      */}
+      <nav aria-label={t('menu.community')} className="sr-only">
+        <ul>
+          {/* 숨긴 메뉴가 DOM 에 남지 않도록 필터를 통과한 menus 를 그대로 쓴다. */}
+          {menus.flatMap((menu) => (isGnbGroup(menu) ? menu.children : [menu]))
+            .filter((item) => !('comingSoon' in item && item.comingSoon))
+            .map((item) => (
+              <li key={item.key}>
+                <Link to={item.to}>{t(item.labelKey)}</Link>
+              </li>
+            ))}
+          <li><Link to="/calendar">{t('menu.calendar')}</Link></li>
+        </ul>
+      </nav>
+
       {activeDropdown && (
         <div
           className="absolute top-full w-40 pt-1 z-50"
@@ -363,7 +354,7 @@ function GNB() {
                   key={child.key}
                   className="flex items-center justify-between px-4 py-2 text-sm text-neutral-400 cursor-default select-none"
                 >
-                  {child.label}
+                  {t(child.labelKey)}
                   <span className="text-xs bg-neutral-100 text-neutral-400 px-1.5 py-0.5 rounded">
                     준비중
                   </span>
@@ -375,7 +366,7 @@ function GNB() {
                   onClick={() => setOpen(null)}
                   className="flex items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-primary-800 transition-colors"
                 >
-                  {child.label}
+                  {t(child.labelKey)}
                 </Link>
               )
             )}

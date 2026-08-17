@@ -56,6 +56,8 @@ export default function ProducerDetailPage() {
           ? `${primaryName} — ${typeLabel} in ${countryLabel}. Spirits and reviews on CaskByCask.`
           : `${primaryName} — ${countryLabel} ${typeLabel}. CaskByCask에서 이 생산자의 술과 리뷰를 확인하세요.`}
         canonical={buildCanonical(`/${isEn ? 'en' : 'ko'}/producers/${producer.id}`)}
+        alternateKo={buildCanonical(`/ko/producers/${producer.id}`)}
+        alternateEn={buildCanonical(`/en/producers/${producer.id}`)}
         locale={isEn ? 'en_US' : 'ko_KR'}
       />
 

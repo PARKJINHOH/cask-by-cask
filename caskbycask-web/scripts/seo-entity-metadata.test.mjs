@@ -231,21 +231,27 @@ test('엔티티별 metadata', async (t) => {
 
   assert.ok(await waitForWeb(), `Next.js 서버 기동 실패:\n${webLog.slice(-2000)}`)
 
-  await t.test('공개 리뷰: 주류명과 작성자를 반영하고 한국어로 canonical 통합', async () => {
+  // 리뷰 본문의 정본은 그 리뷰가 달린 주류 상세다. 리뷰마다 URL 을 따로 색인시키면 같은 내용이
+  // 주류 페이지와 경쟁하므로 색인에서 빼고 canonical 로 주류를 가리킨다.
+  // SPA(PublicReviewPage)도 하이드레이션 후 같은 신호를 내야 한다 — 어긋나면 렌더링 전후로
+  // 색인 판정이 뒤집혀 SSR 만 보고는 알 수 없는 채로 결과가 달라진다.
+  await t.test('공개 리뷰: 색인에서 빼고 주류 상세를 정본으로 가리킨다', async () => {
     const ko = await readHead('/ko/reviews/11')
     assert.equal(ko.status, 200)
     assert.match(ko.title, /카발란 솔리스트 PX 셰리/)
     assert.match(ko.title, /인피튜드/)
     assert.match(ko.description, /평점 92점/)
-    assert.deepEqual(ko.canonical, [`${SITE}/ko/reviews/11`])
-    assert.deepEqual(ko.robots, ['index, follow'])
+    assert.deepEqual(ko.canonical, [`${SITE}${SPIRIT_CANONICAL_KO}`])
+    assert.deepEqual(ko.robots, ['noindex, follow'])
     // 리뷰 본문은 한국어이므로 영문 alternate 를 내보내면 잘못된 신호가 된다.
     assert.deepEqual(ko.hreflangKo, [])
     assert.deepEqual(ko.hreflangEn, [])
 
     const en = await readHead('/en/reviews/11')
     assert.equal(en.status, 200)
-    assert.deepEqual(en.canonical, [`${SITE}/ko/reviews/11`], '영문 진입도 한국어 원문으로 모은다')
+    assert.deepEqual(en.canonical, [`${SITE}${SPIRIT_CANONICAL_EN}`],
+      '영문 진입은 영문 주류 상세를 정본으로 삼는다')
+    assert.deepEqual(en.robots, ['noindex, follow'])
   })
 
   await t.test('공개 리뷰: 서로 다른 리뷰는 서로 다른 title', async () => {
@@ -340,7 +346,6 @@ test('엔티티별 metadata', async (t) => {
   // `null 시음 후기` 같은 문자열이 색인되므로, 라우트 기본 metadata 로 폴백해야 한다.
   await t.test('이름이 비어 있는 응답은 깨진 title 대신 기본 metadata 로 폴백', async () => {
     for (const path of [
-      '/ko/reviews/13',                  // displayNameKo/En 이 빈 문자열
       '/ko/producers/9',                 // nameKo/En 이 null
       '/ko/price-tracker/spirits/245',   // canonicalUrl 이 없음
     ]) {
@@ -357,5 +362,16 @@ test('엔티티별 metadata', async (t) => {
       assert.ok(head.canonical.length === 1, `${path}: canonical 은 정확히 1개`)
       assert.doesNotMatch(head.canonical[0], /null|undefined/, `${path}: canonical 오염 금지`)
     }
+
+    // 리뷰는 정책상 색인 대상이 아니므로 폴백도 noindex 다.
+    // 게다가 이 응답은 주류 canonical 조차 비어 있다 — 정본을 모를 때는 잘못된 주소를 가리키느니
+    // 선언하지 않는다(비공개 경로와 같은 관례).
+    const brokenReview = await readHead('/ko/reviews/13')
+    assert.equal(brokenReview.status, 200, '/ko/reviews/13: 200 이어야 한다')
+    assert.doesNotMatch(brokenReview.title, /null|undefined/, '/ko/reviews/13: title 오염 금지')
+    assert.doesNotMatch(brokenReview.description ?? '', /null|undefined/,
+      '/ko/reviews/13: description 오염 금지')
+    assert.deepEqual(brokenReview.robots, ['noindex, follow'], '/ko/reviews/13: 리뷰는 색인 제외')
+    assert.deepEqual(brokenReview.canonical, [], '/ko/reviews/13: 정본을 모르면 canonical 을 선언하지 않는다')
   })
 })

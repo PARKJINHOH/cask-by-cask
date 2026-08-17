@@ -177,6 +177,8 @@ export const normalizeLayout = (layout: PhotoCardLayout): PhotoCardLayout => {
       photo: {
         fit: photo.fit === 'CONTAIN' ? 'CONTAIN' : 'COVER',
         radius: ratio(photo.radius, 0, 0, 0.5),
+        // 켜지 않은 카드는 필드를 아예 남기지 않는다 — 기존 템플릿 JSON 이 그대로 유지된다.
+        ...(photo.transparentCorners === true ? { transparentCorners: true } : {}),
         x: ratio(photo.x, 0.5, 0, 1),
         y: ratio(photo.y, 0.5, 0, 1),
         w: ratio(photo.w, 1, 0.01, 1),

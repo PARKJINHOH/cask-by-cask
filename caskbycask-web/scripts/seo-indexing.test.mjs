@@ -65,6 +65,22 @@ const CASES = [
   // 카테고리는 sitemap 에 등재된 실제 facet 이므로 쿼리를 포함한 self-canonical 을 유지한다.
   ['/ko/spirits?category=WHISKY', multilingual('/ko/spirits?category=WHISKY')],
 
+  // 주류 카탈로그(1순위)의 페이지네이션은 정식 facet 이다.
+  // 뒤 페이지를 1페이지로 정규화하거나 noindex 로 두면 그 페이지에만 실린 주류가 색인에서 빠진다.
+  ['/ko/spirits?page=1', multilingual('/ko/spirits?page=1')],
+  ['/en/spirits?page=2', multilingual('/en/spirits?page=2')],
+  ['/ko/spirits?category=WHISKY&page=1', multilingual('/ko/spirits?category=WHISKY&page=1')],
+  // page=0 은 기본 주소와 같은 내용이므로 중복을 만들지 않도록 기본 경로로 신호를 모은다.
+  ['/ko/spirits?page=0', {
+    robots: 'noindex, follow',
+    canonical: `${SITE}/ko/spirits`,
+    hreflang: {
+      ko: `${SITE}/ko/spirits`,
+      en: `${SITE}/en/spirits`,
+      xDefault: `${SITE}/ko/spirits`,
+    },
+  }],
+
   // 티어리스트 소유자 편집 뷰는 기본 경로로 신호를 모으고 색인에서 제외한다.
   ['/ko/tier-lists?id=999', {
     robots: 'noindex, follow',
@@ -86,14 +102,25 @@ const CASES = [
   ['/en/community/free', koreanOnly('/ko/community/free')],
   ['/en/notices', koreanOnly('/ko/notices')],
 
-  // 검색·정렬·페이지 파라미터는 색인에서 제외하고 기본 경로로 신호를 모은다.
+  // 검색·정렬 파라미터는 색인에서 제외하고 기본 경로로 신호를 모은다.
   ['/ko/community/free?sort=BEST', koreanOnly('/ko/community/free', { noindex: true })],
   ['/ko/community/free?prefix=1', koreanOnly('/ko/community/free', { noindex: true })],
   ['/ko/community/free?keyword=test', koreanOnly('/ko/community/free', { noindex: true })],
-  ['/ko/community/free?page=1', koreanOnly('/ko/community/free', { noindex: true })],
-  ['/ko/notices?page=1', koreanOnly('/ko/notices', { noindex: true })],
   ['/ko/notices?category=EVENT', koreanOnly('/ko/notices', { noindex: true })],
   ['/ko/community/byob?status=OPEN', koreanOnly('/ko/community/byob', { noindex: true })],
+  // 주류별 사진 모아보기는 주류 상세의 "이 술의 사진"과 내용이 겹친다.
+  ['/ko/community/photo?spirit=107', koreanOnly('/ko/community/photo', { noindex: true })],
+
+  // 게시판(2순위) 페이지네이션도 self-canonical 로 색인한다.
+  // noindex 로 두면 그 페이지의 게시글 링크를 따라가는 신호가 오래 유지되지 않아,
+  // 1페이지에서 밀려난 글이 sitemap 말고는 유입 경로가 없는 고아가 된다.
+  ['/ko/community/free?page=1', koreanOnly('/ko/community/free?page=1')],
+  ['/ko/community/photo?page=3', koreanOnly('/ko/community/photo?page=3')],
+  ['/ko/notices?page=1', koreanOnly('/ko/notices?page=1')],
+  ['/ko/community/byob?page=2', koreanOnly('/ko/community/byob?page=2')],
+  // 형식이 어긋난 값과 1페이지를 가리키는 page=0 은 중복이므로 기본 경로로 모은다.
+  ['/ko/community/free?page=0', koreanOnly('/ko/community/free', { noindex: true })],
+  ['/ko/community/free?page=abc', koreanOnly('/ko/community/free', { noindex: true })],
 
   // ── 비공개·작성·관리 경로 ───────────────────────────────────
   ['/ko/mypage', PRIVATE],
@@ -147,8 +174,19 @@ async function waitForWeb(timeoutMs = 90_000) {
   return false
 }
 
+/** HTML 속성값의 엔티티를 되돌린다. 쿼리를 포함한 canonical 은 & 가 &amp; 로 나온다. */
+function decodeEntities(value) {
+  return value
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, '&')
+}
+
 function attr(tag, name) {
-  return tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, 'i'))?.[1] ?? null
+  const raw = tag.match(new RegExp(`\\b${name}=["']([^"']*)["']`, 'i'))?.[1] ?? null
+  return raw === null ? null : decodeEntities(raw)
 }
 
 async function readHead(path) {

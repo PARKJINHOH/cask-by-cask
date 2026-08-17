@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import {
   rotatePointAround, type LayerBounds, type PhotoCardCanvasSize,
 } from '../utils/photoCardRender'
-import type { SnapLine } from '../utils/photoCardSnap'
+import { snapRotation, type SnapLine } from '../utils/photoCardSnap'
 
 /** 화면 기준 크기(px). displayScale 로 나눠 캔버스 좌표로 환산하므로 확대해도 굵기가 일정하다. */
 const OUTLINE_WIDTH = 1.5
@@ -188,8 +188,8 @@ export default function PhotoCardOverlay({
     }
     const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x)
     const degrees = drag.startRotation + ((angle - drag.startAngle) * 180) / Math.PI
-    // Shift 로 15도 단위 — 수평·수직·대각선에 정확히 맞추기 위한 것이다.
-    onRotate(event.shiftKey ? Math.round(degrees / 15) * 15 : degrees)
+    // Shift 는 15도 눈금, 그냥 돌려도 직각 근처에서는 직각으로 붙는다(Alt 로 끈다).
+    onRotate(snapRotation(degrees, { step: event.shiftKey, free: event.altKey }))
   }
 
   const handleUp = () => {

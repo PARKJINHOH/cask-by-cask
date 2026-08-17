@@ -1,6 +1,6 @@
 package com.caskbycask.domain.seo.service;
 
-import com.caskbycask.domain.seo.event.SpiritIndexingEvent;
+import com.caskbycask.domain.seo.event.IndexingEvent;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritWineDetail;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
@@ -38,7 +38,7 @@ class SpiritIndexingEventPublisherTest {
 
         publisher.publish(List.of(master, edition));
 
-        var captor = forClass(SpiritIndexingEvent.class);
+        var captor = forClass(IndexingEvent.class);
         verify(applicationEventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().urls()).containsExactly(
                 "https://www.caskbycask.net/ko/spirits/295-탐두",
@@ -65,7 +65,7 @@ class SpiritIndexingEventPublisherTest {
 
         publisher.publish(wine);
 
-        var captor = forClass(SpiritIndexingEvent.class);
+        var captor = forClass(IndexingEvent.class);
         verify(applicationEventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().urls()).containsExactly(
                 "https://www.caskbycask.net/ko/spirits/297-모엣-샹동-nv",

@@ -16,6 +16,7 @@ import com.caskbycask.domain.producer.entity.Producer;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
 import com.caskbycask.domain.score.constant.ScoreActions;
 import com.caskbycask.domain.score.service.ScoreService;
+import com.caskbycask.domain.seo.service.PostIndexingEventPublisher;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
@@ -31,8 +32,10 @@ import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.util.BadWordFilter;
 import com.caskbycask.global.util.HtmlSanitizer;
 import com.caskbycask.global.util.HashtagNormalizer;
+import com.caskbycask.global.util.SpiritEmbedParser;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -78,6 +81,21 @@ public class PostService {
     private final ProducerRepository producerRepository;
     private final AiNewsArticleRepository aiNewsArticleRepository;
     private final SocialPublishRequestService socialPublishRequestService;
+
+    /** Optional field injection keeps domain unit tests and IndexNow-disabled environments isolated. */
+    @Autowired(required = false)
+    private PostIndexingEventPublisher postIndexingEventPublisher;
+
+    /**
+     * 새 글·수정한 글의 주소를 검색엔진에 통지한다.
+     * <p>IndexNow 가 꺼져 있거나 빈에 등록되지 않은 환경에서는 아무 일도 하지 않는다.
+     * 통지 실패가 글 저장을 되돌리면 안 되므로 전송은 커밋 이후 비동기로 처리된다.
+     */
+    private void notifyIndexing(Post post) {
+        if (postIndexingEventPublisher != null) {
+            postIndexingEventPublisher.publish(post);
+        }
+    }
 
     // ═══════════════════════════════════════════
     // 조회
@@ -203,6 +221,23 @@ public class PostService {
                 .findPublicPhotoPostsBySpiritId(spiritId, PageRequest.of(page, safeSize)));
     }
 
+    /**
+     * 주류 상세의 "이 주류를 언급한 글" — 게시판을 가리지 않고 최신순으로.
+     * <p>
+     * 일반 목록 조회는 boardType 이 없으면 NOTICE+FREE 로 좁히기 때문에 이 용도로는 쓸 수 없다.
+     * 그 화이트리스트는 이미지 갤러리 글이 글 목록에 섞이지 않게 하는 장치라 그대로 두고,
+     * 주류에서 글로 되짚어 오는 경로만 별도 조회로 연다.
+     */
+    @Transactional(readOnly = true)
+    public Page<PostListResponse> getPostsBySpirit(Long spiritId, int page, int size) {
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        // 크롤러가 두드리는 주소라 음수 page 도 500 대신 첫 페이지로 받아 넘긴다.
+        // 색인 경로에서 5xx 가 나면 Search Console 에 서버 오류로 잡힌다.
+        int safePage = Math.max(page, 0);
+        return toPostListResponses(postSpiritTagRepository
+                .findPublicPostsBySpiritId(spiritId, PageRequest.of(safePage, safeSize)));
+    }
+
     /** 상세 화면용 주류 태그. 이미지 갤러리가 아니면 조회조차 하지 않는다. */
     private List<PostSpiritTagInfo> spiritTagsOf(Post post) {
         if (!BoardType.PHOTO.equals(post.getBoardType())) {
@@ -234,24 +269,45 @@ public class PostService {
                 ));
     }
 
-    /** 주류 태그 지정 — 이미지 갤러리 글에서만 쓴다. 다른 게시판은 요청이 와도 무시한다. */
+    /**
+     * 게시글이 가리키는 주류를 태그 행으로 확정한다.
+     * <p>출처가 둘이다.
+     * <ul>
+     *   <li>이미지 갤러리 업로드 화면의 주류 선택기 — PHOTO 게시판에만 있다. 사용자가 고른 순서가
+     *       노출 순서이고, {@code null}(미전송)은 "변경 안 함"이라 기존 선택을 유지한다.</li>
+     *   <li>본문 리치텍스트의 주류 카드 임베드 — 게시판을 가리지 않는다. 자유·소식 게시판에서는
+     *       이 경로가 글과 주류를 잇는 유일한 연결 고리다.</li>
+     * </ul>
+     */
     private void applySpiritTags(Post post, List<Long> spiritTagIds) {
-        if (!BoardType.PHOTO.equals(post.getBoardType())) {
-            return;
+        List<Long> selected = List.of();
+        if (BoardType.PHOTO.equals(post.getBoardType())) {
+            selected = spiritTagIds != null
+                    ? spiritTagIds.stream().filter(Objects::nonNull).distinct().toList()
+                    : post.getSpiritTags().stream()
+                            .map(tag -> tag.getSpirit().getId()).distinct().toList();
         }
-        if (spiritTagIds == null || spiritTagIds.isEmpty()) {
+
+        List<Long> candidates = new ArrayList<>(selected);
+        for (Long embedded : SpiritEmbedParser.parseSpiritIds(post.getContentSanitized())) {
+            if (!candidates.contains(embedded)) candidates.add(embedded);
+        }
+        if (candidates.isEmpty()) {
             post.replaceSpiritTags(List.of());
             return;
         }
-        List<Long> uniqueIds = spiritTagIds.stream().filter(Objects::nonNull).distinct().toList();
-        List<Spirit> spirits = spiritRepository.findAllById(uniqueIds);
-        if (spirits.size() != uniqueIds.size()) {
-            throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
-        }
-        // 요청 순서를 유지한다(사용자가 고른 순서가 카드/태그 노출 순서다).
-        Map<Long, Spirit> byId = spirits.stream()
+
+        Map<Long, Spirit> byId = spiritRepository.findAllById(candidates).stream()
                 .collect(Collectors.toMap(Spirit::getId, spirit -> spirit));
-        post.replaceSpiritTags(uniqueIds.stream().map(byId::get).toList());
+        // 사용자가 화면에서 직접 고른 주류가 없으면 잘못된 요청이다.
+        for (Long id : selected) {
+            if (!byId.containsKey(id)) {
+                throw new CustomException(ErrorCode.SPIRIT_NOT_FOUND);
+            }
+        }
+        // 반면 본문 임베드가 가리키던 주류는 그사이 삭제되었을 수 있다.
+        // 오래된 글을 수정할 때 저장이 막히면 안 되므로 조용히 건너뛴다.
+        post.replaceSpiritTags(candidates.stream().map(byId::get).filter(Objects::nonNull).toList());
     }
 
     private Map<Long, String> firstVideoUrlsByPostIds(List<Long> postIds) {
@@ -414,6 +470,8 @@ public class PostService {
             socialPublishRequestService.requestPost(post.getId(), author, request.getSocialPublish());
         }
 
+        notifyIndexing(post);
+
         return PostDetailResponse.builder(post, true).spiritTags(spiritTagsOf(post)).build();
     }
 
@@ -456,12 +514,13 @@ public class PostService {
         if (BoardType.NOTICE.equals(post.getBoardType()) && request.getHashtags() != null) {
             replaceNoticeHashtagsSafely(post, HashtagNormalizer.normalize(request.getHashtags()));
         }
-        // 주류 태그는 null(미전송) = 변경 안 함, 빈 배열 = 전부 해제.
-        if (request.getSpiritTagIds() != null) {
-            applySpiritTags(post, request.getSpiritTagIds());
-        }
+        // 본문 임베드가 바뀌었을 수 있으므로 태그는 항상 다시 계산한다.
+        // 선택기의 null(미전송) = 변경 안 함, 빈 배열 = 전부 해제 규칙은 applySpiritTags 가 지킨다.
+        applySpiritTags(post, request.getSpiritTagIds());
         postImageService.syncImageUsage(post, newContent);
         postVideoService.syncVideoUsage(post, newContent);
+
+        notifyIndexing(post);
 
         return PostDetailResponse.builder(post, true).spiritTags(spiritTagsOf(post)).build();
     }
@@ -494,8 +553,12 @@ public class PostService {
         if (BoardType.NOTICE.equals(post.getBoardType()) && request.getHashtags() != null) {
             replaceNoticeHashtagsSafely(post, HashtagNormalizer.normalize(request.getHashtags()));
         }
+        applySpiritTags(post, request.getSpiritTagIds());
         postImageService.syncImageUsage(post, newContent);
         postVideoService.syncVideoUsage(post, newContent);
+
+        notifyIndexing(post);
+
         return PostDetailResponse.builder(post, true).spiritTags(spiritTagsOf(post)).build();
     }
 

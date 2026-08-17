@@ -12,7 +12,8 @@ interface Props {
 // 게시글/공지 등 TipTap 본문을 읽기 화면에 렌더링.
 //   - sanitizeHtml 로 2차 정제 후 출력
 //   - 본문 내 술 임베드 칩(.di-spirit-embed[data-spirit-id]) 클릭 시 SPA 이동
-//     (href 는 sanitize 단계에서 제거되므로 data-spirit-id 로 위임)
+//     (href 는 sanitize 단계에서 제거되므로 data-spirit-id 로 위임 — 대신 렌더 후 다시 채운다.
+//      크롤러는 클릭하지 않으므로 href 가 없으면 글 → 주류 링크가 아예 없는 셈이 된다)
 //   - 본문 내 이미지(<img>) 클릭 시 라이트박스(확대/줌/이전·다음) 표시
 export default function RichContent({ html, className }: Props) {
   const navigate = useNavigate()
@@ -20,6 +21,28 @@ export default function RichContent({ html, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [images, setImages] = useState<string[]>([])
   const [lightbox, setLightbox] = useState({ open: false, index: 0 })
+
+  /**
+   * 본문 주류 카드에 실제 href 를 채운다.
+   *
+   * sanitize 단계가 href 를 제거하므로 임베드는 클릭 이동만 가능한 상태로 남는다. 그러면
+   * 크롤러에게는 막다른 길이 된다 — 크롤러는 클릭하지 않고 href 만 따라가기 때문이다.
+   * SSR(SeoFallback)은 canonical slug 로 href 를 채우지만 하이드레이션 때 이 컴포넌트로
+   * 교체되므로, 구글이 최종적으로 보는 DOM 에서는 글 → 주류 링크가 사라진다.
+   *
+   * 정본 slug 는 서버만 알기에 여기서는 id 경로를 쓴다 — 주류 라우트가 301 로 canonical 로
+   * 넘겨 주므로 신호는 같은 곳에 모인다. 클릭 시 SPA 이동은 onClick 이 그대로 가로챈다.
+   */
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const localePrefix = i18n.language === 'en' ? '/en' : '/ko'
+    el.querySelectorAll('a[data-spirit-id]').forEach((anchor) => {
+      const spiritId = anchor.getAttribute('data-spirit-id')
+      if (!spiritId || anchor.getAttribute('href')) return
+      anchor.setAttribute('href', `${localePrefix}/spirits/${spiritId}`)
+    })
+  }, [html, i18n.language])
 
   // 렌더 후 이미지 확대 커서와 좌우 이미지 묶음의 저장된 비율/동일 높이를 적용한다.
   useEffect(() => {

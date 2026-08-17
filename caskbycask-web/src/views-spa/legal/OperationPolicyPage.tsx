@@ -14,6 +14,8 @@ export default function OperationPolicyPage() {
         title="커뮤니티 운영정책"
         description="CaskByCask 커뮤니티 게시판 운영정책 및 닉네임 가이드라인."
         canonical={buildCanonical(`${langPrefix}/operation-policy`)}
+        alternateKo={buildCanonical('/ko/operation-policy')}
+        alternateEn={buildCanonical('/en/operation-policy')}
       />
       <div className="w-full max-w-7xl mx-auto">
         <div className="mb-6">

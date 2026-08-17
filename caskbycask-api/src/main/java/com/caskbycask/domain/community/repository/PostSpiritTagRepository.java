@@ -54,4 +54,30 @@ public interface PostSpiritTagRepository extends JpaRepository<PostSpiritTag, Lo
           and t.post.isHidden = false
         """)
     Page<Post> findPublicPhotoPostsBySpiritId(@Param("spiritId") Long spiritId, Pageable pageable);
+
+    /**
+     * 주류 상세의 "이 주류를 언급한 글" — 게시판을 가리지 않는다.
+     * <p>
+     * 위의 사진 전용 조회와 달리 게시판 조건이 없다. 일반 글 목록 조회
+     * ({@code PostQueryRepository.findPosts})는 boardType 이 없으면 NOTICE+FREE 화이트리스트로
+     * 좁히므로 이미지 갤러리 글이 빠지는데, 주류 태그는 오히려 그쪽에 가장 많이 붙어 있다.
+     * <p>
+     * 성인 전용 글은 sitemap 이 이미 제외하고 있어 색인 대상과 어긋나지 않도록 여기서도 뺀다.
+     */
+    @Query(value = """
+        select t.post from PostSpiritTag t
+        where t.spirit.id = :spiritId
+          and t.post.status <> com.caskbycask.domain.community.entity.enums.PostStatus.DELETED
+          and t.post.isHidden = false
+          and t.post.adultOnly = false
+        order by t.post.id desc
+        """,
+        countQuery = """
+        select count(t) from PostSpiritTag t
+        where t.spirit.id = :spiritId
+          and t.post.status <> com.caskbycask.domain.community.entity.enums.PostStatus.DELETED
+          and t.post.isHidden = false
+          and t.post.adultOnly = false
+        """)
+    Page<Post> findPublicPostsBySpiritId(@Param("spiritId") Long spiritId, Pageable pageable);
 }

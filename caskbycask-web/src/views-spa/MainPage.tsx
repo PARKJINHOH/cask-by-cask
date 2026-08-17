@@ -791,6 +791,18 @@ export default function MainPage() {
           : '주류 정보, 위스키 리뷰, 와인 평점, 꼬냑 등급, 주류 커뮤니티, 캐스크바이캐스크, 캐바캐'}
       />
 
+      {/*
+        홈은 링크 권위가 가장 높은 페이지인데 화면 구성이 배너·섹션 목록이라 H1 이 없었다.
+        SSR(SeoFallback)은 H1 을 내보내지만 하이드레이션 때 지워져, 크롤러가 최종적으로 보는
+        DOM 에는 문서 주제를 알리는 헤딩이 사라진다. 문구는 SSR 스냅샷과 같게 맞춘다.
+        화면에는 보이지 않지만 스크린리더에는 읽히므로 접근성에도 도움이 된다.
+      */}
+      <h1 className="sr-only">
+        {isEn
+          ? 'CaskByCask — Whisky, wine and cognac information and reviews'
+          : 'CaskByCask(캐바캐) — 위스키·와인·꼬냑 주류 정보와 리뷰'}
+      </h1>
+
       {/* 본문: 2열 (주 콘텐츠 + 사이드바) */}
       <div className="max-w-7xl mx-auto px-4 py-6 lg:py-8">
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-7">

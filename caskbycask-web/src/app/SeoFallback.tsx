@@ -69,8 +69,14 @@ export default function SeoFallback({ snapshot }: Props) {
               </dl>
             )}
 
+            {/*
+              작성자가 에디터로 쓴 본문이다. 안에 어떤 헤딩이 들어올지는 코드가 정하지 못하므로
+              (h1 을 직접 넣는 글도 있다) 문서 구조를 검사할 때 이 영역은 구분해서 본다.
+              SPA 쪽 같은 영역은 RichContent 의 `notice-content` 클래스가 같은 역할을 한다.
+            */}
             {snapshot.bodyHtml && (
               <div
+                data-cbc-user-content="true"
                 className="mt-6 max-w-none text-base leading-8 text-neutral-800 [&_a]:text-amber-700 [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded-lg [&_p]:my-3"
                 dangerouslySetInnerHTML={{ __html: snapshot.bodyHtml }}
               />
@@ -125,6 +131,44 @@ export default function SeoFallback({ snapshot }: Props) {
                 </li>
               ))}
             </ul>
+
+            {snapshot.pagination && (
+              <nav
+                className="mt-6 flex flex-wrap items-center gap-2 text-sm font-semibold"
+                aria-label={snapshot.lang === 'en' ? 'Pagination' : '페이지 목록'}
+              >
+                {snapshot.pagination.prevHref && (
+                  <a
+                    className="rounded-md border border-neutral-200 px-3 py-1.5 text-amber-800 hover:underline"
+                    href={snapshot.pagination.prevHref}
+                    rel="prev"
+                  >
+                    {snapshot.lang === 'en' ? 'Previous' : '이전'}
+                  </a>
+                )}
+                {snapshot.pagination.links.map((link) => (
+                  <a
+                    key={link.page}
+                    className={link.current
+                      ? 'rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-amber-900'
+                      : 'rounded-md border border-neutral-200 px-3 py-1.5 text-amber-800 hover:underline'}
+                    href={link.href}
+                    aria-current={link.current ? 'page' : undefined}
+                  >
+                    {link.page + 1}
+                  </a>
+                ))}
+                {snapshot.pagination.nextHref && (
+                  <a
+                    className="rounded-md border border-neutral-200 px-3 py-1.5 text-amber-800 hover:underline"
+                    href={snapshot.pagination.nextHref}
+                    rel="next"
+                  >
+                    {snapshot.lang === 'en' ? 'Next' : '다음'}
+                  </a>
+                )}
+              </nav>
+            )}
           </section>
         )}
 

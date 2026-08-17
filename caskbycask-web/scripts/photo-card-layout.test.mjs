@@ -25,7 +25,8 @@ const { getDrawableLayers, resolveBindingValue, resolveLayerImageUrl, resolveLay
 
 const {
   frameSizeOf, measureLayerBounds, findLayerAtPoint, photoRectOf, toPx,
-  drawPhoto, photoPlacementOf, reanchorLayersForExtend, reflowLayersForFrame, shortSideOf, textBaselineYOf,
+  drawPhoto, drawPhotoCard, photoPlacementOf, reanchorLayersForExtend, reflowLayersForFrame,
+  shortSideOf, textBaselineYOf,
   wrapPhotoCardText,
   drawWatermark, watermarkRectOf,
   WATERMARK_MARGIN_RATIO, WATERMARK_OPACITY, WATERMARK_WIDTH_RATIO,
@@ -36,10 +37,15 @@ const { buildPhotoCardDraft } = await import('../src/domain/photo-card/utils/pho
 const { buildDraftContent, parseDraftContent } =
   await import('../src/domain/photo-card/utils/photoCardServerDraft.ts')
 
-const { alignLayers, applySnap, collectSnapTargets, distributeLayers } =
+const { alignLayers, applySnap, collectSnapTargets, distributeLayers, snapRotation } =
   await import('../src/domain/photo-card/utils/photoCardSnap.ts')
 
-const { USER_BINDINGS, placeCarriedLayers } =
+const {
+  decideAutoSave, needsPhotoUpload,
+  PHOTO_CARD_AUTO_SAVE_INTERVAL_MS, PHOTO_CARD_AUTO_SAVE_MAX_FAILURES,
+} = await import('../src/domain/photo-card/utils/photoCardAutoSave.ts')
+
+const { USER_BINDINGS, fitCardToPhoto, placeCarriedLayers } =
   await import('../src/domain/photo-card/hooks/usePhotoCardEditor.ts')
 
 const {
@@ -67,7 +73,9 @@ function fakeContext(widthPerCharacter = 10) {
     moveTo() {}, lineTo() {}, quadraticCurveTo() {}, fill() {}, stroke() {},
     // 클립 영역을 확인해야 해서 rect 는 인자를 남긴다.
     rect: (...a) => calls.push(['rect', ...a]),
-    translate() {}, rotate() {}, clearRect() {},
+    translate() {}, rotate() {},
+    // 투명 모서리는 '배경을 지웠는가'로 확인하므로 인자를 남긴다.
+    clearRect: (...a) => calls.push(['clearRect', ...a]),
     fillRect: (...a) => calls.push(['fillRect', ...a]),
     drawImage: (...a) => calls.push(['drawImage', ...a]),
     strokeText: (t, x, y) => calls.push(['stroke', t, x, y]),
@@ -887,6 +895,309 @@ describe('카드 크기 확장', () => {
   })
 })
 
+describe('문단 정렬', () => {
+  const SIZE = { width: 800, height: 1000 }   // 4:5, 짧은 변 800
+
+  const cardWith = (layer) => normalizeLayout({
+    frame: {
+      ratio: '4:5',
+      backgroundColor: '#ffffff',
+      radius: 0,
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      photo: { fit: 'COVER', radius: 0, x: 0.5, y: 0.5, w: 1, h: 1 },
+    },
+    layers: [layer],
+  })
+
+  /** 두 줄짜리 글. 줄 길이가 달라야 어느 쪽에 붙었는지 드러난다(80px / 20px). */
+  const twoLines = (textAlign, widthRatio) => ({
+    id: 'align-text',
+    type: 'TEXT',
+    position: { x: 0.5, y: 0.5 },
+    visible: true,
+    binding: 'NONE',
+    text: 'ABCDEFGH\nAB',
+    fontKey: 'pretendardBold',
+    fontSizeRatio: 0.04,
+    textAlign,
+    ...(widthRatio == null ? {} : { widthRatio }),
+  })
+
+  /** 그리기가 실제로 넘긴 x 좌표들(fillText 의 두 번째 인자). 줄마다 하나씩 나온다. */
+  const drawnXs = (layer) => {
+    const ctx = fakeContext(10)
+    drawPhotoCard(ctx, SIZE, cardWith(layer), emptyContext(), null, new Map())
+    return ctx.calls.filter((call) => call[0] === 'fill').map((call) => call[2])
+  }
+
+  const boundsOf = (layer) =>
+    measureLayerBounds(fakeContext(10), SIZE, normalizeLayer(layer), emptyContext())
+
+  test('가운데 정렬은 두 줄 모두 중심에서 그린다', () => {
+    assert.deepEqual(drawnXs(twoLines('CENTER')), [400, 400])
+  })
+
+  test('줄바꿈 폭을 정하지 않아도 왼쪽·오른쪽 정렬이 선택 상자에 맞는다', () => {
+    // 회귀 배경: 폭이 없으면 기준을 0 으로 잡아, 왼쪽 정렬한 글이 전부 중심에서 시작해
+    // 덩어리째 오른쪽으로 밀려났다. 기준은 '가장 긴 줄의 폭'이어야 한다.
+    const left = twoLines('LEFT')
+    const right = twoLines('RIGHT')
+    assert.deepEqual(drawnXs(left), [360, 360])   // 400 - 80/2
+    assert.deepEqual(drawnXs(right), [440, 440])  // 400 + 80/2
+    // 점선 상자와 글자가 어긋나면 "고른 곳"과 "그려진 곳"이 달라 보인다.
+    assert.equal(drawnXs(left)[0], boundsOf(left).left)
+    assert.equal(drawnXs(right)[0], boundsOf(right).right)
+  })
+
+  test('줄바꿈 폭을 정하면 그 폭의 양 끝이 기준이 된다', () => {
+    const left = twoLines('LEFT', 0.5)          // 0.5 * 800 = 400px
+    const right = twoLines('RIGHT', 0.5)
+    assert.deepEqual(drawnXs(left), [200, 200])
+    assert.deepEqual(drawnXs(right), [600, 600])
+    assert.equal(drawnXs(left)[0], boundsOf(left).left)
+    assert.equal(drawnXs(right)[0], boundsOf(right).right)
+  })
+
+  test('저장 규칙은 알 수 없는 정렬 값을 가운데로 되돌린다', () => {
+    assert.equal(normalizeLayer(twoLines('MIDDLE')).textAlign, 'CENTER')
+    assert.equal(normalizeLayer(twoLines(undefined)).textAlign, 'CENTER')
+    assert.equal(normalizeLayer(twoLines('RIGHT')).textAlign, 'RIGHT')
+  })
+
+  test('공식 리뷰 템플릿의 좌·우 정렬 요소는 모두 줄바꿈 폭을 정해 둔다', () => {
+    // 폭이 없으면 정렬 기준이 '그때그때의 글자 폭'이 된다 — 리뷰 내용이 바뀔 때마다
+    // 공식 카드의 좌측 기준선이 흔들린다. 폭을 정해 둔 요소는 내용과 무관하게 같은 자리다.
+    for (const placement of ['PORTRAIT', 'LANDSCAPE']) {
+      const layout = buildReviewPhotoCardLayout(reviewContent, placement, true)
+      for (const layer of layout.layers) {
+        if (layer.type !== 'TEXT' || layer.textAlign === 'CENTER') continue
+        assert.equal(typeof layer.widthRatio, 'number',
+          `${placement}: ${layer.id} 에 줄바꿈 폭이 없다`)
+      }
+    }
+  })
+})
+
+describe('회전 자석', () => {
+  test('직각 근처에서 손을 놓으면 직각으로 붙는다', () => {
+    // 손으로는 89.4° 를 90° 로 맞출 수 없다 — 세워 둔 구분선이 반 도 기울면 카드에서 바로 보인다.
+    assert.equal(snapRotation(88.4), 90)
+    assert.equal(snapRotation(91.7), 90)
+    assert.equal(snapRotation(1.2), 0)
+    assert.equal(snapRotation(178), 180)
+    assert.equal(snapRotation(-268), -270)
+  })
+
+  test('직각에서 충분히 떨어져 있으면 그대로 둔다', () => {
+    assert.equal(snapRotation(83), 83)
+    assert.equal(snapRotation(45), 45)
+  })
+
+  test('Alt 는 자석을 끄고, Shift 는 15도 눈금에 맞춘다', () => {
+    assert.equal(snapRotation(88.4, { free: true }), 88.4)
+    assert.equal(snapRotation(88.4, { step: true }), 90)
+    assert.equal(snapRotation(7, { step: true }), 0)
+    assert.equal(snapRotation(8, { step: true }), 15)
+  })
+})
+
+describe('사진 비율에 카드 맞추기', () => {
+  const photo = (width, height) => ({ naturalWidth: width, naturalHeight: height })
+  const doc = () => ({
+    layout: defaultPhotoCardLayout(),
+    photoTransform: { scale: 1, offsetX: 0, offsetY: 0 },
+  })
+
+  test('기본 액자를 그대로 두면 올린 사진이 잘린다 (문제의 근거)', () => {
+    const layout = defaultPhotoCardLayout()
+    const size = frameSizeOf(layout.frame, 1000)
+    const placement = photoPlacementOf(layout, size, { width: 4032, height: 3024 })
+    assert.ok(placement.slackX > 1, '기본 4:5 액자에서는 가로 사진의 좌우가 잘린다')
+  })
+
+  test('카드가 사진 비율이 되고 여백이 사라진다', () => {
+    const next = fitCardToPhoto(doc(), photo(4032, 3024))
+    assert.equal(next.layout.frame.ratio, '4:3')
+    assert.deepEqual(next.layout.frame.padding, { top: 0, right: 0, bottom: 0, left: 0 })
+    assert.equal(next.layout.frame.photo.fit, 'CONTAIN')
+
+    // 액자와 카드 비율이 같으니 잘리는 곳도 남는 띠도 없다.
+    const size = frameSizeOf(next.layout.frame, 1000)
+    const rect = photoRectOf(next.layout, size)
+    const placement = photoPlacementOf(next.layout, size, { width: 4032, height: 3024 })
+    assert.ok(Math.abs(placement.width - rect.width) < 1)
+    assert.ok(Math.abs(placement.height - rect.height) < 1)
+    assert.ok(placement.slackX < 1 && placement.slackY < 1, '잘려 나가는 부분이 없어야 한다')
+  })
+
+  test('세로 사진도 같은 규칙을 따른다', () => {
+    assert.equal(fitCardToPhoto(doc(), photo(3024, 4032)).layout.frame.ratio, '3:4')
+  })
+
+  test('이미 맞춰져 있으면 되돌리기 단계를 만들지 않는다', () => {
+    const once = fitCardToPhoto(doc(), photo(4032, 3024))
+    // 같은 비율의 사진으로 바꿔도 달라지는 것이 없으면 문서를 그대로 돌려준다.
+    assert.equal(fitCardToPhoto(once, photo(2016, 1512)), once)
+  })
+
+  test('비율 상한을 넘는 파노라마는 상한 비율까지만 넓힌다', () => {
+    // 그 이상 넓히면 짧은 변이 몇십 px 이 되어 글자를 얹을 수 없다. 자르는 대신 배경을 남긴다.
+    const next = fitCardToPhoto(doc(), photo(6000, 1000))
+    assert.equal(next.layout.frame.ratio, '4:1')
+    const size = frameSizeOf(next.layout.frame, 1000)
+    const placement = photoPlacementOf(next.layout, size, { width: 6000, height: 1000 })
+    assert.ok(placement.slackX < 1 && placement.slackY < 1, '전체 보기라 잘리지 않는다')
+  })
+
+  test('사진 자리를 맞춰 둔 요소는 새 액자를 따라 움직인다', () => {
+    const base = doc()
+    base.layout.layers = JSON.parse(JSON.stringify(
+      BUILTIN_LAYOUTS.find((item) => item.key === 'classic').layout.layers,
+    ))
+    base.layout.frame = JSON.parse(JSON.stringify(
+      BUILTIN_LAYOUTS.find((item) => item.key === 'classic').layout.frame,
+    ))
+    const next = fitCardToPhoto(base, photo(4032, 3024))
+    for (const layer of next.layout.layers) {
+      assert.ok(layer.position.y >= 0 && layer.position.y <= 1,
+        `${layer.id} 가 카드 밖으로 나갔다`)
+    }
+  })
+})
+
+describe('사진 모서리 투명', () => {
+  const SIZE = { width: 800, height: 1000 }
+  const photo = { width: 800, height: 800 }
+
+  const layoutWith = (photoOverrides) => normalizeLayout({
+    frame: {
+      ratio: '4:5',
+      backgroundColor: '#ffffff',
+      radius: 0,
+      padding: { top: 0, right: 0, bottom: 0.2, left: 0 },
+      photo: { fit: 'CONTAIN', radius: 0.02, x: 0.5, y: 0.5, w: 1, h: 1, ...photoOverrides },
+    },
+    layers: [],
+  })
+
+  /** drawPhoto 가 배경을 지운 자리. 없으면 null. */
+  const clearedRect = (layout) => {
+    const ctx = fakeContext(10)
+    drawPhoto(ctx, layout, SIZE, photo)
+    return ctx.calls.find((entry) => entry[0] === 'clearRect') ?? null
+  }
+
+  test('켜지 않으면 배경을 지우지 않는다 (기존 템플릿 그대로)', () => {
+    assert.equal(clearedRect(layoutWith({})), null)
+    assert.equal(clearedRect(layoutWith({ transparentCorners: false })), null)
+  })
+
+  test('모서리를 깎지 않았으면 켜도 지울 것이 없다', () => {
+    assert.equal(clearedRect(layoutWith({ radius: 0, transparentCorners: true })), null)
+  })
+
+  test('켜면 사진이 그려지는 칸만 지운다', () => {
+    // 지우는 범위가 액자 전체면 '전체 보기'에서 생기는 띠까지 투명해진다.
+    const layout = layoutWith({ transparentCorners: true })
+    const cleared = clearedRect(layout)
+    assert.ok(cleared, '배경을 지우지 않았다')
+    const placement = photoPlacementOf(layout, SIZE, photo)
+    const rect = photoRectOf(layout, SIZE)
+    const [, left, top, width, height] = cleared
+    assert.equal(Math.round(left), Math.round(Math.max(rect.left, placement.left)))
+    assert.equal(Math.round(top), Math.round(Math.max(rect.top, placement.top)))
+    assert.ok(width <= rect.width + 1 && height <= rect.height + 1)
+  })
+
+  test('저장 규칙은 켠 카드만 필드를 남긴다', () => {
+    assert.equal(layoutWith({ transparentCorners: true }).frame.photo.transparentCorners, true)
+    assert.equal('transparentCorners' in layoutWith({}).frame.photo, false)
+    assert.equal('transparentCorners' in layoutWith({ transparentCorners: false }).frame.photo, false)
+  })
+})
+
+describe('자동 저장 판단', () => {
+  const photoA = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
+  const photoB = new File(['b'], 'b.jpg', { type: 'image/jpeg' })
+
+  /** 저장이 되는 기본 상태 — 각 테스트는 여기서 한 가지만 바꾼다. */
+  const base = (overrides = {}) => ({
+    enabled: true,
+    isLoggedIn: true,
+    hasPhoto: true,
+    stopped: false,
+    busy: false,
+    content: '{"layout":1}',
+    savedContent: '{"layout":0}',
+    currentDraftId: 7,
+    photoFile: photoA,
+    savedPhoto: { draftId: 7, file: photoA },
+    ...overrides,
+  })
+
+  test('간격은 3분이다', () => {
+    assert.equal(PHOTO_CARD_AUTO_SAVE_INTERVAL_MS, 180_000)
+    assert.equal(PHOTO_CARD_AUTO_SAVE_MAX_FAILURES, 3)
+  })
+
+  test('보낼 수 없는 상태에서는 보내지 않는다', () => {
+    // 서버 임시저장은 회원 전용이고, 사진 없는 임시저장은 되살려도 빈 카드다.
+    const cases = [
+      ['disabled', { enabled: false }],
+      ['guest', { isLoggedIn: false }],
+      ['noPhoto', { hasPhoto: false }],
+      ['stopped', { stopped: true }],
+      ['busy', { busy: true }],
+    ]
+    for (const [reason, overrides] of cases) {
+      assert.deepEqual(decideAutoSave(base(overrides)), { save: false, reason })
+    }
+  })
+
+  test('바뀐 것이 없으면 요청 자체를 보내지 않는다', () => {
+    // 편집기를 열어만 둔 사용자가 3분마다 서버를 두드리지 않게 하는 규칙이다.
+    const content = '{"layout":1}'
+    assert.deepEqual(
+      decideAutoSave(base({ content, savedContent: content })),
+      { save: false, reason: 'unchanged' },
+    )
+  })
+
+  test('아직 아무것도 안 넣었으면 바뀐 것으로 본다', () => {
+    // 사진만 올려 둔 상태도 지킬 값이다 — 다시 고르는 비용이 있는 것은 배치뿐이 아니다.
+    assert.deepEqual(
+      decideAutoSave(base({ savedContent: null, currentDraftId: null, savedPhoto: null })),
+      { save: true, includePhoto: true },
+    )
+  })
+
+  test('사진은 처음 한 번만 올리고, 그 뒤로는 배치만 보낸다', () => {
+    // 사진 하나가 최대 9MB 다. 이 규칙이 없으면 3분마다 그만큼이 다시 올라간다.
+    assert.deepEqual(
+      decideAutoSave(base({ currentDraftId: null, savedPhoto: null })),
+      { save: true, includePhoto: true },
+    )
+    assert.deepEqual(decideAutoSave(base()), { save: true, includePhoto: false })
+  })
+
+  test('사진을 바꾸거나 다른 칸으로 옮기면 다시 올린다', () => {
+    assert.equal(decideAutoSave(base({ photoFile: photoB })).includePhoto, true)
+    assert.equal(decideAutoSave(base({ currentDraftId: 9 })).includePhoto, true)
+    // 새 항목으로 저장한 뒤(칸이 바뀐다)에도 그 칸에는 사진이 없다.
+    assert.equal(needsPhotoUpload(9, photoA, { draftId: 7, file: photoA }), true)
+    assert.equal(needsPhotoUpload(7, photoA, { draftId: 7, file: photoA }), false)
+    assert.equal(needsPhotoUpload(null, photoA, null), true)
+  })
+
+  test('끈 상태가 다른 모든 판단보다 먼저다', () => {
+    // 사용자가 껐으면 그 뒤 사정은 볼 것도 없다.
+    assert.deepEqual(
+      decideAutoSave(base({ enabled: false, isLoggedIn: false, hasPhoto: false })),
+      { save: false, reason: 'disabled' },
+    )
+  })
+})
+
 describe('오브젝트 정렬 · 스냅', () => {
   const SIZE = { width: 800, height: 1000 }   // 4:5, 짧은 변 800
 
@@ -1263,8 +1574,16 @@ describe('i18n 번역', () => {
     'guestGateLogin', 'guestGateSignup', 'draftFoundTitle', 'draftFoundBody', 'draftSavedAt',
     'draftResume', 'draftDiscard', 'draftRestored', 'draftRestoreFailed', 'draftSaveFailed',
     'draftSaving', 'draftRestoring',
+    // 3분 자동 저장 — 켜고 끄기·상태 표시·멈춘 이유
+    'autoSave', 'autoSaveHint', 'autoSaveWaiting', 'autoSaving', 'autoSavedAt', 'autoSaveBadge',
+    'autoSaveStarted', 'autoSaveStoppedFull', 'autoSaveStoppedAuth', 'autoSaveStoppedError',
+    'photoCornerTransparent', 'photoCornerTransparentHint',
     'saveAsTemplate', 'templateOfficial', 'templateMine', 'templatePublic',
-    // 문단 정렬(왼쪽·가운데·오른쪽)은 화면에서 뺐다 — 요소끼리 맞추는 alignObjects* 와는 다른 것이다.
+    // 문단 정렬 — 글 안에서 줄을 붙이는 쪽이다. 요소끼리 맞추는 alignObjects* 와는 다른 것이라
+    // 이름도 따로 둔다(속성 패널과 빠른 편집 바에 함께 나온다).
+    'textAlign', 'textAlignLeft', 'textAlignCenter', 'textAlignRight',
+    // 같은 종류 일괄 수정 · 기본값 되돌리기
+    'selectSameType', 'selectSameTypeHint', 'bulkEditHint', 'resetToDefault',
     'makePublic', 'makePrivate', 'gpsNotice', 'fontLabel', 'fontSize', 'textBoxWidth',
     'textColor', 'outline', 'positionX', 'positionY',
     'place', 'memo', 'dragHint', 'templateLimit', 'builtinClassic', 'builtinPolaroid',

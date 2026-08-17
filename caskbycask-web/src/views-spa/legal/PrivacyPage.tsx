@@ -14,6 +14,8 @@ export default function PrivacyPage() {
         title="개인정보 처리방침"
         description="CaskByCask 개인정보 처리방침. 수집·이용·보관 정책."
         canonical={buildCanonical(`${langPrefix}/privacy`)}
+        alternateKo={buildCanonical('/ko/privacy')}
+        alternateEn={buildCanonical('/en/privacy')}
       />
       <div className="w-full max-w-7xl mx-auto">
         <div className="mb-6">

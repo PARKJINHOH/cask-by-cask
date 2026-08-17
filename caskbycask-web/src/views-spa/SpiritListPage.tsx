@@ -24,6 +24,13 @@ import ActiveFilterChips, {
   type ActiveFilterState,
 } from '@/domain/spirit/components/filter/ActiveFilterChips'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
+import {
+  buildListPageHref,
+  hasUnsupportedPageParam,
+  listPageHrefWithParams,
+  metadataSearchParamsFromUrl,
+  readPageParam,
+} from '@/shared/utils/seoIndexing'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
 import { getLocalizedSpiritListNames, getSpiritListDisplayNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritCanonicalPath, getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
@@ -534,15 +541,30 @@ export default function SpiritListPage() {
   // ── SEO 메타 계산 ────────────────────────────────────────
   const isEn = i18n.language === 'en'
   const meta = CATEGORY_META[category] ?? CATEGORY_META['']
-  // canonical: 카테고리만 보존, 세부 필터/페이지/sort 는 제거 (중복 인덱싱 방지)
+  // canonical: 카테고리와 page 만 보존한다. 세부 필터·sort 는 중복 색인을 막으려고 제거하지만,
+  // page 는 정식 facet 이라 유지해야 한다 — 뒤 페이지를 1페이지로 접으면 그 페이지에만 실린
+  // 주류가 색인 대상에서 통째로 빠진다. 서버 metadata(resolveSpiritsListSeoState)와 같은 규칙이며
+  // 계산도 같은 헬퍼를 쓴다(둘이 갈라지면 SSR 과 렌더링 결과가 어긋난다).
   const langPrefix = isEn ? '/en' : '/ko'
-  const seoCanonical = category
-    ? buildCanonical(`${langPrefix}/spirits?category=${category}`)
-    : buildCanonical(`${langPrefix}/spirits`)
-  const hasNonCanonicalQuery = Array.from(searchParams.keys()).some((key) => key !== 'category')
+  const seoSuffix = category ? `?category=${category}` : ''
+  const seoSearchParams = metadataSearchParamsFromUrl(searchParams)
+  const hasNonCanonicalQuery = Array.from(searchParams.keys())
+    .some((key) => key !== 'category' && key !== 'page')
+    || hasUnsupportedPageParam(seoSearchParams)
   const hasNonCanonicalCategory = categoryValues.length > 0
     && (categoryValues.length !== 1 || !category || categoryParam !== category)
-  const seoNoindex = hasNonCanonicalQuery || hasNonCanonicalCategory || Boolean(data?.empty)
+  const pageOutOfRange = Boolean(data?.empty)
+  const seoNoindex = hasNonCanonicalQuery || hasNonCanonicalCategory || pageOutOfRange
+  // 실재하지 않는 페이지에는 self-canonical 을 걸지 않는다 — 자기 자신도 기본 경로도 아닌
+  // 주소를 가리키지 않도록 기본 목록으로 신호를 모은다.
+  const seoPage = hasNonCanonicalQuery || hasNonCanonicalCategory || pageOutOfRange
+    ? 0
+    : readPageParam(seoSearchParams)
+  const seoCanonical = buildCanonical(buildListPageHref(`${langPrefix}/spirits${seoSuffix}`, seoPage))
+  // hreflang 은 SSR 도 내보낸다. 여기서 다시 선언하지 않으면 하이드레이션 때 지워져
+  // 크롤러가 최종적으로 보는 DOM 에서 언어 대체 관계가 사라진다.
+  const seoAlternateKo = buildCanonical(buildListPageHref(`/ko/spirits${seoSuffix}`, seoPage))
+  const seoAlternateEn = buildCanonical(buildListPageHref(`/en/spirits${seoSuffix}`, seoPage))
   // A canonical category's empty/non-empty state is decided by SSR first. Preserve that
   // robots/JSON-LD state until React Query has the same result instead of briefly flipping it.
   const deferIndexState = Boolean(category) && data == null
@@ -589,6 +611,8 @@ export default function SpiritListPage() {
         title={isEn ? meta.titleEn : meta.titleKo}
         description={isEn ? meta.descEn : meta.descKo}
         canonical={seoCanonical}
+        alternateKo={seoAlternateKo}
+        alternateEn={seoAlternateEn}
         locale={isEn ? 'en_US' : 'ko_KR'}
         noindex={seoNoindex}
         deferIndexState={deferIndexState}
@@ -756,6 +780,7 @@ export default function SpiritListPage() {
               currentPage={page}
               totalPages={data.totalPages}
               onPageChange={(p) => setParam({ page: p })}
+              buildHref={(p) => listPageHrefWithParams(`${langPrefix}/spirits`, searchParams, p)}
               scrollTarget="page"
               className="mt-8 mb-[calc(5rem+env(safe-area-inset-bottom))] lg:mb-0"
             />

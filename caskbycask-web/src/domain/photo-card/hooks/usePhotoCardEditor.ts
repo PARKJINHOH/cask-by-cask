@@ -3,6 +3,7 @@ import { ensureEditorFontCssLoaded } from '@/shared/components/imageEditorFontCs
 import { getTextFont, type TextFontKey } from '@/shared/components/imageEditorText'
 import { defaultPhotoCardLayout } from '../constants/builtinLayouts'
 import {
+  formatRatio,
   PHOTO_CARD_MAX_EDGE, PHOTO_CARD_NATIVE_MAX_EDGE, PHOTO_CARD_RATIOS, ratioValue,
 } from '../constants/photoCardRatios'
 import type {
@@ -175,9 +176,51 @@ const loadWatermark = () => {
  * 되돌리기 한 단위. 레이아웃과 사진 확대·이동을 함께 담는다 —
  * 사진을 밀어 놓고 Ctrl+Z 를 눌렀는데 글자만 되돌아가면 사용자는 무엇이 취소됐는지 알 수 없다.
  */
-interface EditorDoc {
+export interface EditorDoc {
   layout: PhotoCardLayout
   photoTransform: PhotoTransform
+}
+
+/**
+ * 카드를 사진 비율 그대로 만든다 — 여백 없이 사진 한 장이 곧 카드가 된다.
+ *
+ * 사진을 처음 올렸을 때 기본으로 걸리는 모습이다(setPhoto 의 fitCard). 기본 액자는 4:5 라
+ * 그대로 두면 어떤 사진을 올려도 위아래가 잘려 나가는데, 처음 보는 화면이 이미 잘린 사진이면
+ * 사용자는 자기 사진이 원래 어떻게 생겼는지도 모른 채 편집을 시작하게 된다.
+ * 밴드·여백은 템플릿을 고르거나 여백을 직접 늘리는 순간 다시 생긴다.
+ */
+export const fitCardToPhoto = (
+  current: EditorDoc,
+  image: { naturalWidth: number; naturalHeight: number },
+): EditorDoc => {
+  const ratio = formatRatio(image.naturalWidth, image.naturalHeight)
+  if (!ratio) return current
+
+  // 이미 그 모습이면 그대로 둔다 — 같은 비율의 사진으로 바꿀 때마다
+  // 아무것도 달라지지 않는 되돌리기 단계가 하나씩 쌓이는 것을 막는다.
+  const now = current.layout.frame
+  const padded = (['top', 'right', 'bottom', 'left'] as const).some((side) => now.padding[side] !== 0)
+  if (now.ratio === ratio && !padded && now.photo.fit === 'CONTAIN'
+    && now.photo.w === 1 && now.photo.h === 1 && now.photo.x === 0.5 && now.photo.y === 0.5) {
+    return current
+  }
+
+  const frame = {
+    ...current.layout.frame,
+    ratio,
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    // 액자와 카드 비율이 같아졌으니 CONTAIN 이어도 잘리는 곳도 남는 띠도 없다.
+    // (비율 상·하한에 걸린 파노라마만 예외로, 자르는 대신 남는 쪽에 배경이 보인다)
+    photo: { ...current.layout.frame.photo, fit: 'CONTAIN' as const, x: 0.5, y: 0.5, w: 1, h: 1 },
+  }
+  return {
+    ...current,
+    layout: {
+      ...current.layout,
+      frame,
+      layers: reflowLayersForFrame(current.layout, frame),
+    },
+  }
 }
 
 const createDoc = (): EditorDoc => ({
@@ -325,6 +368,23 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     setSelectedLayerIds(layout.layers.filter((layer) => !lockedIds.has(layer.id)).map((l) => l.id))
   }, [layout.layers, lockedIds])
 
+  /**
+   * 고른 것과 같은 종류를 모두 고른다.
+   *
+   * 같은 종류끼리는 속성이 같아 한 번에 고칠 수 있다(patchLayers) — "글자 크기를 전부 키우고 싶다"에
+   * Shift+클릭을 열 번 하지 않게 하는 단추다. 종류가 섞여 있으면 기준이 없으므로 아무것도 하지 않는다.
+   */
+  const selectSameType = useCallback(() => {
+    setSelectedLayerIds((current) => {
+      const layers = docRef.current.layout.layers
+      const types = new Set(layers.filter((layer) => current.includes(layer.id)).map((l) => l.type))
+      if (types.size !== 1) return current
+      return layers
+        .filter((layer) => types.has(layer.type) && !lockedIds.has(layer.id))
+        .map((layer) => layer.id)
+    })
+  }, [lockedIds])
+
   const toggleLock = useCallback((layerId: string) => {
     setLockedIds((current) => {
       const next = new Set(current)
@@ -340,12 +400,19 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
 
   // ── 사진 ────────────────────────────────────────────────
   /**
-   * @param keepExif 이미 읽어 둔 촬영 정보를 유지한다.
+   * @param options.keepExif 이미 읽어 둔 촬영 정보를 유지한다.
    *   사진 보정(크롭·회전)을 거치면 결과가 캔버스에서 나온 PNG 라 EXIF 가 없다.
    *   그대로 다시 읽으면 카드에 넣으려던 촬영 정보가 통째로 사라진다.
+   * @param options.fitCard 카드를 이 사진 비율에 맞춘다(사용자가 직접 사진을 고른 경우).
+   *   <b>아직 아무것도 얹지 않았을 때만</b> 건다 — 템플릿을 고른 뒤 사진만 바꾸는 것은
+   *   "배치는 그대로 두고 사진만 갈아 끼우겠다"는 뜻이라, 그때 액자를 다시 잡으면
+   *   맞춰 둔 밴드와 글자 자리가 통째로 무너진다.
    * @returns 브라우저가 디코딩하지 못하면 false (Chrome·Edge 의 HEIC 등)
    */
-  const setPhoto = useCallback(async (file: File, keepExif = false): Promise<boolean> => {
+  const setPhoto = useCallback(async (
+    file: File,
+    options: { keepExif?: boolean; fitCard?: boolean } = {},
+  ): Promise<boolean> => {
     const url = URL.createObjectURL(file)
     const image = await loadImage(url)
     if (!image) {
@@ -359,15 +426,18 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     // 자르기·회전은 원본에서 하는 편이 결과가 낫다.
     setPhotoUrl(url)
     setPhotoImage(await downscaleToExportLimit(image))
-    if (!keepExif) setExif(await readPhotoExif(file))
+    if (!options.keepExif) setExif(await readPhotoExif(file))
     // 사진이 바뀌면 이전 사진 기준으로 잡아 둔 확대·이동은 의미가 없다.
-    commit((current) => (
-      current.photoTransform.scale === 1
+    commit((current) => {
+      const reset = current.photoTransform.scale === 1
         && current.photoTransform.offsetX === 0
         && current.photoTransform.offsetY === 0
         ? current
         : { ...current, photoTransform: { ...IDENTITY_PHOTO_TRANSFORM } }
-    ))
+      return options.fitCard && reset.layout.layers.length === 0
+        ? fitCardToPhoto(reset, image)
+        : reset
+    })
     return true
   }, [commit])
 
@@ -468,18 +538,31 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
     }, gesture)
   }, [commit])
 
+  /**
+   * 여러 요소에 같은 속성을 한 번에 건다 — 글꼴·크기·색 일괄 수정.
+   *
+   * 같은 종류를 여럿 골랐을 때 속성 패널이 이 통로를 쓴다. 되돌리기도 한 단계다
+   * (열 개를 한 번에 키운 것을 되돌리는 데 Ctrl+Z 를 열 번 눌러야 하면 일괄이 아니다).
+   */
+  const patchLayers = useCallback((
+    layerIds: string[],
+    patch: Partial<PhotoCardLayer>,
+    gesture?: string,
+  ) => {
+    if (layerIds.length === 0) return
+    withLayout((current) => ({
+      ...current,
+      layers: current.layers.map((layer) => (
+        layerIds.includes(layer.id) ? normalizeLayer({ ...layer, ...patch }) : layer
+      )),
+    }), gesture)
+  }, [withLayout])
+
   const patchLayer = useCallback((
     layerId: string,
     patch: Partial<PhotoCardLayer>,
     gesture?: string,
-  ) => {
-    withLayout((current) => ({
-      ...current,
-      layers: current.layers.map((layer) => (
-        layer.id === layerId ? normalizeLayer({ ...layer, ...patch }) : layer
-      )),
-    }), gesture)
-  }, [withLayout])
+  ) => patchLayers([layerId], patch, gesture), [patchLayers])
 
   /** 정렬·분배 결과처럼 여러 요소를 한 번에 옮긴다. 되돌리기도 한 단계다. */
   const moveLayersTo = useCallback((
@@ -877,7 +960,8 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
         ? draft.photo
         : new File([draft.photo], draft.photoName ?? 'photo.jpg', { type: draft.photo.type })
       // 촬영 정보는 임시저장에 담아 뒀다 — 다시 읽으면 보정본에서 사라진 값까지 날아간다.
-      const ok = await setPhoto(file, true)
+      // 액자도 손대지 않는다 — 저장한 그 순간의 배치가 정답이다.
+      const ok = await setPhoto(file, { keepExif: true })
       if (!ok) return false
     }
     setExif(draft.exif)
@@ -980,9 +1064,9 @@ export const usePhotoCardEditor = ({ watermark = false }: EditorOptions = {}) =>
 
   return {
     layout, applyLayout, changeRatio, restoreDraft,
-    selectedLayer, selectedLayers, selectedLayerIds, selectLayer, selectAll,
+    selectedLayer, selectedLayers, selectedLayerIds, selectLayer, selectAll, selectSameType,
     lockedIds, toggleLock,
-    patchLayer, moveLayersTo, nudgeLayers,
+    patchLayer, patchLayers, moveLayersTo, nudgeLayers,
     addLayer, addBoundText, addIcon, duplicateLayer, copyLayers, pasteLayers,
     removeLayer, removeLayers, reorderLayer,
     setFrameRadius, setPhotoRadius, setFramePadding, setFrameExtend,

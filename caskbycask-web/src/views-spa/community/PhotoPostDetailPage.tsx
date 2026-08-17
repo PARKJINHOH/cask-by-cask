@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import SeoMeta from '@/shared/components/SeoMeta'
+import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import PhotoPostView from '@/domain/photo-gallery/components/PhotoPostView'
 
 /**
@@ -22,9 +22,18 @@ export default function PhotoPostDetailPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-4 py-6 lg:px-6">
+      {/*
+        canonical 은 절대 주소 + 로케일이어야 한다. `/community/photo/{id}` 로 두면 로케일 없는
+        경로를 가리키게 되고, 그 주소는 308 로 `/ko/...` 로 넘어간다 — 리다이렉트되는 주소를
+        정본으로 선언하면 색인이 흔들린다. SSR 이 내보내는 canonical 과 정확히 같아야 한다.
+      */}
       <SeoMeta
         title={t('photoGallery.title')}
-        canonical={`/community/photo/${postId}`}
+        description={t(
+          'photoGallery.seoDesc',
+          '오늘의 한 잔, 바에서의 한 컷. 촬영 정보와 주류 정보를 함께 담은 회원들의 사진을 모았습니다.',
+        )}
+        canonical={buildCanonical(`/ko/community/photo/${postId}`)}
       />
 
       <Link

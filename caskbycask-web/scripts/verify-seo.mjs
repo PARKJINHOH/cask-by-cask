@@ -13,6 +13,7 @@ const representativeSpiritIds = (process.env.SEO_VERIFY_SPIRIT_IDS || '295,296,3
   .filter(Boolean)
 const representativeReviewId = (process.env.SEO_VERIFY_REVIEW_ID || '11').trim()
 const representativeCommunityPostId = (process.env.SEO_VERIFY_COMMUNITY_POST_ID || '2').trim()
+const representativePhotoPostId = (process.env.SEO_VERIFY_PHOTO_POST_ID || '10').trim()
 const boardSeoCases = [
   {
     path: '/ko/community/free',
@@ -23,8 +24,13 @@ const boardSeoCases = [
   },
   { path: '/ko/community/free?sort=BEST', canonical: '/ko/community/free', noindex: true },
   { path: '/ko/community/free?prefix=1', canonical: '/ko/community/free', noindex: true },
-  { path: '/ko/notices?page=1', canonical: '/ko/notices', noindex: true },
+  // page 는 정식 facet 이라 뒤 페이지는 self-canonical 로 색인한다(seoIndexing.isBoardListNoindex).
+  // 다만 아래 형태는 데이터 양과 무관하게 항상 1페이지와 같은 내용이므로 기본 경로로 신호를 모은다.
+  { path: '/ko/notices?page=0', canonical: '/ko/notices', noindex: true },
   { path: '/ko/community/byob?page=00', canonical: '/ko/community/byob', noindex: true },
+  { path: '/ko/community/free?page=abc', canonical: '/ko/community/free', noindex: true },
+  // 주류별 사진 모아보기는 주류 상세의 "이 술의 사진"과 겹쳐 색인하지 않는다.
+  { path: '/ko/community/photo?spirit=1', canonical: '/ko/community/photo', noindex: true },
 ]
 const communityPostSeoCases = [
   {
@@ -329,6 +335,20 @@ async function verifyRenderedHtml(categoryStates = []) {
     const renderedSeoCases = [
       { path: '/ko/spirits', noindex: false },
       { path: '/ko/spirits?sort=SCORE_DESC', noindex: true },
+      // SPA 가 하이드레이션 때 SSR 의 색인 신호를 덮어쓰는 회귀를 막는다.
+      // 구글은 JS 를 실행하므로 최종 판정은 렌더링 후 DOM 이다 — 여기서 robots 나 canonical 이
+      // 뒤집히면 SSR 만 보고는 알 수 없는 채로 색인에서 빠진다.
+      // 카탈로그 뒤 페이지: 색인 유지 + page 를 포함한 self-canonical.
+      { path: '/ko/spirits?page=1', noindex: false, canonical: '/ko/spirits?page=1' },
+      // 사진 상세: canonical 이 로케일 없는 상대경로로 떨어지면 308 되는 주소를 정본으로 선언하게 된다.
+      {
+        path: `/ko/community/photo/${representativePhotoPostId}`,
+        noindex: false,
+        jsonLd: false,
+        canonical: `/ko/community/photo/${representativePhotoPostId}`,
+      },
+      // 갤러리 필터: SSR 의 noindex 가 렌더링 후에도 유지되어야 한다.
+      { path: '/ko/community/photo?spirit=1', noindex: true, jsonLd: false },
       { path: '/ko/social', noindex: false, jsonLd: false },
       { path: `/ko/reviews/${representativeReviewId}`, noindex: true, jsonLd: false },
       ...representativeCategories,
@@ -596,6 +616,16 @@ async function main() {
   await verifyNoindexAppRoute('/ko/admin/social')
   await verifyHtml('/ko/spirits', { canonical: '/ko/spirits' })
   await verifyHtml('/ko/spirits?sort=SCORE_DESC', {
+    canonical: '/ko/spirits',
+    noindex: true,
+    jsonLd: false,
+  })
+  // 카탈로그 뒤 페이지는 색인 대상이다. 1페이지로 정규화하면 그 페이지에만 실린 주류가 색인에서 빠진다.
+  // 주류는 어느 환경에서도 20건을 넘으므로 page=1 은 항상 존재한다.
+  await verifyHtml('/ko/spirits?page=1', { canonical: '/ko/spirits?page=1' })
+  // 실재하지 않는 페이지에는 self-canonical 을 걸지 않는다 — 자기 자신도 기본 경로도 아닌
+  // 주소를 가리키지 않도록 기본 목록으로 신호를 모은다.
+  await verifyHtml('/ko/spirits?page=99999', {
     canonical: '/ko/spirits',
     noindex: true,
     jsonLd: false,

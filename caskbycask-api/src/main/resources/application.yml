@@ -118,6 +118,19 @@ exchange-rate:
   retry-max-attempts: ${EXCHANGE_RATE_RETRY_MAX_ATTEMPTS:3}
   retry-initial-backoff-ms: ${EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS:1000}
 
+# 유튜브 갤러리 — 승인한 채널의 새 영상을 공개 RSS 피드에서 따라잡는다.
+# Data API 키를 쓰지 않으므로 할당량이 없고, 조회수·재생시간도 수집하지 않는다.
+youtube:
+  sync-cron: ${YOUTUBE_SYNC_CRON:0 25 */3 * * *}
+  feed:
+    connect-timeout-ms: ${YOUTUBE_FEED_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${YOUTUBE_FEED_READ_TIMEOUT_MS:10000}
+  # 삭제·비공개된 영상 자동 숨김. RSS 는 최신 15편만 담아 옛 영상의 생사를 알려 주지 않는다.
+  availability:
+    cron: ${YOUTUBE_AVAILABILITY_CRON:0 40 4 * * *}
+    max-per-run: ${YOUTUBE_AVAILABILITY_MAX_PER_RUN:300}
+    delay-ms: ${YOUTUBE_AVAILABILITY_DELAY_MS:150}
+
 # SEO 메타 — sitemap.xml / IndexNow 의 base URL
 # (페이지 HTML 은 Next.js 가 렌더링한다. API 는 sitemap·IndexNow·SEO 조회 API 만 담당)
 seo:
@@ -125,7 +138,11 @@ seo:
   index-now:
     enabled: ${INDEXNOW_ENABLED:false}
     key: ${INDEXNOW_KEY:}
-    endpoint: ${INDEXNOW_ENDPOINT:https://searchadvisor.naver.com/indexnow}
+    # 쉼표로 구분한 통지 대상. 참여 검색엔진끼리 공유하지만 직접 받은 쪽이 반영이 확실하다.
+    # (구글은 IndexNow 를 사용하지 않으므로 여기 넣을 대상이 없다)
+    endpoints: ${INDEXNOW_ENDPOINTS:https://www.bing.com/indexnow,https://searchadvisor.naver.com/indexnow}
+    # 예전 단일 설정. 값이 있으면 위 목록에 더해 함께 보낸다.
+    endpoint: ${INDEXNOW_ENDPOINT:}
 
 # 공식 Instagram / Threads 게시 연동. 운영 연결과 검증 전에는 반드시 false로 유지한다.
 social-publishing:

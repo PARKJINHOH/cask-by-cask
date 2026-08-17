@@ -66,8 +66,8 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
       <Section title={t('photoCard.photoZoomSection')} hint={t('photoCard.photoZoomHint')}>
         <SliderField
           label={t('photoCard.photoZoom')}
-          display={`${editor.photoTransform.scale.toFixed(2)}×`}
-          min={100} max={400}
+          min={100} max={400} scale={100} digits={2} suffix="×"
+          defaultValue={1 * 100}
           disabled={!hasPhoto}
           value={Math.round(editor.photoTransform.scale * 100)}
           onChange={(value) => editor.patchPhotoTransform({ scale: value / 100 }, 'photo:zoom')}
@@ -75,8 +75,8 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
         />
         <SliderField
           label={t('photoCard.photoOffsetX')}
-          display={`${Math.round(editor.photoTransform.offsetX * 100)}%`}
-          min={-100} max={100}
+          min={-100} max={100} suffix="%"
+          defaultValue={0}
           disabled={!hasPhoto || !zoomed}
           value={Math.round(editor.photoTransform.offsetX * 100)}
           onChange={(value) => editor.patchPhotoTransform({ offsetX: value / 100 }, 'photo:offset')}
@@ -84,8 +84,8 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
         />
         <SliderField
           label={t('photoCard.photoOffsetY')}
-          display={`${Math.round(editor.photoTransform.offsetY * 100)}%`}
-          min={-100} max={100}
+          min={-100} max={100} suffix="%"
+          defaultValue={0}
           disabled={!hasPhoto || !zoomed}
           value={Math.round(editor.photoTransform.offsetY * 100)}
           onChange={(value) => editor.patchPhotoTransform({ offsetY: value / 100 }, 'photo:offset')}
@@ -105,18 +105,39 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
           ]}
           onChange={editor.setPhotoFit}
         />
+        {/* 사진을 올릴 때 카드를 사진 비율로 맞춰 두므로 처음 상태는 '전체 보기'다.
+            여백을 주거나 템플릿을 고르면 액자 비율이 달라져 '채우기'가 필요해진다. */}
         <PanelButton onClick={editor.fitPhotoArea} disabled={!hasPhoto}>
           {t('photoCard.fitPhotoArea')}
         </PanelButton>
         <p className="text-[11px] font-medium leading-relaxed text-neutral-500">{t('photoCard.fitPhotoAreaHint')}</p>
         <SliderField
           label={t('photoCard.photoCorner')}
-          display={`${((frame.photo.radius ?? 0) * 100).toFixed(1)}%`}
-          min={0} max={200}
+          min={0} max={200} scale={10} digits={1} suffix="%"
+          defaultValue={0}
           value={Math.round((frame.photo.radius ?? 0) * 1000)}
           onChange={(value) => editor.setPhotoRadius(value / 1000)}
           onCommit={editor.endGesture}
         />
+        {/* 깎인 모서리를 뚫을지 — 켜지 않으면 그 자리에 카드 배경이 비친다.
+            모서리를 깎지 않은 카드에서는 고를 것이 없다. */}
+        <label className={`flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 ${
+          (frame.photo.radius ?? 0) > 0 ? '' : 'opacity-40'
+        }`}>
+          <input
+            type="checkbox"
+            checked={frame.photo.transparentCorners === true}
+            disabled={(frame.photo.radius ?? 0) <= 0}
+            onChange={(event) => editor.patchPhoto({ transparentCorners: event.target.checked })}
+            className="h-3.5 w-3.5 accent-primary-600"
+          />
+          {t('photoCard.photoCornerTransparent')}
+        </label>
+        {frame.photo.transparentCorners && (frame.photo.radius ?? 0) > 0 && (
+          <p className="text-[11px] font-medium leading-relaxed text-neutral-500">
+            {t('photoCard.photoCornerTransparentHint')}
+          </p>
+        )}
       </Section>
 
       {/* 요청 5번 — 사진의 여백. 이 값이 곧 사진 아래 정보 밴드의 높이가 된다. */}
@@ -134,8 +155,8 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
           <SliderField
             key={side.key}
             label={t(side.labelKey)}
-            display={`${((frame.padding[side.key] ?? 0) * 100).toFixed(1)}%`}
-            min={0} max={500}
+            min={0} max={500} scale={10} digits={1} suffix="%"
+            defaultValue={0}
             value={Math.round((frame.padding[side.key] ?? 0) * 1000)}
             onChange={(value) => setPadding(side.key, value / 1000)}
             onCommit={editor.endGesture}
@@ -157,32 +178,32 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
             <div className="grid grid-cols-2 gap-2">
               <SliderField
                 label={t('photoCard.photoAreaWidth')}
-                display={`${Math.round(frame.photo.w * 100)}%`}
-                min={10} max={100}
+                min={10} max={100} suffix="%"
+                defaultValue={1 * 100}
                 value={Math.round(frame.photo.w * 100)}
                 onChange={(value) => editor.patchPhoto({ w: value / 100 }, 'photo:area')}
                 onCommit={editor.endGesture}
               />
               <SliderField
                 label={t('photoCard.photoAreaHeight')}
-                display={`${Math.round(frame.photo.h * 100)}%`}
-                min={10} max={100}
+                min={10} max={100} suffix="%"
+                defaultValue={1 * 100}
                 value={Math.round(frame.photo.h * 100)}
                 onChange={(value) => editor.patchPhoto({ h: value / 100 }, 'photo:area')}
                 onCommit={editor.endGesture}
               />
               <SliderField
                 label={t('photoCard.photoAreaX')}
-                display={`${Math.round(frame.photo.x * 100)}%`}
-                min={0} max={100}
+                min={0} max={100} suffix="%"
+                defaultValue={0.5 * 100}
                 value={Math.round(frame.photo.x * 100)}
                 onChange={(value) => editor.patchPhoto({ x: value / 100 }, 'photo:area')}
                 onCommit={editor.endGesture}
               />
               <SliderField
                 label={t('photoCard.photoAreaY')}
-                display={`${Math.round(frame.photo.y * 100)}%`}
-                min={0} max={100}
+                min={0} max={100} suffix="%"
+                defaultValue={0.5 * 100}
                 value={Math.round(frame.photo.y * 100)}
                 onChange={(value) => editor.patchPhoto({ y: value / 100 }, 'photo:area')}
                 onCommit={editor.endGesture}
@@ -197,6 +218,7 @@ export default function PhotoPanel({ editor, onPickPhoto, onEditPhoto }: Props) 
           label={t('photoCard.backgroundColor')}
           value={frame.backgroundColor}
           presets
+          defaultValue="#ffffff"
           onChange={editor.setBackgroundColor}
         />
       </Section>

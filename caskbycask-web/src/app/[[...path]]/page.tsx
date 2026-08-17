@@ -30,8 +30,18 @@ import {
   getNoticeDetailMetadata,
   getNoticeDetailJsonLd,
   getNoticeDetailSeoSnapshot,
+  getYoutubeListMetadata,
+  getYoutubeListSeoSnapshot,
+  getYoutubeVideoMetadata,
+  getYoutubeVideoJsonLd,
+  getYoutubeVideoSeoSnapshot,
+  getYoutubeChannelMetadata,
+  getYoutubeChannelJsonLd,
+  getYoutubeChannelSeoSnapshot,
   getNoindexMetadata,
+  getPublicReviewMetadata,
   isApiResourceNotFound,
+  readPageParam,
 } from '@/shared/utils/seoHelpers'
 
 interface Props {
@@ -61,6 +71,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         parsed.boardListType!,
         parsed.lang,
         isBoardListNoindex(parsed.boardListType!, resolvedSearchParams),
+        readPageParam(resolvedSearchParams),
       )
     case 'community-detail':
       return getCommunityPostMetadata(parsed.boardType!, parsed.postId!, parsed.lang)
@@ -68,6 +79,20 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       return getNoticeDetailMetadata(parsed.postId!, parsed.lang)
     case 'byob-detail':
       return getByobPostMetadata(parsed.postId!, parsed.lang)
+    case 'youtube-list':
+      // 필터·검색이 걸린 목록은 본 목록과 내용이 겹친다 — 색인은 맨 주소 하나만 받는다.
+      return getYoutubeListMetadata(
+        parsed.lang,
+        ['type', 'q', 'v', 'spirit'].some((key) => Boolean(resolvedSearchParams[key])),
+      )
+    case 'youtube-detail':
+      return getYoutubeVideoMetadata(parsed.youtubeVideoKey!, parsed.lang)
+    case 'youtube-channel':
+      return getYoutubeChannelMetadata(parsed.youtubeChannelRef!, parsed.lang)
+    case 'review-detail':
+      // 리뷰를 찾지 못하면 색인 대상이 아니라는 판정만 남긴다.
+      return (await getPublicReviewMetadata(parsed.reviewId!, parsed.lang))
+        ?? getNoindexMetadata(parsed.lang, '리뷰 — CaskByCask')
     case 'noindex':
     case 'not-found':
       return getNoindexMetadata(parsed.lang)
@@ -96,7 +121,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
       getSpiritsListSeoSnapshot(parsed.lang, resolvedSearchParams),
     ])
   } else if (parsed.type === 'community-list' || parsed.type === 'notices-list') {
-    snapshot = await getBoardListSeoSnapshot(parsed.boardListType!, parsed.lang)
+    snapshot = await getBoardListSeoSnapshot(parsed.boardListType!, parsed.lang, resolvedSearchParams)
     if (!isBoardListNoindex(parsed.boardListType!, resolvedSearchParams)) {
       jsonLdData = buildBoardListJsonLd(parsed.boardListType!, snapshot)
     }
@@ -119,6 +144,18 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
     ;[jsonLdData, snapshot] = await Promise.all([
       getByobPostJsonLd(parsed.postId!, parsed.lang),
       getByobPostSeoSnapshot(parsed.postId!, parsed.lang),
+    ])
+  } else if (parsed.type === 'youtube-list') {
+    snapshot = await getYoutubeListSeoSnapshot(parsed.lang)
+  } else if (parsed.type === 'youtube-detail') {
+    ;[jsonLdData, snapshot] = await Promise.all([
+      getYoutubeVideoJsonLd(parsed.youtubeVideoKey!),
+      getYoutubeVideoSeoSnapshot(parsed.youtubeVideoKey!, parsed.lang),
+    ])
+  } else if (parsed.type === 'youtube-channel') {
+    ;[jsonLdData, snapshot] = await Promise.all([
+      getYoutubeChannelJsonLd(parsed.youtubeChannelRef!),
+      getYoutubeChannelSeoSnapshot(parsed.youtubeChannelRef!, parsed.lang),
     ])
   } else if (parsed.type === 'tier-list' && !parsed.tierListShareKey) {
     snapshot = getTierListSeoSnapshot(parsed.lang)

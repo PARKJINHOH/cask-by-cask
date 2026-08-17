@@ -43,6 +43,12 @@ public class SitemapController {
         return xml(sitemapService.generateContentSitemap(bucket), ifNoneMatch);
     }
 
+    @GetMapping(value = "/sitemaps/youtube.xml", produces = MediaType.APPLICATION_XML_VALUE)
+    public ResponseEntity<String> youtubeSitemap(
+            @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
+        return xml(sitemapService.generateYoutubeSitemap(), ifNoneMatch);
+    }
+
     @GetMapping(value = "/sitemaps/spirits-{lang:ko|en}-{bucket:\\d+}.xml", produces = MediaType.APPLICATION_XML_VALUE)
     public ResponseEntity<String> spiritSitemap(
             @PathVariable String lang,

@@ -336,6 +336,22 @@ public enum ErrorCode {
     SOCIAL_EDITOR_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "SOCIAL_013",
             "SNS 썸네일을 포함하려면 Instagram 본문 이미지는 최대 9장, Threads 본문 이미지는 최대 19장까지 게시할 수 있습니다."),
 
+    // YouTube gallery
+    YOUTUBE_CHANNEL_NOT_FOUND(HttpStatus.NOT_FOUND, "YOUTUBE_001", "유튜브 채널을 찾을 수 없습니다."),
+    YOUTUBE_CHANNEL_DUPLICATE(HttpStatus.CONFLICT, "YOUTUBE_002", "이미 등록된 유튜브 채널입니다."),
+    YOUTUBE_CHANNEL_URL_INVALID(HttpStatus.BAD_REQUEST, "YOUTUBE_003",
+            "유튜브 채널 주소를 해석하지 못했습니다. 채널 홈의 핸들(@...) 또는 채널 ID(UC...)를 입력해주세요."),
+    YOUTUBE_CHANNEL_UNRESOLVED(HttpStatus.BAD_REQUEST, "YOUTUBE_004",
+            "유튜브에서 채널을 찾지 못했습니다. 핸들이 정확한지 확인하거나 채널 ID(UC...)로 등록해주세요."),
+    YOUTUBE_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "YOUTUBE_005", "유튜브 영상을 찾을 수 없습니다."),
+    YOUTUBE_VIDEO_DUPLICATE(HttpStatus.CONFLICT, "YOUTUBE_006", "이미 등록된 유튜브 영상입니다."),
+    YOUTUBE_VIDEO_URL_INVALID(HttpStatus.BAD_REQUEST, "YOUTUBE_007",
+            "유튜브 영상 주소를 해석하지 못했습니다."),
+    YOUTUBE_VIDEO_UNRESOLVED(HttpStatus.BAD_REQUEST, "YOUTUBE_008",
+            "유튜브에서 영상 정보를 읽지 못했습니다. 비공개 영상이 아닌지 확인해주세요."),
+    YOUTUBE_PERMISSION_REQUIRED(HttpStatus.BAD_REQUEST, "YOUTUBE_009",
+            "채널 운영자의 게재 허락을 확인해야 갤러리에 노출할 수 있습니다."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),

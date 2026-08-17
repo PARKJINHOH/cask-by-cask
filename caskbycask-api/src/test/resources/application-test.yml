@@ -13,6 +13,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
         search:
+          backend:
+            directory:
+              # 실행 중인 로컬 API 가 ./lucene 을 잠그고 있어도 테스트가 깨지지 않도록 분리한다.
+              # 같은 경로를 쓰면 SpiritSearch* 테스트가 LockObtainFailedException 으로 실패한다.
+              root: ./build/lucene-test/indexes
           automatic_indexing:
             synchronization:
               strategy: sync

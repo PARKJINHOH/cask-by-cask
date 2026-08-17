@@ -6,7 +6,7 @@ import Pagination from '@/shared/components/Pagination'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { useAuthStore } from '@/domain/auth/store/authStore'
 import type { ByobStatus } from '@/domain/byob/types/byob.types'
-import { isBoardListNoindex, metadataSearchParamsFromUrl } from '@/shared/utils/seoIndexing'
+import { isBoardListNoindex, listPageHrefWithParams, metadataSearchParamsFromUrl } from '@/shared/utils/seoIndexing'
 import { buildBreadcrumbSchema, buildItemListSchema } from '@/shared/utils/seoSchema'
 
 const PAGE_SIZE = 12
@@ -148,6 +148,7 @@ export default function ByobListPage() {
                 currentPage={page}
                 totalPages={totalPages}
                 onPageChange={(p) => setListParam(status, p)}
+                buildHref={(p) => listPageHrefWithParams('/ko/community/byob', searchParams, p)}
                 scrollTarget="page"
               />
             </div>

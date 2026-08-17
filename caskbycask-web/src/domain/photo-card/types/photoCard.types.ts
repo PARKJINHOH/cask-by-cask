@@ -88,6 +88,15 @@ export interface PhotoCardPadding {
 export interface PhotoCardPhoto {
   fit: PhotoCardPhotoFit
   radius: number
+  /**
+   * 둥글게 깎인 모서리를 <b>투명하게</b> 둘 것인가.
+   *
+   * 기본(false)은 깎인 자리에 카드 배경이 비친다 — 흰 카드 위의 둥근 사진처럼 보인다.
+   * 켜면 그 자리를 뚫어 PNG 로 뽑았을 때 실제로 비어 있게 된다(스티커처럼 쓸 때).
+   * JPEG 은 투명을 담지 못해 배경색으로 채워지므로 결과가 기본과 같다.
+   * 값이 false 면 필드를 남기지 않는다(기존 템플릿 JSON 이 커지지 않게).
+   */
+  transparentCorners?: boolean
   /** 사진 영역 중심·크기 — 프레임 대비 비율 */
   x: number
   y: number

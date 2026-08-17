@@ -147,6 +147,7 @@ export default function CardPanel({ editor }: { editor: PhotoCardEditor }) {
               min={0}
               max={toPx(side.key === 'bottom' ? PHOTO_CARD_MAX_BOTTOM_EXTEND : PHOTO_CARD_MAX_EXTEND)}
               step={10}
+              defaultValue={0}
               value={toPx(extend[side.key] ?? 0)}
               onChange={(value) => setExtend(side.key, value)}
               onCommit={editor.endGesture}
@@ -166,6 +167,7 @@ export default function CardPanel({ editor }: { editor: PhotoCardEditor }) {
           label={t('photoCard.backgroundColor')}
           value={frame.backgroundColor}
           presets
+          defaultValue="#ffffff"
           onChange={editor.setBackgroundColor}
         />
       </Section>
@@ -173,8 +175,8 @@ export default function CardPanel({ editor }: { editor: PhotoCardEditor }) {
       <Section title={t('photoCard.cornerSection')} hint={t('photoCard.cornerHint')}>
         <SliderField
           label={t('photoCard.cardCorner')}
-          display={`${((frame.radius ?? 0) * 100).toFixed(1)}%`}
-          min={0} max={200}
+          min={0} max={200} scale={10} digits={1} suffix="%"
+          defaultValue={0}
           value={Math.round((frame.radius ?? 0) * 1000)}
           onChange={(value) => editor.setFrameRadius(value / 1000)}
           onCommit={editor.endGesture}
