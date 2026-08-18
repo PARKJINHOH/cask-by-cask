@@ -100,12 +100,13 @@ describe('PHOTO 게시판 배선', () => {
       /BoardType = 'NOTICE' \| 'FREE' \| 'PHOTO'/)
   })
 
-  test('GNB 와 관리자 메뉴에 등록되어 있다', () => {
+  test('이미지 갤러리는 GNB 에 있고 포토카드 진입 버튼은 갤러리 화면에 있다', () => {
     // GNB 메뉴 목록은 MainLayout 이 아니라 gnbMenu.ts 카탈로그가 소유한다
     // (관리자 노출 설정과 단일 소스를 공유하기 위해 분리했다).
     const gnbCatalog = read(WEB, 'src/domain/gnb-menu/constants/gnbMenu.ts')
     assert.match(gnbCatalog, /to: '\/community\/photo'/)
-    assert.match(gnbCatalog, /to: '\/photo-card'/)
+    assert.doesNotMatch(gnbCatalog, /to: '\/photo-card'/)
+    assert.match(read(WEB, 'src/views-spa/community/PhotoGalleryPage.tsx'), /to="\/photo-card"/)
     // adminMenu.ts 는 `{ path: '...', label: '...' }` 형식을 정규식으로 파싱한다.
     assert.match(read(WEB, 'src/domain/admin/constants/adminMenu.ts'),
       /\{\s*path:\s*'\/admin\/photo-cards',\s*label:\s*'포토카드 템플릿'/)

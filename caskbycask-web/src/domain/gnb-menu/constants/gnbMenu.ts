@@ -17,6 +17,8 @@ export type GnbChild = {
   labelKey: string
   to: string
   comingSoon?: boolean
+  /** 드롭다운 안에서 관련 메뉴를 시각적으로 묶는 구역. */
+  section?: 'gallery'
 }
 
 export type GnbItem =
@@ -26,6 +28,8 @@ export type GnbItem =
 export const GNB_MENUS: GnbItem[] = [
   // 주류 탐색은 서비스의 핵심 진입점이라 알약형 CTA 로 강조한다.
   { key: 'spirits', labelKey: 'nav.spirits', to: '/spirits', variant: 'cta' },
+  // 미확인 공지가 있으면 빨간 점을 붙인다.
+  { key: 'notice', labelKey: 'menu.notice', to: '/notices', badge: 'notice' },
   {
     key: 'request',
     labelKey: 'menu.request',
@@ -35,8 +39,6 @@ export const GNB_MENUS: GnbItem[] = [
       { key: 'requestFeedback', labelKey: 'menu.requestFeedback', to: '/request/feedback' },
     ],
   },
-  // 미확인 공지가 있으면 빨간 점을 붙인다.
-  { key: 'notice', labelKey: 'menu.notice', to: '/notices', badge: 'notice' },
   {
     key: 'community',
     labelKey: 'menu.community',
@@ -45,11 +47,8 @@ export const GNB_MENUS: GnbItem[] = [
       { key: 'communityNews',  labelKey: 'menu.communityNews',  to: '/community/notice' },
       { key: 'communityBoard', labelKey: 'menu.communityBoard', to: '/community/free' },
       { key: 'communityByob',  labelKey: 'menu.communityByob',  to: '/community/byob' },
-      { key: 'communityPhoto', labelKey: 'photoGallery.title',  to: '/community/photo' },
-      { key: 'youtubeGallery', labelKey: 'youtube.title',       to: '/youtube' },
-      // 포토카드 편집기는 갤러리 목록 안의 버튼으로만 갈 수 있었다 —
-      // 만들러 들어온 사람이 목록을 한 번 거쳐야 해서 GNB 에도 바로 연다.
-      { key: 'photoCard',      labelKey: 'photoGallery.createCta', to: '/photo-card' },
+      { key: 'communityPhoto', labelKey: 'photoGallery.title',  to: '/community/photo', section: 'gallery' },
+      { key: 'youtubeGallery', labelKey: 'youtube.title',       to: '/youtube', section: 'gallery' },
     ],
   },
   {

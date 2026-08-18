@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react'
+import { Fragment, useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react'
 import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import RouteFallback from '@/shared/components/RouteFallback'
@@ -348,28 +348,34 @@ function GNB() {
           style={{ left: dropdownLeft }}
         >
           <div className="bg-white rounded-xl shadow-lg border border-neutral-100 py-1">
-            {activeDropdown.children.map(child =>
-              child.comingSoon ? (
-                <span
-                  key={child.key}
-                  className="flex items-center justify-between px-4 py-2 text-sm text-neutral-400 cursor-default select-none"
-                >
-                  {t(child.labelKey)}
-                  <span className="text-xs bg-neutral-100 text-neutral-400 px-1.5 py-0.5 rounded">
-                    준비중
-                  </span>
-                </span>
-              ) : (
-                <Link
-                  key={child.key}
-                  to={child.to}
-                  onClick={() => setOpen(null)}
-                  className="flex items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-primary-800 transition-colors"
-                >
-                  {t(child.labelKey)}
-                </Link>
+            {activeDropdown.children.map((child, index) => {
+              const startsGallerySection = child.section === 'gallery'
+                && activeDropdown.children[index - 1]?.section !== 'gallery'
+
+              return (
+                <Fragment key={child.key}>
+                  {startsGallerySection && (
+                    <div aria-hidden="true" className="mx-auto my-1 h-px w-8 bg-neutral-200" />
+                  )}
+                  {child.comingSoon ? (
+                    <span className="flex items-center justify-between px-4 py-2 text-sm text-neutral-400 cursor-default select-none">
+                      {t(child.labelKey)}
+                      <span className="text-xs bg-neutral-100 text-neutral-400 px-1.5 py-0.5 rounded">
+                        준비중
+                      </span>
+                    </span>
+                  ) : (
+                    <Link
+                      to={child.to}
+                      onClick={() => setOpen(null)}
+                      className="flex items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 hover:text-primary-800 transition-colors"
+                    >
+                      {t(child.labelKey)}
+                    </Link>
+                  )}
+                </Fragment>
               )
-            )}
+            })}
           </div>
         </div>
       )}

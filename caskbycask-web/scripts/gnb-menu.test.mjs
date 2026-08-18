@@ -45,10 +45,10 @@ function lookup(dict, dottedKey) {
 // 저장된 노출 설정이 끊겨 관리자가 숨겨 둔 메뉴가 조용히 되살아난다. 의도적 변경만 통과시킨다.
 const EXPECTED_KEYS = [
   'spirits',
-  'request', 'requestSpirit', 'requestProducer', 'requestFeedback',
   'notice',
+  'request', 'requestSpirit', 'requestProducer', 'requestFeedback',
   'community', 'communityAll', 'communityNews', 'communityBoard', 'communityByob',
-  'communityPhoto', 'youtubeGallery', 'photoCard',
+  'communityPhoto', 'youtubeGallery',
   'tasteExplorer', 'tierList', 'tasteTree',
 ]
 
@@ -69,6 +69,21 @@ test('모든 메뉴 라벨이 ko/en 양쪽 번역키로 존재한다', () => {
       )
     }
   }
+})
+
+test('공지사항은 요청 앞에 있고 이미지·유튜브 갤러리는 한 구역으로 묶인다', () => {
+  const topLevelKeys = GNB_MENUS.map((menu) => menu.key)
+  assert.ok(topLevelKeys.indexOf('notice') < topLevelKeys.indexOf('request'))
+
+  const community = GNB_MENUS.find((menu) => menu.key === 'community')
+  assert.ok(community && isGnbGroup(community), '커뮤니티 그룹 누락')
+  assert.deepEqual(
+    community.children.filter((child) => child.section === 'gallery').map((child) => child.key),
+    ['communityPhoto', 'youtubeGallery'],
+  )
+  assert.equal(community.children.some((child) => child.key === 'photoCard'), false)
+  assert.ok(mainLayout.includes("child.section === 'gallery'"), '갤러리 구분선 렌더링 누락')
+  assert.match(mainLayout, /aria-hidden="true"[^>]*w-8/)
 })
 
 // 회귀 배경: 메뉴 배열이 MainLayout 안에 되돌아오면 관리자 화면과 이중 소스가 되어
@@ -142,7 +157,7 @@ test('자식을 끄면 그 자식만 사라지고 그룹은 남는다', () => {
 test('그룹을 끄면 하위까지 통째로 사라진다', () => {
   const keys = visibleKeys(['community'])
   for (const key of ['community', 'communityAll', 'communityNews', 'communityBoard',
-    'communityByob', 'communityPhoto', 'youtubeGallery', 'photoCard']) {
+    'communityByob', 'communityPhoto', 'youtubeGallery']) {
     assert.equal(keys.includes(key), false, `${key} 가 남아 있다`)
   }
   assert.ok(keys.includes('spirits'), '다른 메뉴는 영향받지 않는다')
