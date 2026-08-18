@@ -495,14 +495,14 @@ function PostRow({ post, boardPath }: { post: PostListItem; boardPath: string })
       >
         {label}
       </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-neutral-800 group-hover:text-primary-800 line-clamp-1 transition-colors">
-          {post.adultOnly && <AdultBadge className="mr-1 w-4 h-4 text-[9px] align-middle" />}
+      <div className="flex-1 min-w-0 flex items-center gap-1">
+        {post.adultOnly && <AdultBadge className="w-4 h-4 text-[9px]" />}
+        <span className="min-w-0 truncate text-sm text-neutral-800 group-hover:text-primary-800 transition-colors">
           {post.title}
-          {post.commentCount > 0 && (
-            <span className="text-primary-500 text-xs ml-1">[{post.commentCount}]</span>
-          )}
-        </p>
+        </span>
+        {post.commentCount > 0 && (
+          <span className="flex-shrink-0 text-primary-500 text-xs">[{post.commentCount}]</span>
+        )}
       </div>
       <div className="flex-shrink-0 flex items-center gap-3 text-xs text-neutral-400">
         <span className="hidden sm:inline max-w-[90px] truncate">{post.authorNickname}</span>
