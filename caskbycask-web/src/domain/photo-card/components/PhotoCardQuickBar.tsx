@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getTextFont, getTextFontFamily, resolveTextFontKey,
   TEXT_FONT_WEIGHT_LABEL_KEYS, type TextFontKey,
 } from '@/shared/components/imageEditorText'
+import { useHoldRepeat } from '@/shared/hooks/useHoldRepeat'
 import type { PhotoCardEditor } from '../hooks/usePhotoCardEditor'
 import { NO_ZOOM_ATTRIBUTE } from '../hooks/usePhotoCardViewport'
 import type { PhotoCardLayer, PhotoCardTextAlign } from '../types/photoCard.types'
@@ -26,6 +27,8 @@ interface Props {
 
 /** 글자 크기를 한 번에 얼마나 키우고 줄일지(프레임 짧은 변 대비). */
 const SIZE_STEP = 0.004
+/** 크기가 비어 있을 때의 값 — layoutSchema 가 채워 넣는 기본과 같다. */
+const DEFAULT_SIZE_RATIO = 0.04
 /** 크기 칸에 적는 단위 — 비율을 %로 보여 준다(속성 패널의 표시와 같다). */
 const MIN_SIZE_PERCENT = PHOTO_CARD_MIN_FONT_SIZE_RATIO * 100
 const MAX_SIZE_PERCENT = PHOTO_CARD_MAX_FONT_SIZE_RATIO * 100
@@ -72,6 +75,13 @@ export default function PhotoCardQuickBar({
   const [sizeDraft, setSizeDraft] = useState<string | null>(null)
 
   const layer = editor.selectedLayer
+  const sizeRatio = layer?.fontSizeRatio ?? DEFAULT_SIZE_RATIO
+  // −/＋ 를 꾹 누르는 동안에는 다시 그려지기를 기다리지 않고 여기서 다음 값을 이어 센다.
+  const sizeRef = useRef(sizeRatio)
+  useEffect(() => { sizeRef.current = sizeRatio }, [sizeRatio])
+  // 꾹 누르는 동안의 여러 칸은 되돌리기 한 단계다 — 손을 뗄 때 끊는다.
+  const holdSize = useHoldRepeat({ onRelease: editor.endGesture })
+
   if (!layer || !bounds || !showsQuickBar(layer, editor.lockedIds.has(layer.id))) return null
 
   const font = getTextFont((layer.fontKey ?? 'pretendardBold') as TextFontKey)
@@ -79,16 +89,23 @@ export default function PhotoCardQuickBar({
   const patch = (values: Parameters<typeof editor.patchLayer>[1], gesture?: string) =>
     editor.patchLayer(layer.id, values, gesture)
 
-  const sizePercent = (layer.fontSizeRatio ?? 0.04) * 100
+  const sizePercent = sizeRatio * 100
 
   const applySize = (percent: number) => {
     const clamped = Math.max(MIN_SIZE_PERCENT, Math.min(MAX_SIZE_PERCENT, percent))
+    sizeRef.current = clamped / 100
     patch({ fontSizeRatio: clamped / 100 }, `quickSize:${layer.id}`)
   }
 
   const stepSize = (delta: number) => {
-    applySize(((layer.fontSizeRatio ?? 0.04) + delta) * 100)
-    editor.endGesture()
+    const current = sizeRef.current * 100
+    // 보여 주는 자리(0.1%)에 맞춰 끊는다 — 비율끼리 그대로 더하면 4.400000000000001 이 남는다.
+    const next = Math.max(MIN_SIZE_PERCENT,
+      Math.min(MAX_SIZE_PERCENT, Math.round((current + delta * 100) * 10) / 10))
+    // 한계에 닿아 더 갈 곳이 없으면 false — 꾹 누르고 있어도 여기서 멈춘다.
+    if (Math.abs(next - current) < 1e-9) return false
+    applySize(next)
+    return true
   }
 
   // 상자 위쪽 가운데. 화면 좌표로 바꿔 카드 밖으로 나가지 않게 가둔다.
@@ -131,8 +148,10 @@ export default function PhotoCardQuickBar({
 
       {divider}
 
+      {/* 꾹 누르면 이어서 줄고 는다 — 한 칸씩 스무 번 누르지 않게. */}
       <button type="button" className={button} title={t('photoCard.sizeDown')}
-        onClick={() => stepSize(-SIZE_STEP)}>−</button>
+        style={{ touchAction: 'none' }}
+        {...holdSize(() => stepSize(-SIZE_STEP))}>−</button>
       {/* 숫자를 직접 칠 수 있다. type=number 는 휠에 값이 바뀌고 화살표까지 붙어 쓰지 않는다. */}
       <input
         type="text"
@@ -158,7 +177,8 @@ export default function PhotoCardQuickBar({
       />
       <span className="shrink-0 text-[11px] text-neutral-400">%</span>
       <button type="button" className={button} title={t('photoCard.sizeUp')}
-        onClick={() => stepSize(SIZE_STEP)}>＋</button>
+        style={{ touchAction: 'none' }}
+        {...holdSize(() => stepSize(SIZE_STEP))}>＋</button>
 
       {divider}
 

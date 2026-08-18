@@ -23,7 +23,9 @@ public interface ProducerRepository extends JpaRepository<Producer, Long> {
                    OR LOWER(d.nameKo) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR LOWER(d.nameEn) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR LOWER(d.searchKeywords) LIKE LOWER(CONCAT('%', :keyword, '%')))
-              AND (:nameKo IS NULL OR LOWER(d.nameKo) LIKE LOWER(CONCAT('%', :nameKo, '%')))
+              AND (:nameKo IS NULL
+                   OR LOWER(d.nameKo) LIKE LOWER(CONCAT('%', :nameKo, '%'))
+                   OR LOWER(d.searchKeywords) LIKE LOWER(CONCAT('%', :nameKo, '%')))
               AND (:nameEn IS NULL OR LOWER(d.nameEn) LIKE LOWER(CONCAT('%', :nameEn, '%')))
               AND (:country IS NULL OR LOWER(d.country) LIKE LOWER(CONCAT('%', :country, '%')))
               AND (:foundedYear IS NULL OR d.foundedYear = :foundedYear)
@@ -34,6 +36,11 @@ public interface ProducerRepository extends JpaRepository<Producer, Long> {
             """)
     Page<Producer> search(
             @Param("keyword") String keyword,
+            /**
+             * 한국어명 필터 — 검색 별칭(searchKeywords)까지 함께 본다.
+             * 별칭은 표시엔 안 쓰고 한글 음차 변형(까뮤/까뮈 등)을 담는 검색 전용 값이라,
+             * 한국어명으로 찾을 때 별칭만 맞아도 걸리는 편이 관리자 검색에 맞다.
+             */
             @Param("nameKo") String nameKo,
             @Param("nameEn") String nameEn,
             @Param("country") String country,

@@ -96,7 +96,8 @@ export interface ReviewItemProps {
 
 export default function ReviewItem({ review, currentUserId, onEdit, onDelete, showSpiritName, reviewVariantLabel }: ReviewItemProps) {
   const { t, i18n } = useTranslation()
-  const [profileExpanded, setProfileExpanded] = useState(false)
+  // 프로파일이 있으면 기본으로 펼쳐서 보여준다 (버튼으로 접을 수 있음)
+  const [profileExpanded, setProfileExpanded] = useState(true)
   const isOwner = !!currentUserId && currentUserId === review.userId
   const spiritName = i18n.language === 'en' ? (review.spiritNameEn || review.spiritNameKo) : review.spiritNameKo
   const spiritDetailPath = getSpiritDetailPath({

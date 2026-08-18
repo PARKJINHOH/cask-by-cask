@@ -454,7 +454,7 @@ export default function AdminProducerPage() {
             <input
               value={filterInput.nameKo}
               onChange={(e) => setFilterInput((f) => ({ ...f, nameKo: e.target.value }))}
-              placeholder="한국어명 검색"
+              placeholder="한국어명·검색 별칭 검색"
               className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-400"
             />

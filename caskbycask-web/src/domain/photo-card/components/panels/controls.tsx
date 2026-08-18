@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useHoldRepeat } from '@/shared/hooks/useHoldRepeat'
 import { useTouchInput } from '@/shared/tiptap/pointerMode'
 
 /**
@@ -241,11 +242,6 @@ export function SliderField({
   )
 }
 
-/** 단추를 이만큼(ms) 누르고 있으면 '꾹 누름'으로 보고 값이 이어서 바뀐다. */
-const HOLD_DELAY = 400
-/** 꾹 누르는 동안 값이 바뀌는 간격(ms) */
-const HOLD_INTERVAL = 70
-
 /**
  * 숫자를 직접 적는 입력. 슬라이더로는 "정확히 200px" 을 맞추기 어려운 값에 쓴다.
  *
@@ -285,42 +281,20 @@ export function NumberField({
   const inputId = useId()
   /** 적는 중인 글자. null 이면 확정된 값을 그대로 보여 준다. */
   const [draft, setDraft] = useState<string | null>(null)
-  const holdRef = useRef<{ timeout?: number; interval?: number }>({})
   // 꾹 누르는 동안에는 다시 그려지기를 기다리지 않고 여기서 다음 값을 이어 센다.
   const latestRef = useRef(value)
   useEffect(() => { latestRef.current = value }, [value])
+  const hold = useHoldRepeat({ onRelease: onCommit })
 
   const clamp = (next: number) => Math.max(min, Math.min(max, next))
 
   const nudge = (delta: number) => {
     const current = latestRef.current
     const next = clamp(Math.round((current + delta) / step) * step)
-    if (next === current) return
+    if (next === current) return false
     latestRef.current = next
     onChange(next)
-  }
-
-  const stopHold = () => {
-    window.clearTimeout(holdRef.current.timeout)
-    window.clearInterval(holdRef.current.interval)
-    holdRef.current = {}
-  }
-  useEffect(() => stopHold, [])
-
-  const beginHold = (event: React.PointerEvent<HTMLButtonElement>, delta: number) => {
-    // 단추를 짚어도 자판이 뜨지 않게 — 입력 칸의 초점을 뺏지 않는다.
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    nudge(delta)
-    holdRef.current.timeout = window.setTimeout(() => {
-      holdRef.current.interval = window.setInterval(() => nudge(delta), HOLD_INTERVAL)
-    }, HOLD_DELAY)
-  }
-
-  const endHold = () => {
-    if (!holdRef.current.timeout && !holdRef.current.interval) return
-    stopHold()
-    onCommit?.()
+    return true
   }
 
   const stepButton = (delta: number, glyph: string, atLimit: boolean) => (
@@ -328,9 +302,7 @@ export function NumberField({
       type="button"
       aria-label={`${label} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`}
       disabled={disabled || atLimit}
-      onPointerDown={(event) => beginHold(event, delta)}
-      onPointerUp={endHold}
-      onPointerCancel={endHold}
+      {...hold(() => nudge(delta))}
       className="flex h-10 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-sm font-bold text-neutral-600 transition-colors hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-30"
       style={{ touchAction: 'none' }}
     >

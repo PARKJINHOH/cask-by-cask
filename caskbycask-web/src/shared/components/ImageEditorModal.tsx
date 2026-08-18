@@ -25,6 +25,7 @@ import {
 import { ensureEditorFontCssLoaded } from './imageEditorFontCss'
 import './image-editor.css'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import { useHoldRepeat } from '@/shared/hooks/useHoldRepeat'
 
 interface ImageEditorModalProps {
   open: boolean
@@ -93,17 +94,22 @@ function TextControls({
   const canApply = drawableCount > 0 && !isApplying
   const canAddLayer = layers.length < TEXT_LAYER_MAX
   const [fontSizeDraft, setFontSizeDraft] = useState<string | null>(null)
+  // 화살표를 꾹 누르는 동안에는 다시 그려지기를 기다리지 않고 여기서 다음 값을 이어 센다.
+  const fontSizeRef = useRef(style.fontSize)
+  useEffect(() => { fontSizeRef.current = style.fontSize }, [style.fontSize])
+  const holdFontSize = useHoldRepeat()
 
   useEffect(() => {
     setFontSizeDraft(null)
   }, [activeLayer.id])
 
+  const clampFontSize = (value: number) =>
+    Math.max(TEXT_FONT_SIZE_MIN, Math.min(TEXT_FONT_SIZE_MAX, Math.round(value)))
+
   const applyFontSize = (raw: string) => {
     const value = Number(raw)
     if (!Number.isFinite(value)) return
-    onChange({
-      fontSize: Math.max(TEXT_FONT_SIZE_MIN, Math.min(TEXT_FONT_SIZE_MAX, Math.round(value))),
-    })
+    onChange({ fontSize: clampFontSize(value) })
   }
 
   const commitFontSize = () => {
@@ -112,11 +118,14 @@ function TextControls({
   }
 
   const stepFontSize = (delta: number) => {
-    const draftValue = fontSizeDraft?.trim() ? Number(fontSizeDraft) : style.fontSize
-    const current = Number.isFinite(draftValue) ? draftValue : style.fontSize
-    const next = Math.max(TEXT_FONT_SIZE_MIN, Math.min(TEXT_FONT_SIZE_MAX, Math.round(current + delta)))
+    const current = fontSizeRef.current
+    const next = clampFontSize(current + delta)
+    // 한계에 닿아 더 갈 곳이 없으면 false — 꾹 누르고 있어도 여기서 멈춘다.
+    if (next === current) return false
+    fontSizeRef.current = next
     setFontSizeDraft(String(next))
     onChange({ fontSize: next })
+    return true
   }
 
   return (
@@ -248,11 +257,11 @@ function TextControls({
               <span className="flex w-7 shrink-0 flex-col border-l border-neutral-700">
                 <button
                   type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => stepFontSize(1)}
+                  {...holdFontSize(() => stepFontSize(1))}
                   disabled={style.fontSize >= TEXT_FONT_SIZE_MAX}
                   aria-label={t('imageEditor.increaseFontSize')}
                   title={t('imageEditor.increaseFontSize')}
+                  style={{ touchAction: 'none' }}
                   className="flex flex-1 items-center justify-center border-b border-neutral-700 text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -261,11 +270,11 @@ function TextControls({
                 </button>
                 <button
                   type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => stepFontSize(-1)}
+                  {...holdFontSize(() => stepFontSize(-1))}
                   disabled={style.fontSize <= TEXT_FONT_SIZE_MIN}
                   aria-label={t('imageEditor.decreaseFontSize')}
                   title={t('imageEditor.decreaseFontSize')}
+                  style={{ touchAction: 'none' }}
                   className="flex flex-1 items-center justify-center text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

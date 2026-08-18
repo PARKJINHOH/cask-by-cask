@@ -96,4 +96,9 @@ describe('번역 및 API 배선', () => {
     assert.match(item, /md:grid-cols-\[minmax\(0,3fr\)_minmax\(0,2fr\)\]/)
     assert.match(item, /AromaProfileChartPanel profiles=\{aromaProfiles\} chartOnly/)
   })
+
+  test('프로파일 패널은 기본으로 펼쳐진 상태다', () => {
+    const item = readFileSync(join(HERE, '..', 'src', 'domain', 'review', 'components', 'ReviewItem.tsx'), 'utf8')
+    assert.match(item, /const \[profileExpanded, setProfileExpanded\] = useState\(true\)/)
+  })
 })
