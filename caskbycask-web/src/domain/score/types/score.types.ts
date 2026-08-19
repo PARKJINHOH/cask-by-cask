@@ -62,17 +62,18 @@ export const LEVELS: LevelInfo[] = generateLevels()
 
 export const MAX_LEVEL = LEVELS[LEVELS.length - 1].level
 
-export function getLevelInfo(level: number): LevelInfo {
-  return LEVELS.find((l) => l.level === level) ?? LEVELS[LEVELS.length - 1]
+// levels 를 넘기면 DB 레벨 설정 기준으로, 생략하면 공식 fallback 기준으로 계산한다.
+export function getLevelInfo(level: number, levels: LevelInfo[] = LEVELS): LevelInfo {
+  return levels.find((l) => l.level === level) ?? levels[levels.length - 1]
 }
 
-export function getNextLevelInfo(level: number): LevelInfo | null {
-  return LEVELS.find((l) => l.level === level + 1) ?? null
+export function getNextLevelInfo(level: number, levels: LevelInfo[] = LEVELS): LevelInfo | null {
+  return levels.find((l) => l.level === level + 1) ?? null
 }
 
-export function calcProgress(maturingPower: number, currentLevel: number): number {
-  const cur = getLevelInfo(currentLevel)
-  const next = getNextLevelInfo(currentLevel)
+export function calcProgress(maturingPower: number, currentLevel: number, levels: LevelInfo[] = LEVELS): number {
+  const cur = getLevelInfo(currentLevel, levels)
+  const next = getNextLevelInfo(currentLevel, levels)
   if (!next) return 100
   const range = next.minScore - cur.minScore
   const earned = maturingPower - cur.minScore

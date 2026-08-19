@@ -9,8 +9,9 @@ import { formatDate } from '@/shared/utils/format'
 import Pagination from '@/shared/components/Pagination'
 import { useScoreHistory, useLevelConfigs } from '../hooks/useScoreHistory'
 import {
-  MAX_LEVEL,
   calcProgress,
+  getLevelInfo,
+  getNextLevelInfo,
   ACTION_ICONS,
   LEVELS,
 } from '../types/score.types'
@@ -34,10 +35,18 @@ function ProgressBar({ pct }: { pct: number }) {
 
 function LevelCard({ profile }: { profile: UserProfile }) {
   const { t } = useTranslation()
+  const { data: levels } = useLevelConfigs()
+  // 레벨 설정(DB)이 있으면 그 기준으로, 없으면 공식 fallback 으로 계산한다.
+  const all: LevelInfo[] = levels && levels.length > 0 ? levels : LEVELS
   const currentLevel = profile.currentLevel ?? 1
   const maturingPower = profile.maturingPower ?? 0
-  const pct = calcProgress(maturingPower, currentLevel)
-  const isMax = currentLevel >= MAX_LEVEL
+  const pct = calcProgress(maturingPower, currentLevel, all)
+  const nextLevel = getNextLevelInfo(currentLevel, all)
+  const isMax = !nextLevel
+  // 진행 바 구간 점수 — 현재 레벨 시작점 대비 획득 점수 / 다음 레벨까지 필요 점수
+  const curMin = getLevelInfo(currentLevel, all).minScore
+  const earned = Math.max(0, maturingPower - curMin)
+  const needed = nextLevel ? nextLevel.minScore - curMin : 0
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-neutral-100">
@@ -61,19 +70,30 @@ function LevelCard({ profile }: { profile: UserProfile }) {
         {isMax ? (
           <>
             <ProgressBar pct={100} />
-            <p className="text-xs text-center text-amber-600 font-semibold">
-              {t('maturing.maxLevelAward', '🏆 최고 레벨 달성!')}
-            </p>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-xs text-neutral-500 tabular-nums whitespace-nowrap">
+                <span className="font-semibold text-amber-700">{maturingPower.toLocaleString()}</span>
+              </p>
+              <p className="text-xs text-amber-600 font-semibold whitespace-nowrap">
+                {t('maturing.maxLevelAward', '🏆 최고 레벨 달성!')}
+              </p>
+            </div>
           </>
         ) : (
           <>
             <ProgressBar pct={pct} />
-            <p className="text-xs text-neutral-500 text-right">
-              <span className="font-semibold text-amber-700">Lv.{currentLevel + 1}</span>
-              {' '}{t('maturing.until', '까지')}{' '}
-              <span className="font-semibold text-neutral-700 tabular-nums">{100 - pct}%</span>
-              {' '}{t('maturing.left', '남음')}
-            </p>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-xs text-neutral-500 tabular-nums whitespace-nowrap">
+                <span className="font-semibold text-amber-700">{earned.toLocaleString()}</span>
+                <span className="text-neutral-400"> / {needed.toLocaleString()}</span>
+              </p>
+              <p className="text-xs text-neutral-500 whitespace-nowrap">
+                <span className="font-semibold text-amber-700">Lv.{currentLevel + 1}</span>
+                {' '}{t('maturing.until', '까지')}{' '}
+                <span className="font-semibold text-neutral-700 tabular-nums">{100 - pct}%</span>
+                {' '}{t('maturing.left', '남음')}
+              </p>
+            </div>
           </>
         )}
       </div>
