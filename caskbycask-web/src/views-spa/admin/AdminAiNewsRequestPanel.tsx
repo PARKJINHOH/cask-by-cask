@@ -77,10 +77,9 @@ export default function AdminAiNewsRequestPanel() {
             className={`${inputCls}`}
             placeholder="예: 메타베브코리아가 최근 발표한 글렌알라키 국내 출시·행사 소식을 확인하고, 확인된 사실만으로 소개 글을 작성해 주세요."
           />
-          <div className="mt-1 flex items-center justify-between gap-3 text-xs text-neutral-500">
-            <span>작성 방향, 반드시 확인할 내용, 독자에게 전달할 핵심을 구체적으로 적어주세요.</span>
-            <span>{prompt.length}/4000</span>
-          </div>
+          <p className="mt-1 text-xs text-neutral-500">
+            작성 방향, 반드시 확인할 내용, 독자에게 전달할 핵심을 구체적으로 적어주세요.
+          </p>
         </label>
 
         <div>

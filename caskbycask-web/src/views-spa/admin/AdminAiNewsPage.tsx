@@ -12,6 +12,7 @@ import Pagination from '@/shared/components/Pagination'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { formatDateTime } from '@/shared/utils/format'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import NumberInput from '@/shared/components/NumberInput'
 
 type Tab = 'articles' | 'topics' | 'sources' | 'settings'
 
@@ -527,7 +528,7 @@ function Toggle({ label, description, checked, onChange }: { label: string; desc
 function shortTitle(value: string, maxLength = 32) {
   return value.length > maxLength ? `${value.slice(0, maxLength).trimEnd()}...` : value
 }
-function NumberField({ label, value, onChange, step = '1' }: { label: string; value: number; onChange: (v: number) => void; step?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<RequiredMark /><input required aria-required="true" type="number" step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
+function NumberField({ label, value, onChange, step = '1' }: { label: string; value: number; onChange: (v: number) => void; step?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<RequiredMark /><NumberInput required aria-required="true"step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
 
 const inputCls = 'rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100'
 const smallBtn = 'rounded-md border border-neutral-200 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100'

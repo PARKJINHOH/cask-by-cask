@@ -1,6 +1,7 @@
 import NasToggle from '@/shared/components/NasToggle'
 import { formatYearMonth } from '@/shared/utils/yearMonth'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import NumberInput from '@/shared/components/NumberInput'
 
 export interface CommonDetailForm {
   isNas: boolean
@@ -119,8 +120,8 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
                 className={INPUT}
               />
               <span className="text-neutral-400 flex-shrink-0">/</span>
-              <input
-                type="number" min={1}
+              <NumberInput
+                min={1}
                 value={value.totalBottles}
                 onChange={(e) => onChange({ totalBottles: e.target.value })}
                 onWheel={(e) => e.currentTarget.blur()}

@@ -15,6 +15,7 @@ import type { UpdateProducerRequestPayload } from '@/domain/producer/types/produ
 import { PRODUCER_TYPE_LABEL, type ProducerType } from '@/domain/producer/types/producer.types'
 import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: '대기 중', APPROVED: '승인됨', REJECTED: '반려됨',
@@ -219,7 +220,7 @@ export default function AdminProducerRequestDetailPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="설립연도">
-                <input className={FIELD_CLS} type="number" value={form.foundedYear}
+                <NumberInput className={FIELD_CLS}value={form.foundedYear}
                   min={1500} max={new Date().getFullYear()}
                   onChange={e => set({ foundedYear: e.target.value })} />
               </Field>

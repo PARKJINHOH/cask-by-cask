@@ -252,14 +252,9 @@ export default function SocialPublishFields({
                 onChange={(event) => onChange({ ...selection, thumbnailText: event.target.value })}
                 placeholder={t('social.thumbnailTextPlaceholder')}
                 className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm leading-6" />
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-xs leading-5 text-neutral-500">
-                  {t('social.thumbnailTextHelp')}
-                </p>
-                <span className="shrink-0 text-xs tabular-nums text-neutral-400">
-                  {(selection.thumbnailText ?? '').length}/200
-                </span>
-              </div>
+              <p className="text-xs leading-5 text-neutral-500">
+                {t('social.thumbnailTextHelp')}
+              </p>
               {selectedTemplate && (
                 <div className="rounded-lg border border-neutral-200 bg-white p-3">
                   <p className="mb-2 text-xs font-semibold text-neutral-700">

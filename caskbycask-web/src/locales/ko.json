@@ -1006,6 +1006,9 @@
     }
   },
   "review": {
+    "scoreNotRated": "점수 미입력",
+    "scoreNotRatedHint": "비워 두면 평균 점수에 반영되지 않습니다",
+    "scoreClear": "점수 지우기",
     "title": "리뷰",
     "userReviewsTitle": "{{nickname}} 님의 리뷰",
     "nthReview": "{{index}}번째 리뷰",
@@ -1090,6 +1093,7 @@
     "aromaSearchPlaceholder": "아로마 검색 또는 직접 입력...",
     "aromaNoMatch": "검색 결과 없음 — 직접 추가하려면",
     "aromaProfile": {
+      "byReviewer": "{{nickname}}님의 아로마 프로파일",
       "title": "아로마 프로파일",
       "add": "+ 프로파일",
       "edit": "프로파일 수정",
@@ -1199,6 +1203,7 @@
       "writingNow": "지금"
     },
     "error": {
+      "scoreAllOrNone": "점수는 향·맛·피니시를 모두 입력하거나 모두 비워 주세요.",
       "noteMin": "최소 {{min}}글자 이상 작성해주세요.",
       "noteMax": "{{max}}자 이내로 작성해주세요.",
       "checkFields": "입력하지 않았거나 잘못된 항목이 있습니다. 표시된 곳을 확인해주세요."

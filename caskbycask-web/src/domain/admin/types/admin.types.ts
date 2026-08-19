@@ -321,10 +321,10 @@ export interface AdminVariantReviewRequest {
   requestMemo: string | null
   requesterId: number
   requesterNickname: string
-  noseScore: number
-  tasteScore: number
-  finishScore: number
-  totalScore: number
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
+  totalScore: number | null
   noseNote: string | null
   tasteNote: string | null
   finishNote: string | null
@@ -362,10 +362,10 @@ export interface AdminReview {
   spiritNameKo: string
   spiritNameEn: string
   masterSpiritId: number
-  noseScore: number
-  tasteScore: number
-  finishScore: number
-  totalScore: number
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
+  totalScore: number | null
   comment: string | null
   noseNote: string | null
   tasteNote: string | null

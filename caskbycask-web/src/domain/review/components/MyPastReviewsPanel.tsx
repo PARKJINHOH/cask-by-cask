@@ -2,7 +2,7 @@ import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Spinner from '@/shared/components/Spinner'
 import { useChromeTop } from '@/shared/hooks/useChromeTop'
-import { scoreColor } from '@/shared/utils/format'
+import { formatScore, optionalScoreColor } from '@/shared/utils/format'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { useMyReviews } from '../hooks/useReviews'
 import type { ReviewItem } from '../types/review.types'
@@ -20,9 +20,9 @@ export interface MyPastReviewsPanelProps {
    * 지금 폼에 입력 중인 점수 — 상세 모달에서 과거 점수와 나란히 비교한다.
    * 객체가 아니라 낱개 숫자로 받는다: memo 의 얕은 비교가 통해야 노트 타이핑마다 다시 그리지 않는다.
    */
-  currentNoseScore?: number
-  currentTasteScore?: number
-  currentFinishScore?: number
+  currentNoseScore?: number | null
+  currentTasteScore?: number | null
+  currentFinishScore?: number | null
 }
 
 function PastReviewRow({
@@ -52,9 +52,9 @@ function PastReviewRow({
         </p>
         <span
           className="flex-shrink-0 text-sm font-bold tabular-nums"
-          style={{ color: scoreColor(review.totalScore) }}
+          style={{ color: optionalScoreColor(review.totalScore) }}
         >
-          {review.totalScore.toFixed(1)}
+          {formatScore(review.totalScore)}
         </span>
       </div>
       {snippet && (

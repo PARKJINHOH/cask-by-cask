@@ -367,8 +367,7 @@ export default function AdminInquiryPage() {
                         className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
                           focus:outline-none focus:ring-2 focus:ring-primary-400"
                       />
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="text-xs text-neutral-400">{replyInput.length} / 5,000</p>
+                      <div className="flex items-center justify-end mt-2">
                         <button
                           onClick={() => {
                             if (!replyInput.trim()) return

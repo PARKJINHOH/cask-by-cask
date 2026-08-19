@@ -6,7 +6,7 @@ import Input from '@/shared/components/Input'
 import Modal from '@/shared/components/Modal'
 import Pagination from '@/shared/components/Pagination'
 import Spinner from '@/shared/components/Spinner'
-import { formatDate, scoreColor } from '@/shared/utils/format'
+import { formatDate, formatScore, optionalScoreColor, NO_SCORE_TEXT } from '@/shared/utils/format'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import {
@@ -87,15 +87,15 @@ function ReviewScoreSummary({ item }: { item: AdminVariantReviewRequest }) {
     <div className="space-y-1 text-xs text-neutral-500">
       <div className="flex items-center gap-2">
         <span className="w-10">향</span>
-        <span className="tabular-nums">{item.noseScore.toFixed(0)}</span>
+        <span className="tabular-nums">{item.noseScore == null ? NO_SCORE_TEXT : item.noseScore.toFixed(0)}</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="w-10">맛</span>
-        <span className="tabular-nums">{item.tasteScore.toFixed(0)}</span>
+        <span className="tabular-nums">{item.tasteScore == null ? NO_SCORE_TEXT : item.tasteScore.toFixed(0)}</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="w-10">피니시</span>
-        <span className="tabular-nums">{item.finishScore.toFixed(0)}</span>
+        <span className="tabular-nums">{item.finishScore == null ? NO_SCORE_TEXT : item.finishScore.toFixed(0)}</span>
       </div>
     </div>
   )
@@ -403,9 +403,9 @@ export default function AdminVariantRequestPage() {
                           <div className="flex items-start gap-3">
                             <span
                               className="text-lg font-bold tabular-nums"
-                              style={{ color: scoreColor(item.totalScore) }}
+                              style={{ color: optionalScoreColor(item.totalScore) }}
                             >
-                              {item.totalScore.toFixed(1)}
+                              {formatScore(item.totalScore)}
                             </span>
                             <ReviewScoreSummary item={item} />
                           </div>

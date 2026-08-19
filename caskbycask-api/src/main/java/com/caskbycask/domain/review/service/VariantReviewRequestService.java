@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -85,6 +86,7 @@ public class VariantReviewRequestService {
         }
 
         badWordFilter.validate(request.comment());
+        rejectPartialScore(request.noseScore(), request.tasteScore(), request.finishScore());
 
         SpiritVariantReviewRequest saved = requestRepository.save(SpiritVariantReviewRequest.builder()
                 .masterSpirit(master)
@@ -184,6 +186,7 @@ public class VariantReviewRequestService {
             List<ReviewImagePlanItem> imagePlan, List<MultipartFile> images) {
         SpiritVariantReviewRequest request = getEditableMyRequest(requestId, userId);
         badWordFilter.validate(update.comment());
+        rejectPartialScore(update.noseScore(), update.tasteScore(), update.finishScore());
         request.updatePending(
                 update.variantValue().trim(),
                 normalize(update.variantValueEn()),
@@ -236,6 +239,7 @@ public class VariantReviewRequestService {
         Spirit linkedVariant = request.getLinkedVariant();
 
         badWordFilter.validate(update.comment());
+        rejectPartialScore(update.noseScore(), update.tasteScore(), update.finishScore());
         request.resubmitReview(
                 linkedVariant.getVariantValue(),
                 normalize(linkedVariant.getVariantValueEn()),
@@ -717,6 +721,13 @@ public class VariantReviewRequestService {
                 escape(request.getVariantValue()),
                 safeReason
         );
+    }
+
+    /** 리뷰와 같은 규칙 — 점수는 셋 다 있거나 셋 다 없거나. */
+    private void rejectPartialScore(BigDecimal nose, BigDecimal taste, BigDecimal finish) {
+        if (Review.isPartialScore(nose, taste, finish)) {
+            throw new CustomException(ErrorCode.REVIEW_SCORE_PARTIAL);
+        }
     }
 
     private String escape(String value) {

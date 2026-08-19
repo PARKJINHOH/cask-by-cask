@@ -92,6 +92,7 @@ public enum ErrorCode {
     REVIEW_IMAGE_PLAN_INVALID(HttpStatus.BAD_REQUEST, "REVIEW_010", "리뷰 이미지 변경 정보가 올바르지 않습니다."),
     REVIEW_AROMA_PROFILE_INVALID(HttpStatus.BAD_REQUEST, "REVIEW_011", "아로마 프로파일 정보가 올바르지 않습니다."),
     REVIEW_AROMA_PROFILE_UNSUPPORTED(HttpStatus.BAD_REQUEST, "REVIEW_012", "이 주류 카테고리는 아로마 프로파일을 지원하지 않습니다."),
+    REVIEW_SCORE_PARTIAL(HttpStatus.BAD_REQUEST, "REVIEW_013", "점수는 향·맛·피니시를 모두 입력하거나 모두 비워 주세요."),
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "댓글을 찾을 수 없습니다."),

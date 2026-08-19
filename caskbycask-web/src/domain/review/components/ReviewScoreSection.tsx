@@ -16,8 +16,9 @@ import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 interface ReviewScoreSectionProps {
   label: string
-  score: number
-  onScoreChange: (v: number) => void
+  /** `null` 은 점수 미입력 — 평균 산출에서 빠지는 리뷰가 된다. */
+  score: number | null
+  onScoreChange: (v: number | null) => void
   note: string
   onNoteChange: (v: string) => void
   notePlaceholder?: string
@@ -109,7 +110,8 @@ export default function ReviewScoreSection({
     <div className="bg-neutral-50 rounded-2xl p-4 space-y-4">
       {/* 점수 입력 */}
       <div>
-        <ScoreInput label={label} value={score} onChange={onScoreChange} required />
+        {/* 점수는 선택 항목이 되었다 — 필수 표시(*)를 떼고 비워 둘 수 있게 한다 */}
+        <ScoreInput label={label} value={score} onChange={onScoreChange} />
         {scoreError && <p className="text-xs text-red-500 mt-1">{scoreError}</p>}
       </div>
 

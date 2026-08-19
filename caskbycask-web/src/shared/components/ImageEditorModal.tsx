@@ -26,6 +26,7 @@ import { ensureEditorFontCssLoaded } from './imageEditorFontCss'
 import './image-editor.css'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 import { useHoldRepeat } from '@/shared/hooks/useHoldRepeat'
+import NumberInput from '@/shared/components/NumberInput'
 
 interface ImageEditorModalProps {
   open: boolean
@@ -238,9 +239,8 @@ function TextControls({
           </label>
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 focus-within:border-primary-500">
-              <input
+              <NumberInput
                 id={`${idPrefix}-size`}
-                type="number"
                 min={TEXT_FONT_SIZE_MIN}
                 max={TEXT_FONT_SIZE_MAX}
                 value={fontSizeDraft ?? style.fontSize}
@@ -2309,8 +2309,7 @@ export default function ImageEditorModal({
                             <div className="flex items-center gap-2 mt-2 p-2 bg-neutral-950/40 rounded-xl border border-neutral-800">
                               <div className="flex-1 flex flex-col gap-1">
                                 <label className="text-[10px] text-neutral-400 font-medium">{t('imageEditor.widthRatio')}</label>
-                                <input
-                                  type="number"
+                                <NumberInput
                                   min="1"
                                   value={customRatioW}
                                   onChange={(e) => handleCustomRatioChange(e.target.value, customRatioH)}
@@ -2320,8 +2319,7 @@ export default function ImageEditorModal({
                               <span className="text-neutral-500 self-end mb-1.5">:</span>
                               <div className="flex-1 flex flex-col gap-1">
                                 <label className="text-[10px] text-neutral-400 font-medium">{t('imageEditor.heightRatio')}</label>
-                                <input
-                                  type="number"
+                                <NumberInput
                                   min="1"
                                   value={customRatioH}
                                   onChange={(e) => handleCustomRatioChange(customRatioW, e.target.value)}
@@ -2448,8 +2446,7 @@ export default function ImageEditorModal({
                           <div className="flex items-center gap-2 p-2 bg-neutral-950/40 rounded-xl border border-neutral-800">
                             <div className="flex-1 flex flex-col gap-1">
                               <label className="text-[10px] text-neutral-400 font-medium">{t('imageEditor.widthPx')}</label>
-                              <input
-                                type="number"
+                              <NumberInput
                                 min="1"
                                 value={resizeW}
                                 onChange={(e) => handleResizeWChange(e.target.value)}
@@ -2459,8 +2456,7 @@ export default function ImageEditorModal({
                             <span className="text-neutral-500 self-end mb-2">×</span>
                             <div className="flex-1 flex flex-col gap-1">
                               <label className="text-[10px] text-neutral-400 font-medium">{t('imageEditor.heightPx')}</label>
-                              <input
-                                type="number"
+                              <NumberInput
                                 min="1"
                                 value={resizeH}
                                 onChange={(e) => handleResizeHChange(e.target.value)}
@@ -2852,8 +2848,7 @@ export default function ImageEditorModal({
                         <div className="flex items-center gap-2 p-1.5 bg-neutral-950/40 rounded-lg border border-neutral-800">
                           <div className="flex-1 flex items-center gap-1">
                             <span className="text-[10px] text-neutral-400 whitespace-nowrap">{t('imageEditor.widthRatio')}</span>
-                            <input
-                              type="number"
+                            <NumberInput
                               min="1"
                               value={customRatioW}
                               onChange={(e) => handleCustomRatioChange(e.target.value, customRatioH)}
@@ -2863,8 +2858,7 @@ export default function ImageEditorModal({
                           <span className="text-neutral-500">:</span>
                           <div className="flex-1 flex items-center gap-1">
                             <span className="text-[10px] text-neutral-400 whitespace-nowrap">{t('imageEditor.heightRatio')}</span>
-                            <input
-                              type="number"
+                            <NumberInput
                               min="1"
                               value={customRatioH}
                               onChange={(e) => handleCustomRatioChange(customRatioW, e.target.value)}
@@ -2977,8 +2971,7 @@ export default function ImageEditorModal({
                       <div className="flex items-center gap-2 p-1.5 bg-neutral-950/40 rounded-lg border border-neutral-800">
                         <div className="flex-1 flex items-center gap-1.5">
                           <span className="text-[10px] text-neutral-400">{t('imageEditor.width')}</span>
-                          <input
-                            type="number"
+                          <NumberInput
                             min="1"
                             value={resizeW}
                             onChange={(e) => handleResizeWChange(e.target.value)}
@@ -2988,8 +2981,7 @@ export default function ImageEditorModal({
                         <span className="text-neutral-500">×</span>
                         <div className="flex-1 flex items-center gap-1.5">
                           <span className="text-[10px] text-neutral-400">{t('imageEditor.height')}</span>
-                          <input
-                            type="number"
+                          <NumberInput
                             min="1"
                             value={resizeH}
                             onChange={(e) => handleResizeHChange(e.target.value)}

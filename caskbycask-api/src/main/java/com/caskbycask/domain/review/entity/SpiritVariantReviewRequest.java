@@ -66,16 +66,17 @@ public class SpiritVariantReviewRequest extends BaseTimeEntity {
     @Column(length = 500)
     private String requestMemo;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    /** 점수는 셋 다 있거나 셋 다 없다 — 리뷰와 같은 규칙. */
+    @Column(precision = 4, scale = 1)
     private BigDecimal noseScore;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    @Column(precision = 4, scale = 1)
     private BigDecimal tasteScore;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    @Column(precision = 4, scale = 1)
     private BigDecimal finishScore;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    @Column(precision = 4, scale = 1)
     private BigDecimal totalScore;
 
     @Column(length = 600)
@@ -128,6 +129,8 @@ public class SpiritVariantReviewRequest extends BaseTimeEntity {
         if (noseScore != null && tasteScore != null && finishScore != null) {
             this.totalScore = noseScore.add(tasteScore).add(finishScore)
                     .divide(BigDecimal.valueOf(3), 1, RoundingMode.HALF_UP);
+        } else {
+            this.totalScore = null;
         }
     }
 

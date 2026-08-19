@@ -40,6 +40,7 @@ import type {
   ReviewShareImagePlacement,
   ReviewShareImageSource,
 } from './reviewShare.types'
+import { formatScore } from '@/shared/utils/format'
 
 const MAX_UPLOAD_SIZE = 30 * 1024 * 1024
 
@@ -62,8 +63,8 @@ function ShareIcon() {
   )
 }
 
-function score(value: number): string {
-  return Number(value).toFixed(1)
+function score(value: number | null): string {
+  return formatScore(value)
 }
 
 function escapeHtml(value: string): string {

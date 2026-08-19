@@ -21,6 +21,7 @@ import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import ProducerLogoField from '@/domain/admin/components/ProducerLogoField'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 const PRODUCER_TYPES: ProducerType[] = ['DISTILLERY', 'WINERY', 'COGNAC_HOUSE', 'OTHER']
 const SPIRIT_CATEGORY_LABEL = { WHISKY: '위스키', COGNAC: '꼬냑', WINE: '와인', OTHER: '기타' } as const
@@ -141,9 +142,8 @@ function ProducerForm({ initial, onSave, onCancel, isPending }: ProducerFormProp
         </div>
         <div className="space-y-1">
           <label className="block text-xs font-medium text-neutral-600">설립연도</label>
-          <input
+          <NumberInput
             {...register('foundedYear')}
-            type="number"
             placeholder="예) 1824"
             min={1500}
             max={new Date().getFullYear()}
@@ -481,10 +481,9 @@ export default function AdminProducerPage() {
           </div>
           <div className="space-y-1">
             <label className="block text-xs font-medium text-neutral-600">설립연도</label>
-            <input
+            <NumberInput
               value={filterInput.foundedYear}
               onChange={(e) => setFilterInput((f) => ({ ...f, foundedYear: e.target.value }))}
-              type="number"
               placeholder="예) 1824"
               className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
                 focus:outline-none focus:ring-2 focus:ring-primary-400"

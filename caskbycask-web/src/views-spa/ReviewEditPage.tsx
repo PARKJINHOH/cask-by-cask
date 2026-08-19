@@ -5,7 +5,7 @@ import Spinner from '@/shared/components/Spinner'
 import Button from '@/shared/components/Button'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
-import { scoreColor } from '@/shared/utils/format'
+import { formatScore, optionalScoreColor } from '@/shared/utils/format'
 import ReviewScoreSection from '@/domain/review/components/ReviewScoreSection'
 import ReviewImageField, {
   existingReviewImageDrafts,
@@ -40,11 +40,15 @@ import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type { AromaProfile } from '@/domain/review/types/review.types'
 import { REVIEW_NOTE_MIN_LENGTH, REVIEW_TEXT_MAX_LENGTH } from '@/domain/review/constants/reviewLimits'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 const MY_REVIEWS_PATH = '/mypage?tab=reviews'
 const NOTE_MIN_LENGTH = REVIEW_NOTE_MIN_LENGTH
 
-type FieldErrorKey = 'variantValue' | 'abv' | 'volumeMl' | 'noseNote' | 'tasteNote' | 'finishNote'
+type FieldErrorKey =
+  | 'variantValue' | 'abv' | 'volumeMl'
+  | 'noseNote' | 'tasteNote' | 'finishNote'
+  | 'noseScore' | 'tasteScore' | 'finishScore'
 type FieldErrors = Partial<Record<FieldErrorKey, string>>
 
 /** 하위 에디션 요청의 편집 가능 형태 */
@@ -99,9 +103,10 @@ export default function ReviewEditPage() {
   const [abv, setAbv] = useState('')
   const [volumeMl, setVolumeMl] = useState('')
   const [requestMemo, setRequestMemo] = useState('')
-  const [noseScore, setNoseScore] = useState(70)
-  const [tasteScore, setTasteScore] = useState(70)
-  const [finishScore, setFinishScore] = useState(70)
+  // null 은 "점수 미입력" — 점수를 지운 채 저장하면 평균 산출에서 빠진다.
+  const [noseScore, setNoseScore] = useState<number | null>(null)
+  const [tasteScore, setTasteScore] = useState<number | null>(null)
+  const [finishScore, setFinishScore] = useState<number | null>(null)
   const [noseNote, setNoseNote] = useState('')
   const [tasteNote, setTasteNote] = useState('')
   const [finishNote, setFinishNote] = useState('')
@@ -132,9 +137,9 @@ export default function ReviewEditPage() {
   useEffect(() => {
     const source = review ?? request
     if (!source) return
-    setNoseScore(Number(source.noseScore))
-    setTasteScore(Number(source.tasteScore))
-    setFinishScore(Number(source.finishScore))
+    setNoseScore(source.noseScore == null ? null : Number(source.noseScore))
+    setTasteScore(source.tasteScore == null ? null : Number(source.tasteScore))
+    setFinishScore(source.finishScore == null ? null : Number(source.finishScore))
     setNoseNote(source.noseNote ?? '')
     setTasteNote(source.tasteNote ?? '')
     setFinishNote(source.finishNote ?? '')
@@ -160,7 +165,11 @@ export default function ReviewEditPage() {
     return { title: '', editionValue: null }
   }, [review, request, isEn])
 
-  const totalPreview = (noseScore + tasteScore + finishScore) / 3
+  const hasAllScores = noseScore != null && tasteScore != null && finishScore != null
+  const totalPreview = hasAllScores ? (noseScore + tasteScore + finishScore) / 3 : null
+  // 셋 중 일부만 채운 상태 — 총점을 낼 수 없어 서버도 막는다(REVIEW_013).
+  const hasPartialScore =
+    !hasAllScores && (noseScore != null || tasteScore != null || finishScore != null)
   const isPending =
     updateReviewMutation.isPending ||
     updateRequestMutation.isPending ||
@@ -176,6 +185,12 @@ export default function ReviewEditPage() {
 
   const validate = (): FieldErrors => {
     const next: FieldErrors = {}
+    // 점수는 셋 다 채우거나 셋 다 비우거나 — 부분 입력은 총점을 낼 수 없다.
+    if (hasPartialScore) {
+      if (noseScore == null) next.noseScore = t('review.error.scoreAllOrNone')
+      if (tasteScore == null) next.tasteScore = t('review.error.scoreAllOrNone')
+      if (finishScore == null) next.finishScore = t('review.error.scoreAllOrNone')
+    }
     if (noseNote.trim().length < NOTE_MIN_LENGTH) next.noseNote = t('mypage.reviews.pendingRequiredNote')
     if (tasteNote.trim().length < NOTE_MIN_LENGTH) next.tasteNote = t('mypage.reviews.pendingRequiredNote')
     if (finishNote.trim().length < NOTE_MIN_LENGTH) next.finishNote = t('mypage.reviews.pendingRequiredNote')
@@ -397,9 +412,8 @@ export default function ReviewEditPage() {
                     <label className="mb-1.5 block text-xs font-semibold text-neutral-700">
                       {t('review.addEditionAbvLabel')} <RequiredMark />
                     </label>
-                    <input
+                    <NumberInput
                       ref={abvRef}
-                      type="number"
                       min={0}
                       max={100}
                       step={0.1}
@@ -418,9 +432,8 @@ export default function ReviewEditPage() {
                     <label className="mb-1.5 block text-xs font-semibold text-neutral-700">
                       {t('review.addEditionVolumeLabel')} <RequiredMark />
                     </label>
-                    <input
+                    <NumberInput
                       ref={volumeMlRef}
-                      type="number"
                       min={1}
                       max={100000}
                       value={volumeMl}
@@ -485,7 +498,11 @@ export default function ReviewEditPage() {
           <ReviewScoreSection
             label={t('review.nose')}
             score={noseScore}
-            onScoreChange={setNoseScore}
+            onScoreChange={(value) => {
+              setNoseScore(value)
+              setErrors((prev) => ({ ...prev, noseScore: undefined, tasteScore: undefined, finishScore: undefined }))
+            }}
+            scoreError={errors.noseScore}
             note={noseNote}
             onNoteChange={(value) => {
               setNoseNote(value)
@@ -508,7 +525,11 @@ export default function ReviewEditPage() {
           <ReviewScoreSection
             label={t('review.taste')}
             score={tasteScore}
-            onScoreChange={setTasteScore}
+            onScoreChange={(value) => {
+              setTasteScore(value)
+              setErrors((prev) => ({ ...prev, noseScore: undefined, tasteScore: undefined, finishScore: undefined }))
+            }}
+            scoreError={errors.tasteScore}
             note={tasteNote}
             onNoteChange={(value) => {
               setTasteNote(value)
@@ -531,7 +552,11 @@ export default function ReviewEditPage() {
           <ReviewScoreSection
             label={t('review.finish')}
             score={finishScore}
-            onScoreChange={setFinishScore}
+            onScoreChange={(value) => {
+              setFinishScore(value)
+              setErrors((prev) => ({ ...prev, noseScore: undefined, tasteScore: undefined, finishScore: undefined }))
+            }}
+            scoreError={errors.finishScore}
             note={finishNote}
             onNoteChange={(value) => {
               setFinishNote(value)
@@ -560,9 +585,9 @@ export default function ReviewEditPage() {
               </div>
               <span
                 className="text-3xl font-bold tabular-nums md:text-4xl"
-                style={{ color: scoreColor(totalPreview) }}
+                style={{ color: optionalScoreColor(totalPreview) }}
               >
-                {totalPreview.toFixed(1)}
+                {formatScore(totalPreview)}
               </span>
             </div>
 
@@ -580,7 +605,6 @@ export default function ReviewEditPage() {
                 className="min-h-[5rem] w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm
                   placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
-              <p className="mt-1 text-right text-xs tabular-nums text-neutral-400">{comment.length}/{REVIEW_TEXT_MAX_LENGTH}</p>
             </div>
           </div>
 

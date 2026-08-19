@@ -13,7 +13,7 @@ import {
   useMyReviewRequests,
   useMyReviews,
 } from '../hooks/useReviews'
-import { scoreColor, formatDate } from '@/shared/utils/format'
+import { formatDate, formatScore, optionalScoreColor, NO_SCORE_TEXT } from '@/shared/utils/format'
 import type { ReviewItem, VariantReviewRequestItem } from '../types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
@@ -23,21 +23,21 @@ import ReviewImageStrip from './ReviewImageStrip'
 
 type ReviewTab = 'approved' | 'pending' | 'rejected'
 
-function ScoreBar({ label, value }: { label: string; value: number }) {
+function ScoreBar({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="flex items-center gap-2">
       <span className="w-10 text-xs text-neutral-400 flex-shrink-0">{label}</span>
       <div className="flex-1 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-[width]"
-          style={{ width: `${value}%`, backgroundColor: scoreColor(value) }}
+          style={{ width: `${value ?? 0}%`, backgroundColor: optionalScoreColor(value) }}
         />
       </div>
       <span
         className="w-7 text-xs font-semibold text-right tabular-nums"
-        style={{ color: scoreColor(value) }}
+        style={{ color: optionalScoreColor(value) }}
       >
-        {value}
+        {value ?? NO_SCORE_TEXT}
       </span>
     </div>
   )
@@ -207,9 +207,9 @@ export default function MyReviewList() {
                         <ReviewImageStrip images={review.images} compact />
                         <span
                           className="text-xl font-bold tabular-nums"
-                          style={{ color: scoreColor(review.totalScore) }}
+                          style={{ color: optionalScoreColor(review.totalScore) }}
                         >
-                          {review.totalScore.toFixed(1)}
+                          {formatScore(review.totalScore)}
                         </span>
                         <div className="flex gap-2">
                           <button
@@ -304,9 +304,9 @@ export default function MyReviewList() {
                           </span>
                           <span
                             className="text-xl font-bold tabular-nums"
-                            style={{ color: scoreColor(request.totalScore) }}
+                            style={{ color: optionalScoreColor(request.totalScore) }}
                           >
-                            {request.totalScore.toFixed(1)}
+                            {formatScore(request.totalScore)}
                           </span>
                         </div>
                       </div>
@@ -413,9 +413,9 @@ export default function MyReviewList() {
                         </span>
                         <span
                           className="text-xl font-bold tabular-nums"
-                          style={{ color: scoreColor(request.totalScore) }}
+                          style={{ color: optionalScoreColor(request.totalScore) }}
                         >
-                          {request.totalScore.toFixed(1)}
+                          {formatScore(request.totalScore)}
                         </span>
                       </div>
                     </div>

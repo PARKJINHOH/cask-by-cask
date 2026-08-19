@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { formatDate, scoreColor } from '@/shared/utils/format'
+import { formatDate, formatScore, optionalScoreColor } from '@/shared/utils/format'
 import { parseAromaNotes, supportsAromaProfiles } from '../utils/aroma'
 import type { AromaNotes } from '../utils/aroma'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
@@ -11,6 +11,7 @@ import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import ReviewImageStrip from './ReviewImageStrip'
 import AromaProfileChartPanel from './AromaProfileChartPanel'
 import AromaProfilePreviewButton from './AromaProfilePreviewButton'
+import AromaProfileFloatingPanel from './AromaProfileFloatingPanel'
 import ReviewShareModal from '../share/ReviewShareModal'
 
 function formatAromaId(id: string): string {
@@ -48,20 +49,21 @@ function AromaChips({ aromaNotes }: AromaChipsProps) {
 
 interface ReviewSectionProps {
   label: string
-  score: number
+  /** 점수를 남기지 않은 리뷰면 null — 노트·아로마만 있는 리뷰가 된다. */
+  score: number | null
   note?: string | null
   aromaNotes: AromaNotes
 }
 
 function ReviewSection({ label, score, note, aromaNotes }: ReviewSectionProps) {
-  const color = scoreColor(score)
+  const color = optionalScoreColor(score)
   return (
     <div className="space-y-2">
       {/* 라벨 + 점수 */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-base font-bold text-neutral-900">{label}</span>
         <span className="text-base font-bold tabular-nums" style={{ color }}>
-          {Number(score).toFixed(1)}
+          {formatScore(score)}
         </span>
       </div>
 
@@ -70,7 +72,7 @@ function ReviewSection({ label, score, note, aromaNotes }: ReviewSectionProps) {
 
       {/* 점수 바 */}
       <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: color }} />
+        <div className="h-full rounded-full" style={{ width: `${score ?? 0}%`, backgroundColor: color }} />
       </div>
 
       {/* 노트 */}
@@ -96,8 +98,10 @@ export interface ReviewItemProps {
 
 export default function ReviewItem({ review, currentUserId, onEdit, onDelete, showSpiritName, reviewVariantLabel }: ReviewItemProps) {
   const { t, i18n } = useTranslation()
-  // 프로파일이 있으면 기본으로 펼쳐서 보여준다 (버튼으로 접을 수 있음)
+  // PC 는 프로파일이 있으면 기본으로 펼쳐서 옆에 보여준다 (버튼으로 접을 수 있음).
+  // 모바일은 자리가 없어 상단 플로팅 패널로 띄우므로 기본은 닫힘 — 카드마다 자동으로 뜨면 화면을 가린다.
   const [profileExpanded, setProfileExpanded] = useState(true)
+  const [profilePopupOpen, setProfilePopupOpen] = useState(false)
   const isOwner = !!currentUserId && currentUserId === review.userId
   const spiritName = i18n.language === 'en' ? (review.spiritNameEn || review.spiritNameKo) : review.spiritNameKo
   const spiritDetailPath = getSpiritDetailPath({
@@ -114,6 +118,8 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
   const aromaProfiles = supportsAromaProfiles(review.spiritCategory) ? (review.aromaProfiles ?? []) : []
   const hasAromaProfiles = aromaProfiles.length > 0
   const profilePanelId = `review-aroma-profile-${review.id}`
+  const profilePopupId = `${profilePanelId}-popup`
+  const closeProfilePopup = useCallback(() => setProfilePopupOpen(false), [])
 
   return (
     <article className="p-5 bg-white rounded-xl border border-neutral-100 space-y-5">
@@ -152,12 +158,24 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
         </div>
         <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:justify-end sm:flex-shrink-0">
           {hasAromaProfiles && (
-            <AromaProfilePreviewButton
-              profiles={aromaProfiles}
-              expanded={profileExpanded}
-              controlsId={profilePanelId}
-              onToggle={() => setProfileExpanded((current) => !current)}
-            />
+            <>
+              {/* PC: 카드 안에서 옆으로 펼친다 */}
+              <AromaProfilePreviewButton
+                className="hidden md:flex"
+                profiles={aromaProfiles}
+                expanded={profileExpanded}
+                controlsId={profilePanelId}
+                onToggle={() => setProfileExpanded((current) => !current)}
+              />
+              {/* 모바일: 상단 플로팅 패널을 연다 */}
+              <AromaProfilePreviewButton
+                className="md:hidden"
+                profiles={aromaProfiles}
+                expanded={profilePopupOpen}
+                controlsId={profilePopupId}
+                onToggle={() => setProfilePopupOpen((current) => !current)}
+              />
+            </>
           )}
           {hasAromaProfiles && <ReviewHeaderDivider />}
           {review.images.length > 0 && (
@@ -186,8 +204,8 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
               aromaProfiles: review.aromaProfiles ?? [],
             }}
           />
-          <span className="ml-auto shrink-0 text-2xl font-bold tabular-nums sm:ml-0" style={{ color: scoreColor(review.totalScore) }}>
-            {Number(review.totalScore).toFixed(1)}
+          <span className="ml-auto shrink-0 text-2xl font-bold tabular-nums sm:ml-0" style={{ color: optionalScoreColor(review.totalScore) }}>
+            {formatScore(review.totalScore)}
           </span>
           {isOwner && (
             <div className="flex gap-2">
@@ -236,20 +254,32 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
             id={profilePanelId}
             aria-hidden={!profileExpanded}
             inert={profileExpanded ? undefined : true}
-            className={`min-w-0 overflow-hidden transition-[max-height,opacity,transform,margin] duration-500 ease-in-out motion-reduce:transition-none ${
+            className={`hidden min-w-0 overflow-hidden transition-[max-height,opacity,transform,margin] duration-500 ease-in-out motion-reduce:transition-none md:block ${
               profileExpanded
                 ? 'mt-4 max-h-[48rem] translate-y-0 opacity-100 md:mt-0 md:translate-x-0'
                 : 'pointer-events-none max-h-0 translate-y-2 opacity-0 md:translate-x-4 md:translate-y-0'
             }`}
           >
+            {/* h-full 을 주지 않는다 — 그리드 칸은 노트 길이만큼 늘어나지만
+                패널은 제 높이로 서서 맨 위에 붙는다. */}
             {profileExpanded && (
-              <div className="h-full min-w-[16rem] md:min-w-0">
+              <div className="min-w-[16rem] md:min-w-0">
                 <AromaProfileChartPanel profiles={aromaProfiles} chartOnly />
               </div>
             )}
           </div>
         )}
       </div>
+
+      {hasAromaProfiles && (
+        <AromaProfileFloatingPanel
+          open={profilePopupOpen}
+          profiles={aromaProfiles}
+          id={profilePopupId}
+          title={t('review.aromaProfile.byReviewer', { nickname: review.nickname })}
+          onClose={closeProfilePopup}
+        />
+      )}
 
       {/* 종합평가 */}
       {review.comment && (

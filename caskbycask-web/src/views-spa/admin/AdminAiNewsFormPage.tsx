@@ -17,6 +17,7 @@ import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/so
 import { socialApi } from '@/domain/social/api/socialApi'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 const MAX_TITLE_LENGTH = 70
 
@@ -237,7 +238,7 @@ export default function AdminAiNewsFormPage() {
           </div>
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="신뢰도 (0~1)"><input type="number" min="0" max="1" step="0.01" value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} className={inputCls} /></Field>
+          <Field label="신뢰도 (0~1)"><NumberInput min="0" max="1" step="0.01" value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} className={inputCls} /></Field>
           <Field label="의미 중복 지문"><input value={semanticFingerprint} onChange={(e) => setSemanticFingerprint(e.target.value)} className={inputCls} placeholder="동일 주제 판별용 문구" /></Field>
         </div>
         <label className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-neutral-700">
@@ -316,8 +317,7 @@ export default function AdminAiNewsFormPage() {
             </p>
             <AutoGrowTextarea required aria-required="true" maxLength={4000} rows={4} value={rewritePrompt} onChange={(e) => setRewritePrompt(e.target.value)}
               className={`${inputCls} mt-3`} placeholder="예: 초보자가 이해하기 쉽게 용어 설명을 보강하고, 각 단락에 구체적인 예시를 추가해주세요." />
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="text-xs text-violet-500">{rewritePrompt.length}/4000</span>
+            <div className="mt-2 flex items-center justify-end gap-3">
               <button type="button" disabled={!rewritePrompt.trim() || rewriteMut.isPending} onClick={() => {
                 if (window.confirm('이 원고를 AI 재작성 대기 상태로 변경하시겠습니까?')) rewriteMut.mutate()
               }} className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50">

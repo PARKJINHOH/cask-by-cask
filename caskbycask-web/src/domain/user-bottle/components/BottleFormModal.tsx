@@ -10,6 +10,7 @@ import { formatYearMonth } from '@/shared/utils/yearMonth';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel';
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import { sanitizeNumberInput } from '@/shared/utils/numberInput'
 
 interface SpiritOption {
   id: number;
@@ -425,7 +426,7 @@ export function BottleFormModal({ open, onClose, editing }: Props) {
                   value={form.volumeMl ?? ''}
                   placeholder="700"
                   onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    const digits = sanitizeNumberInput(e.target.value, { decimal: false }).slice(0, 6);
                     setForm((f) => ({
                       ...f,
                       volumeMl: digits === '' ? null : Math.min(Number(digits), 100000),

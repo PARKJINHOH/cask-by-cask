@@ -176,9 +176,6 @@ export default function MessagePopup() {
               placeholder={t('messages.contentPlaceholder')}
               className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
-            <p className={['text-xs text-right mt-0.5', content.length >= 100 ? 'text-red-500' : 'text-neutral-400'].join(' ')}>
-              {content.length} / 100
-            </p>
           </div>
 
           {/* 인라인 에러 */}

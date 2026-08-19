@@ -82,6 +82,8 @@ interface SpiritDetailResponse {
   region?: string | null
   avgScore: number | string | null
   reviewCount: number | null
+  /** 평균 점수의 모수 — 점수를 남긴 리뷰 수. 없으면 reviewCount 로 떨어진다(구버전 응답). */
+  scoredReviewCount?: number | null
   viewCount?: number | null
   updatedAt?: string | null
   commonDetail?: {
@@ -2818,6 +2820,8 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
       : 'https://www.caskbycask.net/og-image.png')
   const reviewCount = spirit.reviewCount ?? 0
   const avgScore = spirit.avgScore == null ? null : Number(spirit.avgScore)
+  // aggregateRating 의 개수는 실제 평점 수여야 한다 — 점수 없는 리뷰까지 세면 구조화 데이터가 틀린다.
+  const ratedCount = spirit.scoredReviewCount ?? reviewCount
   const labels = localLabels(isEn ? 'en' : 'ko')
   const additionalProperties = compactDetails([
     { label: labels.abv, value: formatAbvValue(spirit.abv, spirit.abvMin, spirit.abvMax) },
@@ -2850,7 +2854,7 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
         worstRating: 0,
       },
     }))
-  const hasProductSnippetData = (avgScore != null && reviewCount > 0) || reviews.length > 0
+  const hasProductSnippetData = (avgScore != null && ratedCount > 0) || reviews.length > 0
 
   if (!hasProductSnippetData) {
     return buildSpiritRouteGraph({
@@ -2890,11 +2894,11 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
       alternateName: secondaryProducer || undefined,
     } : undefined,
     additionalProperty: additionalProperties.length > 0 ? additionalProperties : undefined,
-    aggregateRating: avgScore != null && reviewCount > 0 ? {
+    aggregateRating: avgScore != null && ratedCount > 0 ? {
       '@type': 'AggregateRating',
       ratingValue: avgScore,
-      ratingCount: reviewCount,
-      reviewCount,
+      ratingCount: ratedCount,
+      reviewCount: ratedCount,
       bestRating: 100,
       worstRating: 0,
     } : undefined,

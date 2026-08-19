@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -12,20 +11,17 @@ import java.util.List;
 import com.caskbycask.domain.social.dto.SocialPublishSelection;
 
 public record ReviewRequest(
-        @Schema(description = "향(Nose) 점수 (0.0~100.0, 소수점 1자리)")
-        @NotNull(message = "노즈 점수는 필수입니다.")
+        @Schema(description = "향(Nose) 점수 (0.0~100.0, 소수점 1자리). 셋 다 비우면 점수 없는 리뷰가 된다.")
         @DecimalMin(value = "0.0", message = "점수는 0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "점수는 100 이하이어야 합니다.")
         BigDecimal noseScore,
 
         @Schema(description = "맛(Taste) 점수 (0.0~100.0, 소수점 1자리)")
-        @NotNull(message = "테이스트 점수는 필수입니다.")
         @DecimalMin(value = "0.0", message = "점수는 0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "점수는 100 이하이어야 합니다.")
         BigDecimal tasteScore,
 
         @Schema(description = "피니시(Finish) 점수 (0.0~100.0, 소수점 1자리)")
-        @NotNull(message = "피니시 점수는 필수입니다.")
         @DecimalMin(value = "0.0", message = "점수는 0 이상이어야 합니다.")
         @DecimalMax(value = "100.0", message = "점수는 100 이하이어야 합니다.")
         BigDecimal finishScore,
@@ -65,6 +61,20 @@ public record ReviewRequest(
         @Valid
         List<AromaProfileRequest> aromaProfiles
 ) {
+    /**
+     * 점수가 셋 다 있는가 — 셋 다 없으면 "점수 없는 리뷰"다.
+     * 그 사이(부분 입력)는 총점을 낼 수 없어 {@link #hasPartialScore()} 로 걸러 낸다.
+     */
+    public boolean hasAllScores() {
+        return noseScore != null && tasteScore != null && finishScore != null;
+    }
+
+    /** 셋 중 일부만 채운 상태 — 허용하지 않는다. */
+    public boolean hasPartialScore() {
+        boolean any = noseScore != null || tasteScore != null || finishScore != null;
+        return any && !hasAllScores();
+    }
+
     public ReviewRequest(
             BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore,
             String noseNote, String tasteNote, String finishNote, String comment,

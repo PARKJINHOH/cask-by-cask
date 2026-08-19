@@ -87,8 +87,8 @@ export default function CommentForm({
           placeholder:text-neutral-400"
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-neutral-400 tabular-nums">{content.length}/1000</span>
+      {/* 글자수는 AutoGrowTextarea 가 입력칸 오른쪽 아래에 이미 그린다 — 여기 두면 같은 숫자가 두 번 보인다. */}
+      <div className="flex items-center justify-end">
         <div className="flex gap-2">
           {onCancel && !parentNickname && (
             <Button variant="ghost" size="sm" type="button" onClick={onCancel}>

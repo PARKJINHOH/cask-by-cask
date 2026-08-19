@@ -13,6 +13,7 @@ import type {
   StoreType,
 } from '@/domain/pricetracker/types/pricetracker.types'
 import FormFieldLabel from '@/shared/components/FormFieldLabel'
+import { sanitizeNumberInput } from '@/shared/utils/numberInput'
 
 const krw = new Intl.NumberFormat('ko-KR')
 
@@ -239,7 +240,7 @@ export default function AdminPriceReportDetailPage() {
             <div className="flex max-w-xs items-center overflow-hidden rounded-lg border border-neutral-300 focus-within:ring-2 focus-within:ring-primary-200">
               <input
                 value={volumeInput}
-                onChange={(e) => setVolumeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setVolumeInput(sanitizeNumberInput(e.target.value, { decimal: false }).slice(0, 6))}
                 inputMode="numeric"
                 placeholder="미확인"
                 className="min-w-0 flex-1 px-3 py-2 text-sm focus:outline-none"

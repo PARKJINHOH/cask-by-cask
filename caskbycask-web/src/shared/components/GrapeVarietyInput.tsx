@@ -1,3 +1,5 @@
+import NumberInput from '@/shared/components/NumberInput'
+
 export interface GrapeVarietyRow { name: string; percentage: string }
 
 interface Props {
@@ -35,8 +37,7 @@ export default function GrapeVarietyInput({ value, onChange }: Props) {
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
           <div className="relative flex items-center">
-            <input
-              type="number"
+            <NumberInput
               min={1}
               max={100}
               value={row.percentage}

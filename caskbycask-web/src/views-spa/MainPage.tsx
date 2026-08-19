@@ -14,7 +14,7 @@ import { PopupViewer } from '@/domain/popup/components/PopupViewer'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import SpiritCard from '@/shared/components/SpiritCard'
 import AdultBadge from '@/shared/components/AdultBadge'
-import { formatBoardDate, scoreColor } from '@/shared/utils/format'
+import { formatBoardDate, scoreColor, formatScore, optionalScoreColor } from '@/shared/utils/format'
 import { getLocalizedNames, getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
@@ -245,7 +245,8 @@ function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
         const name = getLocalizedNames(
           review.displayNameKo, review.displayNameEn, i18n.language,
         ).primaryName
-        const totalScore = Number(review.totalScore)
+        // Number(null) 은 0 이라 그대로 쓰면 점수 미입력 리뷰가 0.0 점으로 찍힌다.
+        const totalScore = review.totalScore == null ? null : Number(review.totalScore)
 
         return (
           <div key={review.id} className="flex-shrink-0 w-32 sm:w-36 lg:w-44">
@@ -295,9 +296,9 @@ function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
                   </p>
                   <span
                     className="flex-shrink-0 text-xs font-bold"
-                    style={{ color: scoreColor(totalScore) }}
+                    style={{ color: optionalScoreColor(totalScore) }}
                   >
-                    {totalScore.toFixed(1)}
+                    {formatScore(totalScore)}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-1.5 text-xs text-neutral-500">

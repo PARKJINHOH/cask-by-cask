@@ -36,6 +36,7 @@ import OtherDetailSection, { type OtherDetailForm, DEFAULT_OTHER } from '@/domai
 import useIsDesktop from '@/shared/hooks/useIsDesktop'
 import { focusFirstError } from '@/shared/utils/focusFirstError'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 // ══════════════════════════════════════════════════════════════════
 //  술 등록/수정/요청-승인 공유 폼 — 단일 소스 (SINGLE SOURCE OF TRUTH)
@@ -1617,7 +1618,7 @@ export default function SpiritFormFields({
                 {form.isAbvRange ? (
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                      <input type="number" step="0.1" min="0" max="100" value={form.abvMin}
+                      <NumberInput step="0.1" min="0" max="100" value={form.abvMin}
                          data-field="abvMin"
                          required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                          disabled={isMasterSpecsDisabled}
@@ -1629,7 +1630,7 @@ export default function SpiritFormFields({
                     </div>
                     <span className="text-neutral-400">~</span>
                     <div className="relative flex-1">
-                      <input type="number" step="0.1" min="0" max="100" value={form.abvMax}
+                      <NumberInput step="0.1" min="0" max="100" value={form.abvMax}
                          data-field="abvMax"
                          required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                          disabled={isMasterSpecsDisabled}
@@ -1642,7 +1643,7 @@ export default function SpiritFormFields({
                   </div>
                 ) : (
                   <div className="relative">
-                    <input type="number" step="0.1" min="0" max="100" value={form.commonDetail.abv}
+                    <NumberInput step="0.1" min="0" max="100" value={form.commonDetail.abv}
                        data-field="abv"
                        required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                        disabled={isMasterSpecsDisabled}
@@ -1681,7 +1682,7 @@ export default function SpiritFormFields({
                 {form.isVolumeMlRange ? (
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
-                        <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.volumeMlMin}
+                        <NumberInput min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.volumeMlMin}
                                data-field="volumeMlMin"
                                required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                                disabled={isMasterSpecsDisabled}
@@ -1693,7 +1694,7 @@ export default function SpiritFormFields({
                       </div>
                       <span className="text-neutral-400">~</span>
                       <div className="relative flex-1">
-                        <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.volumeMlMax}
+                        <NumberInput min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.volumeMlMax}
                                data-field="volumeMlMax"
                                required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                                disabled={isMasterSpecsDisabled}
@@ -1706,7 +1707,7 @@ export default function SpiritFormFields({
                     </div>
                 ) : (
                     <div className="relative">
-                      <input type="number" min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.commonDetail.volumeMl}
+                      <NumberInput min={VOLUME_ML_MIN} max={VOLUME_ML_MAX} value={form.commonDetail.volumeMl}
                              data-field="volumeMl"
                              required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                              disabled={isMasterSpecsDisabled}
@@ -2390,8 +2391,7 @@ function VariantItemCard({
           <div>
             <label className="block text-[11px] font-semibold text-neutral-500 mb-1">알코올 도수</label>
             <div className="relative">
-              <input
-                type="number"
+              <NumberInput
                 data-field={`variantAbv_${index}`}
                 step="0.1"
                 min="0"
@@ -2414,8 +2414,7 @@ function VariantItemCard({
           <div>
             <label className="block text-[11px] font-semibold text-neutral-500 mb-1">용량</label>
             <div className="relative">
-              <input
-                type="number"
+              <NumberInput
                 data-field={`variantVolumeMl_${index}`}
                 min={VOLUME_ML_MIN}
                 max={VOLUME_ML_MAX}

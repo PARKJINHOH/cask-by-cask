@@ -57,3 +57,28 @@ export function scoreColor(v: number): string {
   if (v >= 80) return '#4F8FDB'
   return '#D95F5F'
 }
+
+/** 점수 미입력 리뷰 자리에 쓰는 표시 — 0 점으로 읽히지 않도록 숫자를 쓰지 않는다. */
+export const NO_SCORE_TEXT = '–'
+
+/** 점수 미입력 자리의 글자색 — scoreColor 의 어느 등급도 아닌 회색. */
+export const NO_SCORE_COLOR = '#a3a3a3'
+
+/**
+ * 리뷰 점수 표시. 점수를 남기지 않은 리뷰(`null`)는 {@link NO_SCORE_TEXT} 로 그린다.
+ *
+ * 점수는 선택 항목이라 화면 어디서든 null 이 올 수 있다 — `toFixed` 를 직접 부르면
+ * 그 자리에서 터지거나 `NaN` 이 찍힌다.
+ */
+export function formatScore(v: number | string | null | undefined): string {
+  if (v == null || v === '') return NO_SCORE_TEXT
+  const n = Number(v)
+  return Number.isFinite(n) ? n.toFixed(1) : NO_SCORE_TEXT
+}
+
+/** 점수 표시용 색 — 미입력이면 회색. */
+export function optionalScoreColor(v: number | string | null | undefined): string {
+  if (v == null || v === '') return NO_SCORE_COLOR
+  const n = Number(v)
+  return Number.isFinite(n) ? scoreColor(n) : NO_SCORE_COLOR
+}

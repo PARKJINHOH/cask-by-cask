@@ -154,10 +154,9 @@ export default function AdminAiNewsRequestDetailPage() {
                 onChange={(event) => setEditedPrompt(event.target.value)}
                 className="mt-3 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm leading-7 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
               />
-              <div className="mt-1 flex items-center justify-between gap-3 text-xs text-neutral-500">
-                <span>수정 내용은 새 재요청에만 적용되며 기존 실패 내역은 보존됩니다.</span>
-                <span>{retryPrompt.length}/4000</span>
-              </div>
+              <p className="mt-1 text-xs text-neutral-500">
+                수정 내용은 새 재요청에만 적용되며 기존 실패 내역은 보존됩니다.
+              </p>
             </>
           ) : (
             <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-neutral-800">{request.prompt}</p>

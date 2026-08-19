@@ -16,6 +16,7 @@ import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import { formatPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import { sanitizeNumberInput } from '@/shared/utils/numberInput'
 
 const EMPTY_FORM = {
   drinkName: '', drinkCategory: '', volumeMl: '', originalPrice: '0', dealPrice: '0',
@@ -466,7 +467,7 @@ export default function AdminDealDetailPage() {
                 inputMode="numeric"
                 className={inputCls}
                 value={form.volumeMl}
-                onChange={(e) => setForm({ ...form, volumeMl: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                onChange={(e) => setForm({ ...form, volumeMl: sanitizeNumberInput(e.target.value, { decimal: false }).slice(0, 6) })}
                 placeholder="원문에서 확인되지 않으면 비워두기"
               />
               <p className="mt-1 text-[11px] text-neutral-400">

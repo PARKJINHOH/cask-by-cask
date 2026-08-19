@@ -38,16 +38,18 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    /** 점수는 셋 다 있거나 셋 다 없다 — 점수 없는 리뷰는 평균 산출에서 빠진다. */
+    @Column(precision = 4, scale = 1)
     private BigDecimal noseScore;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    @Column(precision = 4, scale = 1)
     private BigDecimal tasteScore;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    @Column(precision = 4, scale = 1)
     private BigDecimal finishScore;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    /** 세 점수의 평균. 점수를 안 남긴 리뷰는 {@code null} 이고 {@code AVG()} 에서 제외된다. */
+    @Column(precision = 4, scale = 1)
     private BigDecimal totalScore;
 
     @Column(length = 600)
@@ -93,10 +95,31 @@ public class Review extends BaseTimeEntity {
     @PrePersist
     @PreUpdate
     private void calculateTotalScore() {
+        // 점수를 지운 수정도 반영해야 하므로 else 로 null 을 되돌린다 —
+        // 예전처럼 값이 있을 때만 덮어쓰면 지운 뒤에도 옛 총점이 남아 평균에 계속 낀다.
         if (noseScore != null && tasteScore != null && finishScore != null) {
             this.totalScore = noseScore.add(tasteScore).add(finishScore)
                     .divide(BigDecimal.valueOf(3), 1, RoundingMode.HALF_UP);
+        } else {
+            this.totalScore = null;
         }
+    }
+
+    /** 점수를 남긴 리뷰인가 — 평균 산출 모수에 들어가는지의 기준. */
+    public boolean hasScore() {
+        return totalScore != null;
+    }
+
+    /**
+     * 점수 셋 중 일부만 채운 상태인가.
+     *
+     * <p>부분 입력은 총점을 낼 수 없어 평균에서 조용히 빠진다 — 사용자는 점수를 매겼다고
+     * 생각하는데 반영되지 않으므로 리뷰·에디션 등록요청 양쪽에서 막는다.
+     */
+    public static boolean isPartialScore(BigDecimal nose, BigDecimal taste, BigDecimal finish) {
+        boolean any = nose != null || taste != null || finish != null;
+        boolean all = nose != null && taste != null && finish != null;
+        return any && !all;
     }
 
     public void update(BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore,

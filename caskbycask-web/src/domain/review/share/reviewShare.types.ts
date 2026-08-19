@@ -7,10 +7,10 @@ export interface ReviewShareData {
   spiritNameKo: string
   spiritNameEn: string
   nickname: string
-  noseScore: number
-  tasteScore: number
-  finishScore: number
-  totalScore: number
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
+  totalScore: number | null
   noseNote: string | null
   tasteNote: string | null
   finishNote: string | null

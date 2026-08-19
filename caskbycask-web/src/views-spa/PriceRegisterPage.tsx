@@ -20,6 +20,7 @@ import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyI
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import { sanitizeNumberInput } from '@/shared/utils/numberInput'
 
 const DISCOUNT_TYPES: DiscountType[] = ['PAYMENT', 'BUNDLE', 'COUPON', 'OTHER']
 const DUTYFREE_CHANNELS: DutyFreeChannel[] = ['AIRPORT', 'CITY', 'INFLIGHT', 'ONLINE']
@@ -323,7 +324,7 @@ export default function PriceRegisterPage() {
                 required
                 aria-required="true"
                 value={volumeInput}
-                onChange={(e) => setVolumeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setVolumeInput(sanitizeNumberInput(e.target.value, { decimal: false }).slice(0, 6))}
                 inputMode="numeric"
                 pattern="[0-9]*"
                 placeholder={t('price.register.volumePlaceholder')}

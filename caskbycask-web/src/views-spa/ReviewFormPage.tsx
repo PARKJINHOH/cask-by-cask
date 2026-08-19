@@ -80,14 +80,26 @@ const NOTE_MAX = REVIEW_TEXT_MAX_LENGTH
  * 스키마를 상수로 두면 모듈 로드 시점의 언어에 문구가 굳어 EN 화면에 한국어가 남는다.
  */
 const buildReviewSchema = (t: TFunction) => z.object({
-  noseScore:   z.number().min(0).max(100),
-  tasteScore:  z.number().min(0).max(100),
-  finishScore: z.number().min(0).max(100),
+  // 점수는 선택 — 비워 두면 평균 산출에서 빠지는 리뷰가 된다.
+  noseScore:   z.number().min(0).max(100).nullable(),
+  tasteScore:  z.number().min(0).max(100).nullable(),
+  finishScore: z.number().min(0).max(100).nullable(),
   noseNote:    noteSchema(t),
   tasteNote:   noteSchema(t),
   finishNote:  noteSchema(t),
   comment:     z.string().max(NOTE_MAX, t('review.error.noteMax', { max: NOTE_MAX })).optional(),
+}).superRefine((values, ctx) => {
+  // 일부만 채우면 총점을 낼 수 없다 — 서버도 같은 규칙으로 막는다(REVIEW_013).
+  const entered = SCORE_FIELDS.filter((field) => values[field] != null)
+  if (entered.length === 0 || entered.length === SCORE_FIELDS.length) return
+  for (const field of SCORE_FIELDS) {
+    if (values[field] == null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: t('review.error.scoreAllOrNone') })
+    }
+  }
 })
+
+const SCORE_FIELDS = ['noseScore', 'tasteScore', 'finishScore'] as const
 
 const noteSchema = (t: TFunction) => z.string()
   .min(NOTE_MIN, t('review.error.noteMin', { min: NOTE_MIN }))
@@ -201,9 +213,10 @@ export default function ReviewFormPage() {
   } = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewSchema),
     defaultValues: {
-      noseScore:   editingReview?.noseScore   ?? 70,
-      tasteScore:  editingReview?.tasteScore  ?? 70,
-      finishScore: editingReview?.finishScore ?? 70,
+      // 점수는 매기지 않은 상태로 시작한다 — 기본값을 넣어 두면 안 건드린 점수가 평균에 섞인다.
+      noseScore:   editingReview?.noseScore   ?? null,
+      tasteScore:  editingReview?.tasteScore  ?? null,
+      finishScore: editingReview?.finishScore ?? null,
       noseNote:    editingReview?.noseNote    ?? '',
       tasteNote:   editingReview?.tasteNote   ?? '',
       finishNote:  editingReview?.finishNote  ?? '',
@@ -240,7 +253,8 @@ export default function ReviewFormPage() {
     'noseScore', 'tasteScore', 'finishScore', 'comment',
     'noseNote', 'tasteNote', 'finishNote',
   ])
-  const totalPreview = (nose + taste + finish) / 3
+  const hasAllScores = nose != null && taste != null && finish != null
+  const totalPreview = hasAllScores ? (nose + taste + finish) / 3 : null
 
   const onSubmit = async (values: ReviewFormValues) => {
     if ((socialSelection.instagram || socialSelection.threads)
@@ -258,9 +272,9 @@ export default function ReviewFormPage() {
     }
 
     const payload = {
-      noseScore:             values.noseScore,
-      tasteScore:            values.tasteScore,
-      finishScore:           values.finishScore,
+      noseScore:             values.noseScore ?? null,
+      tasteScore:            values.tasteScore ?? null,
+      finishScore:           values.finishScore ?? null,
       noseNote:              values.noseNote.trim(),
       tasteNote:             values.tasteNote.trim(),
       finishNote:            values.finishNote.trim(),
@@ -554,9 +568,9 @@ export default function ReviewFormPage() {
             </div>
             <span
               className="text-3xl font-bold tabular-nums md:text-4xl"
-              style={{ color: scoreColor(totalPreview) }}
+              style={{ color: totalPreview == null ? '#a3a3a3' : scoreColor(totalPreview) }}
             >
-              {totalPreview.toFixed(1)}
+              {totalPreview == null ? '–' : totalPreview.toFixed(1)}
             </span>
           </div>
 

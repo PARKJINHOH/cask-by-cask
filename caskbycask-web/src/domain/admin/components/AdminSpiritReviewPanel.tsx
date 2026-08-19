@@ -4,7 +4,7 @@ import Button from '@/shared/components/Button'
 import Modal from '@/shared/components/Modal'
 import Pagination from '@/shared/components/Pagination'
 import Spinner from '@/shared/components/Spinner'
-import { formatDate, scoreColor } from '@/shared/utils/format'
+import { formatDate, formatScore, optionalScoreColor, NO_SCORE_TEXT } from '@/shared/utils/format'
 import {
   useAdminReviews,
   useDeleteAdminReview,
@@ -22,18 +22,18 @@ interface ModerationState {
   review: AdminReview
 }
 
-function ScoreLine({ label, value }: { label: string; value: number }) {
+function ScoreLine({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="w-12 text-neutral-400">{label}</span>
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-100">
         <div
           className="h-full rounded-full"
-          style={{ width: `${value}%`, backgroundColor: scoreColor(value) }}
+          style={{ width: `${value ?? 0}%`, backgroundColor: optionalScoreColor(value) }}
         />
       </div>
-      <span className="w-9 text-right font-semibold tabular-nums" style={{ color: scoreColor(value) }}>
-        {value.toFixed(0)}
+      <span className="w-9 text-right font-semibold tabular-nums" style={{ color: optionalScoreColor(value) }}>
+        {value == null ? NO_SCORE_TEXT : value.toFixed(0)}
       </span>
     </div>
   )
@@ -284,9 +284,9 @@ export default function AdminSpiritReviewPanel({
                 <span className="text-xs font-semibold text-neutral-500">총점</span>
                 <span
                   className="text-lg font-bold tabular-nums"
-                  style={{ color: scoreColor(pendingVariantReview.totalScore) }}
+                  style={{ color: optionalScoreColor(pendingVariantReview.totalScore) }}
                 >
-                  {pendingVariantReview.totalScore.toFixed(1)}
+                  {formatScore(pendingVariantReview.totalScore)}
                 </span>
               </div>
             </div>
@@ -358,9 +358,9 @@ export default function AdminSpiritReviewPanel({
                       <span className="text-xs font-semibold text-neutral-500">총점</span>
                       <span
                         className="text-lg font-bold tabular-nums"
-                        style={{ color: scoreColor(review.totalScore) }}
+                        style={{ color: optionalScoreColor(review.totalScore) }}
                       >
-                        {review.totalScore.toFixed(1)}
+                        {formatScore(review.totalScore)}
                       </span>
                     </div>
                   </div>

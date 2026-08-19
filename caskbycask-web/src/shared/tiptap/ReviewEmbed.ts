@@ -10,10 +10,10 @@ export interface ReviewEmbedAttrs {
   identifierEn: string
   abv: number | null
   reviewCount: number
-  noseScore: number
-  tasteScore: number
-  finishScore: number
-  totalScore: number
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
+  totalScore: number | null
   noseNote: string
   tasteNote: string
   finishNote: string
@@ -40,6 +40,8 @@ function cardWidthClass(value: unknown) {
 }
 
 function formatDecimal(value: unknown) {
+  // 점수 미입력 리뷰는 null 로 온다 — Number(null) 이 0 이라 그냥 넘기면 0.0 점으로 찍힌다.
+  if (value == null || value === '') return '-'
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return '-'
   return parsed.toFixed(1)
@@ -208,10 +210,10 @@ export const ReviewEmbed = Node.create({
       identifierEn: stringAttr('identifierEn', 'data-spirit-identifier-en'),
       abv: numberAttr('abv', 'data-spirit-abv'),
       reviewCount: numberAttr('reviewCount', 'data-spirit-review-count', 0),
-      noseScore: numberAttr('noseScore', 'data-review-nose-score', 0),
-      tasteScore: numberAttr('tasteScore', 'data-review-taste-score', 0),
-      finishScore: numberAttr('finishScore', 'data-review-finish-score', 0),
-      totalScore: numberAttr('totalScore', 'data-review-total-score', 0),
+      noseScore: numberAttr('noseScore', 'data-review-nose-score'),
+      tasteScore: numberAttr('tasteScore', 'data-review-taste-score'),
+      finishScore: numberAttr('finishScore', 'data-review-finish-score'),
+      totalScore: numberAttr('totalScore', 'data-review-total-score'),
       noseNote: stringAttr('noseNote', 'data-review-nose-note'),
       tasteNote: stringAttr('tasteNote', 'data-review-taste-note'),
       finishNote: stringAttr('finishNote', 'data-review-finish-note'),

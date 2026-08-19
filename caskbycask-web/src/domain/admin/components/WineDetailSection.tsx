@@ -45,6 +45,7 @@ import {
   WINE_OAK_TYPES as OAK_TYPES,
 } from '@/domain/spirit/data/wine'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 // 관능(맛) 지표는 WineTasteBars(5단계 바)가 담당한다 — 사용자 상세와 동일 컴포넌트를 공유.
 
@@ -162,7 +163,7 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
         {value.vintageStatus === 'VINTAGE' && (
           <div>
             <label className={LABEL}>{tr('spirit.wineForm.vintageYear')} <RequiredMark /></label>
-            <input type="number" min={1800} max={new Date().getFullYear()}
+            <NumberInput min={1800} max={new Date().getFullYear()}
               value={value.vintageYear} onChange={(e) => onChange({ vintageYear: e.target.value })}
               onWheel={(e) => e.currentTarget.blur()}
               placeholder={`예: ${new Date().getFullYear() - 3}`}
@@ -201,7 +202,7 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
         <div>
           <label className={LABEL}>포도밭 고도</label>
           <div className="relative">
-            <input type="number" min={0} max={5000} value={value.altitudeM}
+            <NumberInput min={0} max={5000} value={value.altitudeM}
               onChange={(e) => onChange({ altitudeM: e.target.value })}
               onWheel={(e) => e.currentTarget.blur()}
               className={`${INPUT} pr-8`} />
@@ -255,7 +256,7 @@ export default function WineDetailSection({ value, onChange, errors, admin = tru
         <div>
           <label className={`${LABEL} ${!value.isOakAged ? 'opacity-40' : ''}`}>오크 숙성 기간</label>
           <div className="relative">
-            <input type="number" min={1} max={600} value={value.oakAgedMonths}
+            <NumberInput min={1} max={600} value={value.oakAgedMonths}
               onChange={(e) => onChange({ oakAgedMonths: e.target.value })}
               onWheel={(e) => e.currentTarget.blur()}
               disabled={value.isOakAged !== true}

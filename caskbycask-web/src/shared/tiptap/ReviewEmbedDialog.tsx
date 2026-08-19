@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { reviewApi } from '@/domain/review/api/reviewApi'
 import type { ReviewEmbedItem } from '@/domain/review/types/review.types'
 import type { ReviewEmbedAttrs } from './ReviewEmbed'
+import { formatScore } from '@/shared/utils/format'
 
 interface Props {
   open: boolean
@@ -13,8 +14,8 @@ interface Props {
 
 const PAGE_SIZE = 20
 
-function displayScore(value: number) {
-  return Number(value).toFixed(1)
+function displayScore(value: number | null) {
+  return formatScore(value)
 }
 
 export default function ReviewEmbedDialog({ open, onClose, onSelect }: Props) {

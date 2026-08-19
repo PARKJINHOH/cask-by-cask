@@ -214,7 +214,7 @@ export default function CommunityCommentForm({
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-neutral-400 tabular-nums">{content.length}/{MAX_LENGTH}</span>
+          {/* 글자수는 AutoGrowTextarea 가 입력칸 오른쪽 아래에 이미 그린다 — 여기 두면 같은 숫자가 두 번 보인다. */}
           {/* 이모지 버튼 */}
           <div
             className="relative"

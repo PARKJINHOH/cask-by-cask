@@ -114,6 +114,15 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
             """)
     long countActiveForMasterSpirit(@Param("spiritId") Long spiritId);
 
+    /** 위 개수 중 실제로 평균에 들어간 리뷰만 — 점수를 안 남긴 리뷰는 totalScore 가 null 이다. */
+    @Query("""
+            SELECT COUNT(r) FROM Review r
+            WHERE (r.spirit.id = :spiritId OR r.spirit.parent.id = :spiritId)
+              AND r.isHidden = false
+              AND r.totalScore IS NOT NULL
+            """)
+    long countScoredForMasterSpirit(@Param("spiritId") Long spiritId);
+
     Optional<Review> findByIdAndSpiritId(Long id, Long spiritId);
 
     @Query(value = """
@@ -138,6 +147,12 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
 
     @Query("SELECT COUNT(r) FROM Review r WHERE r.spirit.id = :spiritId AND r.isHidden = false")
     long countActiveBySpiritId(@Param("spiritId") Long spiritId);
+
+    @Query("""
+            SELECT COUNT(r) FROM Review r
+            WHERE r.spirit.id = :spiritId AND r.isHidden = false AND r.totalScore IS NOT NULL
+            """)
+    long countScoredBySpiritId(@Param("spiritId") Long spiritId);
 
     @Query(value = """
             SELECT r FROM Review r

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import Modal from '@/shared/components/Modal'
-import { formatDate, scoreColor } from '@/shared/utils/format'
+import { formatDate, formatScore, optionalScoreColor } from '@/shared/utils/format'
 import type { ReviewItem } from '../types/review.types'
 import { reviewSpiritLabel } from '../utils/reviewDisplay'
 
@@ -9,27 +9,28 @@ export interface MyPastReviewDetailModalProps {
   review: ReviewItem | null
   onClose: () => void
   /** 지금 폼에 입력 중인 점수 — 있으면 과거 점수 옆에 나란히 비교한다. */
-  currentNoseScore?: number
-  currentTasteScore?: number
-  currentFinishScore?: number
+  currentNoseScore?: number | null
+  currentTasteScore?: number | null
+  currentFinishScore?: number | null
 }
 
 /** 과거 점수 → 지금 점수. 차이가 0이면 화살표와 증감을 숨긴다. */
-function ScoreCompare({ past, current }: { past: number; current?: number }) {
+function ScoreCompare({ past, current }: { past: number | null; current?: number | null }) {
   const { t } = useTranslation()
-  const delta = current == null ? null : current - past
+  // 예전 리뷰에 점수가 없으면 비교할 기준이 없다 — 증감은 그리지 않는다.
+  const delta = current == null || past == null ? null : current - past
 
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-lg font-bold tabular-nums" style={{ color: scoreColor(past) }}>
-        {past.toFixed(1)}
+      <span className="text-lg font-bold tabular-nums" style={{ color: optionalScoreColor(past) }}>
+        {formatScore(past)}
       </span>
       {current != null && (
         <>
           <span aria-hidden="true" className="text-xs text-neutral-300">→</span>
           <span className="text-xs text-neutral-400">{t('review.pastReviews.writingNow')}</span>
           <span className="text-sm font-semibold tabular-nums text-neutral-600">
-            {current.toFixed(1)}
+            {formatScore(current)}
           </span>
           {delta !== null && delta !== 0 && (
             <span
@@ -48,9 +49,9 @@ function PhaseBlock({
   label, score, note, currentScore,
 }: {
   label: string
-  score: number
+  score: number | null
   note: string | null
-  currentScore?: number
+  currentScore?: number | null
 }) {
   return (
     <div className="space-y-2">
@@ -61,7 +62,7 @@ function PhaseBlock({
       <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
         <div
           className="h-full rounded-full"
-          style={{ width: `${score}%`, backgroundColor: scoreColor(score) }}
+          style={{ width: `${score ?? 0}%`, backgroundColor: optionalScoreColor(score) }}
         />
       </div>
       {note && (

@@ -10,7 +10,7 @@ import { usePinnedNotices } from '@/domain/notice/hooks/useNotices'
 import { usePosts } from '@/domain/community/hooks/usePosts'
 import SpiritCard from '@/shared/components/SpiritCard'
 import AdultBadge from '@/shared/components/AdultBadge'
-import { formatBoardDate, scoreColor } from '@/shared/utils/format'
+import { formatBoardDate, scoreColor, formatScore, optionalScoreColor } from '@/shared/utils/format'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 import BannerSlider from '@/domain/banner/components/BannerSlider'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
@@ -269,7 +269,8 @@ function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
         const name = isEn
           ? (review.displayNameEn || review.displayNameKo)
           : review.displayNameKo
-        const totalScore = Number(review.totalScore)
+        // Number(null) 은 0 이라 그대로 쓰면 점수 미입력 리뷰가 0.0 점으로 찍힌다.
+        const totalScore = review.totalScore == null ? null : Number(review.totalScore)
 
         return (
           <div
@@ -296,8 +297,8 @@ function RecentReviewCarousel({ reviews }: { reviews: RecentReviewItem[] }) {
                 {name}
               </p>
               <div className="mt-1.5 flex items-center justify-between gap-1">
-                <span className="text-sm font-bold" style={{ color: scoreColor(totalScore) }}>
-                  {totalScore.toFixed(1)}
+                <span className="text-sm font-bold" style={{ color: optionalScoreColor(totalScore) }}>
+                  {formatScore(totalScore)}
                 </span>
                 <span className="truncate text-[11px] text-neutral-400">{review.nickname}</span>
               </div>

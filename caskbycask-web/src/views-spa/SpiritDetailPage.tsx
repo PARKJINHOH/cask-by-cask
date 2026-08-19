@@ -18,6 +18,7 @@ import ReviewList from '@/domain/review/components/ReviewList'
 import { useReviews } from '@/domain/review/hooks/useReviews'
 import { buildBreadcrumbSchema, buildReviewSchema } from '@/shared/utils/seoSchema'
 import CommentList from '@/domain/comment/components/CommentList'
+import { useComments } from '@/domain/comment/hooks/useComments'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
 import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
 import ShareUrlButton from '@/shared/components/ShareUrlButton'
@@ -850,7 +851,14 @@ function PriceTabContent({
   )
 }
 
-function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+function TabBar({
+  active, onChange, counts,
+}: {
+  active: Tab
+  onChange: (t: Tab) => void
+  /** 탭 이름 옆 개수. 값을 주지 않은 탭(시세)은 배지 없이 이름만 나온다. */
+  counts?: Partial<Record<Tab, number | undefined>>
+}) {
   const { t } = useTranslation()
   const tabs: { id: Tab; label: string }[] = [
     { id: 'reviews',   label: t('review.tab') },
@@ -859,16 +867,24 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
   ]
   return (
     <div role="tablist" className="flex border-b border-neutral-200 gap-6">
-      {tabs.map(({ id, label }) => (
-        <button key={id} role="tab" aria-selected={active === id} onClick={() => onChange(id)}
-          className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            active === id
-              ? 'border-primary-800 text-primary-900'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700'
-          }`}>
-          {label}
-        </button>
-      ))}
+      {tabs.map(({ id, label }) => {
+        const count = counts?.[id]
+        return (
+          <button key={id} role="tab" aria-selected={active === id} onClick={() => onChange(id)}
+            className={`pb-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              active === id
+                ? 'border-primary-800 text-primary-900'
+                : 'border-transparent text-neutral-500 hover:text-neutral-700'
+            }`}>
+            {label}
+            {count != null && (
+              <span className={`ml-1 tabular-nums ${active === id ? 'text-primary-700' : 'text-neutral-400'}`}>
+                ({count.toLocaleString()})
+              </span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -942,10 +958,18 @@ export default function SpiritDetailPage() {
 
   // SEO Review 스키마용 — 첫 페이지 (ReviewList 와 동일 queryKey 라 캐시 공유)
   const { data: reviewsPage } = useReviews(spiritId, 0)
+  // 커뮤니티 탭 개수 — CommentList 와 같은 queryKey 라 탭을 열어도 추가 요청이 없다
+  const { data: commentsPage } = useComments(spiritId, 0)
 
   const isVariantSplitGroup = spirit ? (spirit.parentId != null || (spirit.variants && spirit.variants.length > 0)) : false
   const hasVariants = isVariantSplitGroup
   const masterSpiritId = spirit?.parentId ?? spirit?.id ?? spiritId
+
+  // 헤더 평점은 바로 아래 리뷰 목록과 같은 범위를 봐야 한다 — 목록 기본값이 마스터(하위 에디션 전체)다.
+  // 하위 에디션 페이지에서 spirit.avgScore 는 그 에디션 리뷰만의 평균이라, 헤더가 "리뷰 2개"인데
+  // 목록에는 그룹 전체 12개가 깔리는 어긋남이 생긴다. 마스터를 아직 못 받았으면 잘못된 수를 잠깐
+  // 보여 주느니 아무것도 그리지 않는다.
+  const scoreSource = spirit?.parentId != null ? parentSpirit : spirit
 
   const variantsList = useMemo(() => {
     if (!spirit) return []
@@ -1054,7 +1078,10 @@ export default function SpiritDetailPage() {
     : DEFAULT_OG_IMAGE
 
   // 개별 리뷰 (rich snippet 신뢰도 향상) — 최대 5건
-  const reviewSchemas = (reviewsPage?.content ?? []).slice(0, 5).map((r) =>
+  const reviewSchemas = (reviewsPage?.content ?? [])
+    .filter((r): r is typeof r & { totalScore: number } => r.totalScore != null)
+    .slice(0, 5)
+    .map((r) =>
     buildReviewSchema({
       authorName: r.nickname,
       ratingValue: r.totalScore,
@@ -1066,7 +1093,10 @@ export default function SpiritDetailPage() {
   )
 
   const langPrefix = isEn ? '/en' : '/ko'
-  const hasProductSnippetData = (spirit.avgScore != null && spirit.reviewCount > 0) || reviewSchemas.length > 0
+  // 평점을 낸 모수는 점수를 남긴 리뷰뿐이다 — reviewCount(총 리뷰 수)를 쓰면
+  // aggregateRating 의 개수가 실제 평점 수와 어긋나 구조화 데이터가 틀린 값이 된다.
+  const ratedReviewCount = scoreSource?.scoredReviewCount ?? 0
+  const hasProductSnippetData = (spirit.avgScore != null && ratedReviewCount > 0) || reviewSchemas.length > 0
 
   const spiritJsonLd = hasProductSnippetData ? {
     '@type': 'Product',
@@ -1093,10 +1123,10 @@ export default function SpiritDetailPage() {
     } : undefined,
     countryOfOrigin: countryLabel || undefined,
     category: spirit.category,
-    aggregateRating: (spirit.avgScore != null && spirit.reviewCount > 0) ? {
+    aggregateRating: (scoreSource?.avgScore != null && ratedReviewCount > 0) ? {
       '@type': 'AggregateRating',
-      ratingValue: spirit.avgScore,
-      reviewCount: spirit.reviewCount,
+      ratingValue: scoreSource.avgScore,
+      reviewCount: ratedReviewCount,
       bestRating: 100,
       worstRating: 0,
     } : undefined,
@@ -1184,17 +1214,23 @@ export default function SpiritDetailPage() {
                 </span>
               </a>
             )}
+
+            {/* Favorites / share — mobile only: floats over the image top-right */}
+            <div className="absolute top-7 right-7 z-10 flex items-center gap-2 md:hidden">
+              <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
+              <ShareUrlButton />
+            </div>
           </div>
 
           {/* Info */}
           <div className="flex-1 p-5 md:p-6 flex flex-col gap-4 min-w-0 relative">
-            {/* Favorites button — top right */}
-            <div className="absolute top-4 right-4 flex items-center gap-2">
+            {/* Favorites button — top right (desktop; mobile version sits over the image) */}
+            <div className="absolute top-4 right-4 hidden md:flex items-center gap-2">
               <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
               <ShareUrlButton />
             </div>
 
-            <div className="pr-24">
+            <div className="md:pr-24">
               <Badge variant={spirit.category} size="sm" className="mb-2">
                 {t(`spirit.category.${spirit.category}`)}
               </Badge>
@@ -1240,7 +1276,10 @@ export default function SpiritDetailPage() {
               )}
             </div>
 
-            <StarScore score={spirit.avgScore} reviewCount={spirit.reviewCount} size="lg" showBar />
+            {/* 진행 바 없이 숫자만 — 상세 헤더에서는 점수 한 줄이면 충분하다 */}
+            {scoreSource?.avgScore != null && (
+              <StarScore score={scoreSource.avgScore} reviewCount={ratedReviewCount} size="lg" showBar={false} />
+            )}
 
             {/* 배치/병입 페이지 이동 셀렉터 */}
             {isVariantSplitGroup && groupOptions.length > 0 && (
@@ -1292,7 +1331,15 @@ export default function SpiritDetailPage() {
 
         {/* Tabs */}
         <div className="space-y-5">
-        <TabBar active={activeTab} onChange={setActiveTab} />
+        <TabBar
+          active={activeTab}
+          onChange={setActiveTab}
+          counts={{
+            // 리뷰는 목록 기본 범위(마스터)의 총 리뷰 수 — 점수를 안 남긴 리뷰도 목록에는 나온다.
+            reviews: scoreSource?.reviewCount,
+            community: commentsPage?.totalElements,
+          }}
+        />
         
         {activeTab === 'reviews' && (
           <VariantSelector

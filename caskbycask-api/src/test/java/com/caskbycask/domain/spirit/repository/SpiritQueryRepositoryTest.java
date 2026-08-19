@@ -199,7 +199,7 @@ class SpiritQueryRepositoryTest {
                 .nameKo(nameKo).nameEn(nameEn).category(category)
                 .country(country).abv(abv).producer(producer).build();
         s.approve();
-        s.updateAvgScore(avgScore, reviewCount);
+        s.updateAvgScore(avgScore, reviewCount, reviewCount);
         return s;
     }
 

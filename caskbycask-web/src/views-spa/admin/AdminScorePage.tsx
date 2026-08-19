@@ -8,6 +8,7 @@ import {
 } from '@/domain/admin/api/adminScoreApi'
 import { ACTION_ICONS } from '@/domain/score/types/score.types'
 import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
+import NumberInput from '@/shared/components/NumberInput'
 
 const ACTION_LABELS: Record<string, string> = {
   POST_WRITE_GENERAL:         '자유 - 일반 글쓰기',
@@ -318,8 +319,7 @@ function EditRow({
         </div>
       </td>
       <td className="px-4 py-3">
-        <input
-          type="number"
+        <NumberInput
           required
           aria-required="true"
           aria-label="점수"
@@ -329,8 +329,7 @@ function EditRow({
         />
       </td>
       <td className="px-4 py-3">
-        <input
-          type="number"
+        <NumberInput
           value={dailyLimit}
           onChange={(e) => setDailyLimit(e.target.value)}
           placeholder="없음"
@@ -438,8 +437,7 @@ function AddRow({
         </div>
       </td>
       <td className="px-4 py-3">
-        <input
-          type="number"
+        <NumberInput
           required
           aria-required="true"
           aria-label="점수"
@@ -449,8 +447,7 @@ function AddRow({
         />
       </td>
       <td className="px-4 py-3">
-        <input
-          type="number"
+        <NumberInput
           value={dailyLimit}
           onChange={(e) => setDailyLimit(e.target.value)}
           placeholder="없음"

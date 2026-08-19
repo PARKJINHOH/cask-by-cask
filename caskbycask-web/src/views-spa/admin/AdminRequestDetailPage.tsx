@@ -242,7 +242,6 @@ export default function AdminRequestDetailPage() {
             placeholder="반려 사유를 입력하세요..."
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-          <p className="text-xs text-neutral-400 text-right">{rejectReason.length}/500</p>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" size="sm" onClick={() => { setRejectMode(false); setRejectReason('') }}>취소</Button>
             <Button variant="danger" size="sm" onClick={handleReject} isLoading={reject.isPending}>반려 확인</Button>

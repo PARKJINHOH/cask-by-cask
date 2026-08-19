@@ -25,6 +25,7 @@ import {
 } from '@/domain/admin/constants/adminMenu'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 // 담당 증류소 선택이 필요한 역할
 const PRODUCER_ROLES: AdminUserRole[] = ['PARTNER']
@@ -127,7 +128,6 @@ function RolePermissionCard({ user }: { user: AdminUser }) {
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg
               focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
-          <p className="text-right text-xs text-neutral-400 mt-0.5">{description.length}/500</p>
         </div>
 
         {/* 담당 증류소 */}
@@ -255,7 +255,7 @@ function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void 
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">정지 기간 (일) <RequiredMark /></label>
           <div className="flex items-center gap-2">
-            <input type="number" min={1} max={365} required aria-required="true" value={days} onChange={(e) => setDays(Number(e.target.value))}
+            <NumberInput min={1} max={365} required aria-required="true" value={days} onChange={(e) => setDays(Number(e.target.value))}
               className="w-24 h-9 px-3 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400" />
             <span className="text-sm text-neutral-500">일 동안 로그인 불가</span>
           </div>
@@ -277,7 +277,6 @@ function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void 
           <AutoGrowTextarea required aria-required="true" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={4}
             placeholder="징계 사유를 입력하세요."
             className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400" />
-          <p className="text-right text-xs text-neutral-400 mt-0.5">{reason.length}/500</p>
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2 justify-end pt-1">

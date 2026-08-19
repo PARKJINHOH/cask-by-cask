@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { adminWineIngestApi } from '@/domain/admin/api/adminWineIngestApi'
+import NumberInput from '@/shared/components/NumberInput'
 import type {
   WineIngestItemStatus, WineIngestRunStatus, WineIngestSettings,
 } from '@/domain/admin/types/wineIngest.types'
@@ -111,10 +112,10 @@ export default function AdminWineIngestPage() {
         <p className="mt-1 text-xs text-neutral-500">Vivino 부하를 낮게 유지하기 위한 수집량 상한입니다. 요청 간격 5초와 429 즉시 중단은 크롤러가 항상 적용합니다.</p>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <label className="text-xs font-semibold text-neutral-600">시간당 최대
-            <input className={`${INPUT} mt-1 w-full`} type="number" min={1} max={10} value={form.hourlyLimit} onChange={(e) => updateForm({ ...form, hourlyLimit: Number(e.target.value) })} />
+            <NumberInput className={`${INPUT} mt-1 w-full`}min={1} max={10} value={form.hourlyLimit} onChange={(e) => updateForm({ ...form, hourlyLimit: Number(e.target.value) })} />
           </label>
           <label className="text-xs font-semibold text-neutral-600">실행당 최대
-            <input className={`${INPUT} mt-1 w-full`} type="number" min={1} max={10} value={form.maxRunItems} onChange={(e) => updateForm({ ...form, maxRunItems: Number(e.target.value) })} />
+            <NumberInput className={`${INPUT} mt-1 w-full`}min={1} max={10} value={form.maxRunItems} onChange={(e) => updateForm({ ...form, maxRunItems: Number(e.target.value) })} />
           </label>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-5 text-sm">

@@ -7,6 +7,7 @@ import SeoMeta from '@/shared/components/SeoMeta'
 import FormFieldLabel, { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
+import NumberInput from '@/shared/components/NumberInput'
 
 function toLocalDatetimeValue(iso: string) {
   if (!iso) return ''
@@ -313,7 +314,7 @@ export default function ByobFormPage() {
             {/* 최대 인원 */}
             <div>
               <FormFieldLabel required className="mb-1">{t('byob.formMaxParticipants')}</FormFieldLabel>
-              <input required type="number" value={maxParticipants}
+              <NumberInput required value={maxParticipants}
                 onChange={(e) => setMaxParticipants(Math.max(2, Math.min(100, Number(e.target.value))))}
                 min={2} max={100} className="w-32 px-3 py-2 border border-neutral-300 rounded-lg text-sm
                   focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400" />

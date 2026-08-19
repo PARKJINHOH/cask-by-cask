@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { COGNAC_CRUS } from '@/domain/spirit/data/cognac'
+import NumberInput from '@/shared/components/NumberInput'
 
 export interface CruCompositionRow { cru: string; percentage: string }
 
@@ -51,8 +52,7 @@ export default function CruCompositionInput({ value, onChange }: Props) {
             ))}
           </select>
           <div className="relative flex items-center">
-            <input
-              type="number"
+            <NumberInput
               min={1}
               max={100}
               value={row.percentage}

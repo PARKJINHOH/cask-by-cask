@@ -4,6 +4,7 @@ import Modal from '@/shared/components/Modal'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import Button from '@/shared/components/Button'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 export interface ReviewVariantDraft {
   variantValue: string
@@ -162,9 +163,8 @@ export default function ReviewVariantCreateModal({
                 ?
               </span>
             </label>
-            <input
+            <NumberInput
               ref={abvRef}
-              type="number"
               required
               aria-required="true"
               min={0}
@@ -194,9 +194,8 @@ export default function ReviewVariantCreateModal({
                 ?
               </span>
             </label>
-            <input
+            <NumberInput
               ref={volumeMlRef}
-              type="number"
               required
               aria-required="true"
               min={1}
@@ -236,7 +235,6 @@ export default function ReviewVariantCreateModal({
             placeholder={t('review.addEditionMemoPlaceholder')}
             className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
-          <p className="mt-1 text-right text-xs text-neutral-400">{requestMemo.length}/500</p>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4">

@@ -8,6 +8,7 @@ import CountryRegionSelector from '@/domain/location/components/CountryRegionSel
 import SeoMeta from '@/shared/components/SeoMeta'
 import FormFieldLabel, { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 const STATUS_STYLE: Record<RequestStatus, string> = {
   PENDING:  'bg-amber-50 text-amber-700',
@@ -257,9 +258,8 @@ export default function ProducerRequestPage() {
 
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-neutral-700">{t('producerRequest.form.foundedYear')}</label>
-                  <input
+                  <NumberInput
                     {...register('foundedYear', { min: 1500, max: new Date().getFullYear() })}
-                    type="number"
                     placeholder={t('producerRequest.form.foundedYearPlaceholder', '예) 1824')}
                     min={1500}
                     max={new Date().getFullYear()}

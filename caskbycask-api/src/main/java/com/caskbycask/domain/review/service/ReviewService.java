@@ -120,6 +120,7 @@ public class ReviewService {
 
         // [패치 5] 리뷰 코멘트 욕설 필터 (기존 누락 영역)
         badWordFilter.validate(request.comment());
+        rejectPartialScore(request.noseScore(), request.tasteScore(), request.finishScore());
 
         Review review = Review.builder()
                 .spirit(spirit)
@@ -174,10 +175,15 @@ public class ReviewService {
             badWordFilter.validate(request.comment());
         }
 
+        rejectPartialScore(request.noseScore(), request.tasteScore(), request.finishScore());
+
+        // 점수 세 칸은 나머지 필드와 달리 "null = 유지" 가 아니라 통째로 갈아 끼운다.
+        // 그러지 않으면 한 번 매긴 점수를 다시 지울 방법이 없어, 점수 없는 리뷰로 되돌릴 수 없다.
+        // 작성·수정 폼 모두 세 칸을 항상 함께 보내므로 부분 전송으로 점수가 날아갈 일은 없다.
         review.update(
-                request.noseScore()            != null ? request.noseScore()            : review.getNoseScore(),
-                request.tasteScore()           != null ? request.tasteScore()           : review.getTasteScore(),
-                request.finishScore()          != null ? request.finishScore()          : review.getFinishScore(),
+                request.noseScore(),
+                request.tasteScore(),
+                request.finishScore(),
                 request.noseNote()             != null ? request.noseNote()             : review.getNoseNote(),
                 request.tasteNote()            != null ? request.tasteNote()            : review.getTasteNote(),
                 request.finishNote()           != null ? request.finishNote()           : review.getFinishNote(),
@@ -253,22 +259,34 @@ public class ReviewService {
         BigDecimal avg;
         int count;
 
+        int scoredCount;
+
         if (isMaster) {
             avg = reviewRepository.findAvgScoreForMasterSpirit(id)
                     .map(d -> BigDecimal.valueOf(d).setScale(1, RoundingMode.HALF_UP))
                     .orElse(null);
             count = (int) reviewRepository.countActiveForMasterSpirit(id);
+            scoredCount = (int) reviewRepository.countScoredForMasterSpirit(id);
         } else {
             avg = reviewRepository.findAvgScoreBySpiritId(id)
                     .map(d -> BigDecimal.valueOf(d).setScale(1, RoundingMode.HALF_UP))
                     .orElse(null);
             count = (int) reviewRepository.countActiveBySpiritId(id);
+            scoredCount = (int) reviewRepository.countScoredBySpiritId(id);
         }
 
-        spirit.updateAvgScore(avg, count);
+        // count 는 "총 리뷰 수"(점수 없는 리뷰 포함), scoredCount 는 평균 산출 모수다.
+        spirit.updateAvgScore(avg, count, scoredCount);
     }
 
     // ── Private helpers ────────────────────────────────────
+
+    private void rejectPartialScore(BigDecimal nose, BigDecimal taste, BigDecimal finish) {
+        if (Review.isPartialScore(nose, taste, finish)) {
+            throw new CustomException(ErrorCode.REVIEW_SCORE_PARTIAL);
+        }
+    }
+
 
     private ReviewResponse toResponse(Review review) {
         return toResponse(

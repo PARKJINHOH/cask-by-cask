@@ -97,6 +97,11 @@ export interface SpiritImage {
 }
 
 export interface SpiritDetail extends SpiritListItem {
+  /**
+   * avgScore 를 낸 모수 — 점수를 남긴 리뷰 수.
+   * reviewCount 는 점수 없는 리뷰까지 센 총 리뷰 수라 평점 옆에는 이 값을 쓴다.
+   */
+  scoredReviewCount: number
   producerId: number | null
   producerNameKo: string | null
   producerNameEn: string | null

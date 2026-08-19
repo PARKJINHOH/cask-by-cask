@@ -6,6 +6,7 @@ import {
   COGNAC_GRADES, COGNAC_GRADE_MIN_YEARS, COGNAC_GRADE_NO_STATEMENT, COGNAC_OAK_TYPES,
 } from '@/domain/spirit/data/cognac'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 /** 숙성 위계에 놓이는 등급만 — '등급 표기 없음'은 위계 밖이라 따로 렌더한다 */
 const AGING_GRADES = COGNAC_GRADES.filter((g) => g !== COGNAC_GRADE_NO_STATEMENT)
@@ -130,7 +131,7 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
             빈티지 연도
             <InfoTooltip text="단일 연도 증류 원액으로 만든 빈티지 꼬냑일 때만. 일반 꼬냑은 비워두세요." />
           </label>
-          <input type="number" min={1800} max={new Date().getFullYear()}
+          <NumberInput min={1800} max={new Date().getFullYear()}
             value={value.vintageYear} onChange={(e) => onChange({ vintageYear: e.target.value })}
             onWheel={(e) => e.currentTarget.blur()}
             className={INPUT} />
@@ -141,7 +142,7 @@ export default function CognacDetailSection({ value, onChange, errors }: Props) 
             <InfoTooltip text="라벨에 표기된 숙성 연수(예: 20년). 표기가 없으면 비워두세요." />
           </label>
           <div className="relative">
-            <input type="number" min={0} max={100}
+            <NumberInput min={0} max={100}
               value={value.ageYears} onChange={(e) => onChange({ ageYears: e.target.value })}
               onWheel={(e) => e.currentTarget.blur()}
               className={`${INPUT} pr-8`} />

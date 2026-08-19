@@ -45,8 +45,10 @@ public record SpiritDetailResponse(
         SpiritWineRegionResponse wineRegion,
         @Schema(description = "전체 리뷰 평균 점수")
         BigDecimal avgScore,
-        @Schema(description = "리뷰 수")
+        @Schema(description = "리뷰 수 (점수를 남기지 않은 리뷰 포함)")
         Integer reviewCount,
+        @Schema(description = "평균 점수의 모수 — 점수를 남긴 리뷰 수")
+        Integer scoredReviewCount,
         @Schema(description = "공개 상태")
         SpiritStatus status,
         @Schema(description = "이미지 목록")
@@ -154,6 +156,7 @@ public record SpiritDetailResponse(
                 SpiritWineRegionResponse.from(spirit.getRegionCode()),
                 spirit.getAvgScore(),
                 spirit.getReviewCount(),
+                spirit.getScoredReviewCount(),
                 spirit.getStatus(),
                 images,
                 spirit.getCreatedAt(),

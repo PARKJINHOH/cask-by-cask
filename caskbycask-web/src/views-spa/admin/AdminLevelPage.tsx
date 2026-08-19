@@ -9,6 +9,7 @@ import {
 import LevelBadge from '@/shared/components/LevelBadge'
 import { generateLevels, DEFAULT_LEVEL_FORMULA } from '@/domain/score/types/score.types'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
+import NumberInput from '@/shared/components/NumberInput'
 
 export default function AdminLevelPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -167,8 +168,7 @@ function FormulaGenerator({
         {fields.map(({ label, value, set, step, hint }) => (
           <div key={label}>
             <label className="block text-xs font-medium text-neutral-600 mb-1">{label}<RequiredMark /></label>
-            <input
-              type="number"
+            <NumberInput
               required
               aria-required="true"
               value={value}
@@ -296,8 +296,7 @@ function LevelEditRow({
       </td>
       <td className="px-4 py-2">
         <div className="flex justify-end">
-          <input
-            type="number"
+          <NumberInput
             value={minScore}
             onChange={(e) => setMinScore(e.target.value)}
             min={0}

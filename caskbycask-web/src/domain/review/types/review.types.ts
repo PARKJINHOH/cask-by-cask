@@ -48,10 +48,10 @@ export interface ReviewItem {
   spiritVariantValueEn?: string | null
   spiritAbv?: number | null
   spiritVolumeMl?: number | null
-  noseScore: number
-  tasteScore: number
-  finishScore: number
-  totalScore: number
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
+  totalScore: number | null
   noseNote: string | null
   tasteNote: string | null
   finishNote: string | null
@@ -87,7 +87,7 @@ export interface RecentReviewItem {
   canonicalPathEn?: string | null
   imageUrl: string | null
   nickname: string
-  totalScore: number
+  totalScore: number | null
   createdAt: string
 }
 
@@ -100,10 +100,10 @@ export interface ReviewEmbedItem {
   spiritIdentifierEn: string | null
   spiritAbv: number | null
   spiritReviewCount: number
-  noseScore: number
-  tasteScore: number
-  finishScore: number
-  totalScore: number
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
+  totalScore: number | null
   noseNote: string | null
   tasteNote: string | null
   finishNote: string | null
@@ -112,9 +112,9 @@ export interface ReviewEmbedItem {
 }
 
 export interface CreateReviewRequest {
-  noseScore: number
-  tasteScore: number
-  finishScore: number
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
   noseNote?: string
   tasteNote?: string
   finishNote?: string
@@ -152,10 +152,10 @@ export interface VariantReviewRequestItem {
   abv: number
   volumeMl: number
   requestMemo: string | null
-  noseScore: number
-  tasteScore: number
-  finishScore: number
-  totalScore: number
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
+  totalScore: number | null
   noseNote: string | null
   tasteNote: string | null
   finishNote: string | null
@@ -174,9 +174,13 @@ export interface VariantReviewRequestItem {
 }
 
 export interface UpdateReviewRequest {
-  noseScore?: number
-  tasteScore?: number
-  finishScore?: number
+  /**
+   * 점수 세 칸은 다른 필드와 달리 "생략 = 유지"가 아니라 통째로 갈아 끼운다.
+   * 세 칸 모두 null 로 보내면 점수를 지운 리뷰가 된다 (평균에서 빠짐).
+   */
+  noseScore: number | null
+  tasteScore: number | null
+  finishScore: number | null
   noseNote?: string
   tasteNote?: string
   finishNote?: string

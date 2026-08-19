@@ -120,6 +120,18 @@ public class Spirit extends BaseTimeEntity {
     @GenericField(sortable = Sortable.YES)
     private Integer reviewCount = 0;
 
+    /**
+     * avgScore 를 낸 모수 — 점수를 남긴 리뷰만 센다.
+     *
+     * <p>reviewCount 는 점수 없는 리뷰까지 포함한 "총 리뷰 수"라 평점 옆에 그대로 쓰면
+     * "85.0 · 리뷰 12개"인데 실제 평균은 8건짜리인 어긋남이 생긴다. SEO aggregateRating 의
+     * ratingCount 도 실제 평점 수와 맞아야 해서 이 값을 쓴다.
+     */
+    @Builder.Default
+    @Column(nullable = false)
+    @Comment("점수가 있는 리뷰 수(평균 산출 모수)")
+    private Integer scoredReviewCount = 0;
+
     @Builder.Default
     @Column(nullable = false)
     @Comment("조회수")
@@ -360,9 +372,14 @@ public class Spirit extends BaseTimeEntity {
         variant.parent = this;
     }
 
-    public void updateAvgScore(BigDecimal avgScore, int reviewCount) {
+    /**
+     * @param reviewCount       총 리뷰 수 — 점수를 안 남긴 리뷰까지 센다 ("리뷰 N개" 표시용)
+     * @param scoredReviewCount {@code avgScore} 를 낸 모수 — 점수가 있는 리뷰만 (평점 옆 표기·SEO ratingCount 용)
+     */
+    public void updateAvgScore(BigDecimal avgScore, int reviewCount, int scoredReviewCount) {
         this.avgScore = avgScore;
         this.reviewCount = reviewCount;
+        this.scoredReviewCount = scoredReviewCount;
     }
 
     public void approve() {

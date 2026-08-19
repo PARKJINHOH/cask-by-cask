@@ -153,7 +153,7 @@ class ReviewServiceTest {
         Review review = buildReview(spirit, user, 90, 85, 88, null, new BigDecimal("87.7"));
         ReflectionTestUtils.setField(review, "id", 10L);
 
-        spirit.updateAvgScore(new BigDecimal("87.7"), 1);
+        spirit.updateAvgScore(new BigDecimal("87.7"), 1, 1);
 
         given(reviewRepository.findById(10L)).willReturn(Optional.of(review));
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));
@@ -174,7 +174,7 @@ class ReviewServiceTest {
         Review review = buildReview(spirit, user, 90, 85, 88, null, new BigDecimal("87.7"));
         ReflectionTestUtils.setField(review, "id", 10L);
 
-        spirit.updateAvgScore(new BigDecimal("85.0"), 2);
+        spirit.updateAvgScore(new BigDecimal("85.0"), 2, 2);
 
         given(reviewRepository.findById(10L)).willReturn(Optional.of(review));
         given(spiritRepository.findById(1L)).willReturn(Optional.of(spirit));

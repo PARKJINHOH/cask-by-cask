@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import InfoTooltip from '@/shared/components/InfoTooltip'
 import { BROAD_CASK_CATEGORIES } from '@/domain/spirit/data/whisky'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import NumberInput from '@/shared/components/NumberInput'
 
 export interface WhiskyDetailForm {
   style: string; styleOther: string; brandName: string; bottlingType: string
@@ -233,7 +234,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
         {isPhenolRange && value.isPeated ? (
           <div className="flex items-center gap-2">
             <div className="flex-1">
-              <input type="number" min={0} max={999} step="any"
+              <NumberInput min={0} max={999} step="any"
                 value={value.phenolPpmMin}
                 onChange={(e) => onChange({ phenolPpmMin: e.target.value })}
                 onWheel={(e) => e.currentTarget.blur()}
@@ -243,7 +244,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
             </div>
             <span className="text-neutral-400">~</span>
             <div className="flex-1">
-              <input type="number" min={0} max={999} step="any"
+              <NumberInput min={0} max={999} step="any"
                 value={value.phenolPpmMax}
                 onChange={(e) => onChange({ phenolPpmMax: e.target.value })}
                 onWheel={(e) => e.currentTarget.blur()}
@@ -253,7 +254,7 @@ export default function WhiskyDetailSection({ value, onChange }: Props) {
             </div>
           </div>
         ) : (
-          <input type="number" min={0} max={999} step="any"
+          <NumberInput min={0} max={999} step="any"
             value={value.phenolPpm}
             onChange={(e) => onChange({ phenolPpm: e.target.value })}
             onWheel={(e) => e.currentTarget.blur()}

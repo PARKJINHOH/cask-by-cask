@@ -173,7 +173,7 @@ class SpiritSearchRankingTest {
                 .abv(new BigDecimal("40.0"))
                 .status(SpiritStatus.ACTIVE)
                 .build();
-        spirit.updateAvgScore(BigDecimal.ZERO, 0);
+        spirit.updateAvgScore(BigDecimal.ZERO, 0, 0);
         return spirit;
     }
 

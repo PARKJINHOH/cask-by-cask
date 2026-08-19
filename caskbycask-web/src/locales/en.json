@@ -1006,6 +1006,9 @@
     }
   },
   "review": {
+    "scoreNotRated": "Not rated",
+    "scoreNotRatedHint": "Leave blank to keep this review out of the average",
+    "scoreClear": "Clear score",
     "title": "Reviews",
     "userReviewsTitle": "{{nickname}}'s Reviews",
     "nthReview": "Review #{{index}}",
@@ -1090,6 +1093,7 @@
     "aromaSearchPlaceholder": "Search or type to add custom...",
     "aromaNoMatch": "No match — press Add to save as custom",
     "aromaProfile": {
+      "byReviewer": "{{nickname}}'s aroma profile",
       "title": "Aroma Profile",
       "add": "+ Profile",
       "edit": "Edit Profile",
@@ -1199,6 +1203,7 @@
       "writingNow": "now"
     },
     "error": {
+      "scoreAllOrNone": "Enter all three scores, or leave all three blank.",
       "noteMin": "Please write at least {{min}} characters.",
       "noteMax": "Please keep it under {{max}} characters.",
       "checkFields": "Some fields are missing or invalid. Please check the highlighted items."

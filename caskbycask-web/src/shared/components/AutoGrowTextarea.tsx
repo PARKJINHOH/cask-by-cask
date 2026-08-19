@@ -118,8 +118,12 @@ const AutoGrowTextarea = forwardRef<HTMLTextAreaElement, AutoGrowTextareaProps>(
         {showCounter && (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-1.5 right-2.5
-              text-[10px] leading-none tabular-nums text-neutral-400"
+            className={[
+              'pointer-events-none absolute bottom-1.5 right-2.5',
+              'text-[10px] leading-none tabular-nums',
+              // 한도에 닿으면 더 쳐도 글자가 안 들어간다 — 그 이유를 색으로 알린다.
+              length >= (maxLength as number) ? 'text-red-500' : 'text-neutral-400',
+            ].join(' ')}
           >
             {length}/{maxLength}
           </span>
