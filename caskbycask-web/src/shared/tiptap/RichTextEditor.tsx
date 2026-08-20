@@ -24,6 +24,7 @@ import SpiritEmbedDialog from './SpiritEmbedDialog'
 import ReviewEmbedDialog from './ReviewEmbedDialog'
 import ImageEditorModal from '../components/ImageEditorModal'
 import { toEditorHtmlFragment } from './editorHtmlFragment'
+import { resolveUploadErrorReason } from '@/shared/utils/uploadError'
 import {
   UploadInsertionAnchor,
   createUploadInsertionAnchor,
@@ -40,6 +41,15 @@ const MAX_IMAGE_COUNT = 20 // 문서(게시글)당 이미지 최대 장수
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024 // 동영상 개당 50MB
 const MAX_VIDEO_COUNT = 2 // 문서(게시글)당 동영상 최대 개수
 const MAX_MEDIA_TOTAL = 100 * 1024 * 1024 // 이미지+동영상 합계 100MB
+
+// 확장자가 낯설거나(.jfif) 아예 없어서 브라우저가 MIME 을 못 붙인 파일도 이미지로 본다.
+// 최종 판정은 서버가 파일 내용(Magic Bytes)으로 하므로(NoticeImageValidator) 여기서 미리 걸러 낼 이유가 없다 —
+// 드래그·붙여넣기로 들어온 첨부에서 '명백히 이미지가 아닌 것'만 제외하는 용도다.
+const IMAGE_FILE_NAME = /\.(jpe?g|jfif|pjpe?g|png|gif|webp|bmp|dib|avif|hei[cf]|tiff?)$/i
+
+function looksLikeImage(file: File) {
+  return file.type ? file.type.startsWith('image/') : IMAGE_FILE_NAME.test(file.name)
+}
 
 // 문서 내 업로드 미디어 현황 집계. 합계 용량(knownBytes)은 이 세션에서 업로드한 파일 크기만
 // 합산하는 최선 추정치(수정 모드에서 기존 미디어 크기는 알 수 없음) — 최종 검증은 저장 시 백엔드가 수행.
@@ -61,7 +71,10 @@ interface Props {
   onChange: (html: string) => void
   placeholder?: string
   maxChars?: number
-  /** 이미지 업로드 (없으면 이미지 버튼/붙여넣기 비활성) */
+  /**
+   * 이미지 업로드 (없으면 이미지 버튼/붙여넣기 비활성).
+   * 실패는 throw 로 알린다 — `null` 은 "호출 측이 이미 사유를 알렸다" 는 뜻이라 여기서 다시 알리지 않는다.
+   */
   uploadImage?: (file: File, onProgress?: (p: number) => void) => Promise<string | null>
   /** 동영상 업로드 (없으면 동영상 업로드 버튼 비활성) */
   uploadVideo?: (file: File, onProgress?: (p: number) => void) => Promise<{ videoUrl: string; mimeType: string } | null>
@@ -115,23 +128,41 @@ export default function RichTextEditor({
   // 편집 중 페이지 스크롤은 잠그지 않는다. (일반적인 웹 에디터와 동일하게 동작 —
   // 특히 모바일에서 body 를 고정하면 본문 세로 스크롤 자체가 막혀 폼을 사용할 수 없다.)
 
+  // 실패 사유를 파일명과 함께 알린다 — 여러 장을 한 번에 올릴 때
+  // "업로드 실패" 한 줄만 뜨면 어떤 파일이 왜 걸렸는지 알 수 없다.
+  const reportImageFailure = useCallback((file: File, error: unknown) => {
+    onImageError?.(t('editor.upload.imageFailedDetail', {
+      name: file.name,
+      reason: resolveUploadErrorReason(error, {
+        network: t('editor.upload.reasonNetwork'),
+        auth: t('editor.upload.reasonAuth'),
+        tooLarge: t('editor.upload.imageTooLarge', { max: MAX_IMAGE_SIZE / 1024 / 1024 }),
+        rateLimited: t('editor.upload.reasonRateLimited'),
+        server: t('editor.upload.reasonServer'),
+      }),
+    }))
+  }, [onImageError, t])
+
   const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
     if (!uploadImage) return null
     if (file.size > MAX_IMAGE_SIZE) {
-      onImageError?.(t('editor.upload.imageTooLarge', { max: MAX_IMAGE_SIZE / 1024 / 1024 }))
+      onImageError?.(t('editor.upload.imageFailedDetail', {
+        name: file.name,
+        reason: t('editor.upload.imageTooLarge', { max: MAX_IMAGE_SIZE / 1024 / 1024 }),
+      }))
       return null
     }
     setUploadKind('image')
     setUploadProgress(0)
     try {
       return await uploadImage(file, setUploadProgress)
-    } catch {
-      onImageError?.(t('editor.upload.imageFailed'))
+    } catch (error) {
+      reportImageFailure(file, error)
       return null
     } finally {
       setUploadProgress(null)
     }
-  }, [uploadImage, onImageError, t])
+  }, [uploadImage, onImageError, reportImageFailure, t])
 
   const editor = useEditor({
     extensions: [
@@ -193,7 +224,7 @@ export default function RichTextEditor({
       },
       handleDrop(view, event) {
         const files = Array.from(event.dataTransfer?.files ?? [])
-        const imgFiles = files.filter((f) => f.type.startsWith('image/'))
+        const imgFiles = files.filter(looksLikeImage)
         if (imgFiles.length === 0 || !uploadImage) return false
         event.preventDefault()
         const insertionPos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
@@ -203,7 +234,7 @@ export default function RichTextEditor({
       },
       handlePaste(view, event) {
         // 이미지 파일 붙여넣기 (클립보드 이미지) — 여러 장 지원
-        const imgFiles = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'))
+        const imgFiles = Array.from(event.clipboardData?.files ?? []).filter(looksLikeImage)
         if (imgFiles.length > 0 && uploadImage) {
           event.preventDefault()
           uploadAndInsertImagesRef.current(imgFiles, view.state.selection.from)
@@ -275,10 +306,8 @@ export default function RichTextEditor({
     setIsEditingSaving(true)
     try {
       const newUrl = await uploadImage(file)
-      if (!newUrl) {
-        onImageError?.('편집된 이미지 업로드에 실패했습니다.')
-        return
-      }
+      // null 은 호출 측이 이미 사유를 알린 경우 — 같은 말을 두 번 띄우지 않는다.
+      if (!newUrl) return
 
       mediaSizesRef.current.set(newUrl, file.size)
 
@@ -293,20 +322,22 @@ export default function RichTextEditor({
         )
       }
       setEditModalOpen(false)
-    } catch (err) {
-      onImageError?.('편집된 이미지 저장 중 오류가 발생했습니다.')
-      console.error(err)
+    } catch (error) {
+      reportImageFailure(file, error)
+      console.error(error)
     } finally {
       setIsEditingSaving(false)
     }
-  }, [uploadImage, editor, editImagePos, onImageError])
+  }, [uploadImage, editor, editImagePos, reportImageFailure])
 
   // 이미지 파일 여러 장을 순차 업로드하며 성공한 것부터 에디터에 삽입한다.
   // (파일 선택 / 드래그 / 붙여넣기 공용)
   const uploadAndInsertImages = useCallback(async (files: File[], insertionPos?: number) => {
     if (!uploadImage || !editor) return
     const initialInsertionPos = insertionPos ?? editor.state.selection.from
-    let images = files.filter((f) => f.type.startsWith('image/'))
+    // 여기서 다시 걸러 내지 않는다 — 드래그·붙여넣기는 호출 전에 looksLikeImage 로 추린 뒤 들어오고,
+    // 파일 선택은 사용자가 직접 고른 것이라 서버가 내용을 보고 판정하게 둔다(확장자로 미리 막지 않는다).
+    let images = files
     if (images.length === 0) return
     // 문서 내 기존 이미지 + 새 파일 합계가 장수 한도를 넘으면 초과분은 업로드하지 않는다.
     const usage = collectMediaUsage(editor, mediaSizesRef.current)
@@ -429,7 +460,7 @@ export default function RichTextEditor({
         <input
           ref={imageInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
+          accept="image/*"
           multiple
           className="hidden"
           onChange={(e) => {

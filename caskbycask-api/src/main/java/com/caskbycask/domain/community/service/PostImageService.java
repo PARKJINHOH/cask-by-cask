@@ -70,7 +70,7 @@ public class PostImageService {
             throw new CustomException(ErrorCode.POST_IMAGE_DIMENSIONS_EXCEEDED);
         }
 
-        // [보안] 4단계 검증 + 연월별 디렉토리 저장 (공통 흐름)
+        // [보안] 공통 검증(크기 → 내용 기반 포맷 판별 → UUID 파일명) + 연월별 디렉토리 저장
         // 갤러리는 원본이 크고 목록에서는 작게 쓰이므로 해상도 상한 + 축소본까지 함께 만든다.
         StoredImage stored = validatedImageUploader.uploadResponsive(
                 file, "posts", new ResponsiveImageSpec(MAX_STORED_EDGE, VARIANT_WIDTHS));

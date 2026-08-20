@@ -1,6 +1,7 @@
 package com.caskbycask.global.storage;
 
 import com.caskbycask.global.util.NoticeImageValidator;
+import com.caskbycask.global.util.NoticeImageValidator.ValidatedImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,8 +11,8 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * 에디터/첨부 이미지 공통 업로드 흐름.
- * [보안] 4단계 검증(크기 → 확장자 → Magic Bytes → UUID 파일명) 후 연월별 디렉토리({directory}/yyyyMM)에 저장.
- * Notice/Post/Banner/Popup/PriceReport 이미지 업로드가 공유한다.
+ * [보안] 3단계 검증(크기 → 내용 기반 포맷 판별 → 판별된 포맷 확장자로 UUID 파일명) 후
+ * 연월별 디렉토리({directory}/yyyyMM)에 저장. Notice/Post/Banner/Popup/PriceReport 이미지 업로드가 공유한다.
  */
 @Component
 @RequiredArgsConstructor
@@ -35,14 +36,13 @@ public class ValidatedImageUploader {
      * 이미지 갤러리처럼 원본이 크고 목록에서는 작게 쓰이는 도메인이 사용한다.
      */
     public StoredImage uploadResponsive(MultipartFile file, String directory, ResponsiveImageSpec spec) {
-        String mimeType = noticeImageValidator.validate(file);
-        String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
+        ValidatedImage validated = noticeImageValidator.inspect(file);
         String subPath = directory + "/" + YearMonth.now().format(MONTH_DIR);
         ImageUploadResult result = fileStorageService.uploadResponsiveImage(
                 file,
-                savedFileName,
+                validated.savedFileName(),
                 subPath,
-                mimeType,
+                validated.mimeType(),
                 WebpConversionMode.LOSSY,
                 spec
         );
@@ -50,14 +50,13 @@ public class ValidatedImageUploader {
     }
 
     private StoredImage upload(MultipartFile file, String directory, WebpConversionMode conversionMode) {
-        String mimeType = noticeImageValidator.validate(file);
-        String savedFileName = noticeImageValidator.generateSavedFileName(file.getOriginalFilename());
+        ValidatedImage validated = noticeImageValidator.inspect(file);
         String subPath = directory + "/" + YearMonth.now().format(MONTH_DIR);
         ImageUploadResult result = fileStorageService.uploadImage(
                 file,
-                savedFileName,
+                validated.savedFileName(),
                 subPath,
-                mimeType,
+                validated.mimeType(),
                 conversionMode
         );
         return new StoredImage(result.savedFileName(), subPath, result.mimeType(), result.imageUrl());

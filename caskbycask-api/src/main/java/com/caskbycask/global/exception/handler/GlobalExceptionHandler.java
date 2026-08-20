@@ -16,6 +16,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -101,6 +102,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
         log.warn("HttpMediaTypeNotSupportedException: {}", e.getMessage());
         ErrorCode errorCode = ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(ApiResponse.fail(errorCode.getCode(), errorCode.getMessage()));
+    }
+
+    // 톰캣 multipart 한도 초과 → 413. 컨트롤러에 닿기 전에 터지므로 catch-all 이 잡으면
+    // "서버 오류가 발생했습니다" 로만 보인다 — 용량 문제라는 걸 알려 줘야 사용자가 대응할 수 있다.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        log.warn("MaxUploadSizeExceededException: {}", e.getMessage());
+        ErrorCode errorCode = ErrorCode.UPLOAD_SIZE_EXCEEDED;
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
                 .body(ApiResponse.fail(errorCode.getCode(), errorCode.getMessage()));

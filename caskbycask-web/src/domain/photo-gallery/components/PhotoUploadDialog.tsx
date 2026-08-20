@@ -10,6 +10,7 @@ import type { PhotoCardSpiritInfo } from '@/domain/photo-card/types/photoCard.ty
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 import Modal from '@/shared/components/Modal'
+import { resolveUploadErrorReason } from '@/shared/utils/uploadError'
 import { UPLOAD_MAX_EDGE, downscaleImageFile } from '../utils/downscaleImage'
 
 interface Props {
@@ -32,7 +33,6 @@ interface UploadProgress {
 const MAX_IMAGES = 3
 const MAX_TITLE = 50
 const MAX_FILE_SIZE = 10 * 1024 * 1024
-const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 /**
  * 이미지 갤러리에 사진을 그대로 올린다 — 포토카드 편집기를 거치지 않는 짧은 길.
@@ -103,13 +103,9 @@ export default function PhotoUploadDialog({ open, onClose }: Props) {
     }
     if (files.length > room) setError(t('photoGallery.upload.limit', { max: MAX_IMAGES }))
 
-    const candidates = files.slice(0, room).filter((file) => {
-      if (!ACCEPTED_TYPES.has(file.type)) {
-        setError(t('photoGallery.upload.format'))
-        return false
-      }
-      return true
-    })
+    // 형식은 여기서 거르지 않는다 — file.type 은 확장자에서 추측한 값이라 실제 내용과 다를 수 있다.
+    // 축소할 수 없는 파일은 원본 그대로 두고, 서버가 Magic Bytes 로 최종 형식을 판정한다.
+    const candidates = files.slice(0, room)
     if (candidates.length === 0) return
 
     setPreparing(true)
@@ -207,8 +203,14 @@ export default function PhotoUploadDialog({ open, onClose }: Props) {
       if (!created) throw new Error('post creation failed')
       void queryClient.invalidateQueries({ queryKey: ['photoGalleryPosts'] })
       navigate(`/community/photo/${created.id}`)
-    } catch {
-      setError(t('photoCard.publishFailed'))
+    } catch (error: unknown) {
+      setError(resolveUploadErrorReason(error, {
+        network: t('common.uploadReason.network'),
+        auth: t('common.uploadReason.auth'),
+        tooLarge: t('common.uploadReason.tooLarge'),
+        rateLimited: t('common.uploadReason.rateLimited'),
+        server: t('common.uploadReason.server'),
+      }))
     } finally {
       setSubmitting(false)
       setProgress(null)
@@ -358,7 +360,7 @@ export default function PhotoUploadDialog({ open, onClose }: Props) {
                   <input
                     type="file"
                     multiple
-                    accept="image/jpeg,image/png,image/webp"
+                    accept="image/*"
                     className="sr-only"
                     disabled={busy}
                     onChange={(event) => {

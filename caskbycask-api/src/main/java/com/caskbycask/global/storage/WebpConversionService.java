@@ -20,8 +20,13 @@ public class WebpConversionService {
     private final WebpWriter lossyWriter = WebpWriter.DEFAULT.withQ(DEFAULT_QUALITY);
     private final WebpWriter losslessWriter = WebpWriter.DEFAULT.withLossless();
 
+    // BMP 는 무손실 원본이라 그대로 두면 수십 MB 가 그대로 나간다 — JPG/PNG 와 같이 WebP 로 바꾼다.
+    // (JDK ImageIO 가 BMP 디코더를 기본 제공하므로 별도 라이브러리가 필요 없다.)
+    // GIF 는 재인코딩하면 애니메이션이 죽고, AVIF 는 서버에 디코더가 없어 둘 다 원본을 그대로 서빙한다.
     public boolean isConvertibleMime(String mimeType) {
-        return "image/jpeg".equals(mimeType) || "image/png".equals(mimeType);
+        return "image/jpeg".equals(mimeType)
+                || "image/png".equals(mimeType)
+                || "image/bmp".equals(mimeType);
     }
 
     // 변환 성공 시 WebP 바이트, 실패 시 IOException

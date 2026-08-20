@@ -96,7 +96,7 @@ public class PopupAdminController {
 
     // ─── 이미지 업로드/삭제 ────────────────────────────
 
-    // [보안] NoticeImageValidator 4단계 검증 재사용: 크기 → 확장자 → Magic Bytes → UUID 파일명
+    // [보안] NoticeImageValidator 검증 재사용: 크기 → 내용(Magic Bytes) 기반 포맷 판별 → 판별된 확장자로 UUID 파일명
     @PostMapping("/images")
     public ResponseEntity<ApiResponse<UploadedPopupImageResponse>> uploadImage(
             @RequestParam("image") MultipartFile file,

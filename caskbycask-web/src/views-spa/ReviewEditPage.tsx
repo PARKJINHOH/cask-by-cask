@@ -177,10 +177,21 @@ export default function ReviewEditPage() {
   const serverError =
     updateReviewMutation.error || updateRequestMutation.error || resubmitRequestMutation.error
   const serverErrorMessage = serverError
-    ? getReviewSaveErrorMessage(serverError, t('review.saveError'), {
-        REVIEW_011: t('review.aromaProfile.errorInvalid'),
-        REVIEW_012: t('review.aromaProfile.errorUnsupported'),
-      })
+    ? getReviewSaveErrorMessage(
+        serverError,
+        t('review.saveError'),
+        {
+          REVIEW_011: t('review.aromaProfile.errorInvalid'),
+          REVIEW_012: t('review.aromaProfile.errorUnsupported'),
+        },
+        {
+          network: t('common.uploadReason.network'),
+          auth: t('common.uploadReason.auth'),
+          tooLarge: t('common.uploadReason.tooLarge'),
+          rateLimited: t('common.uploadReason.rateLimited'),
+          server: t('common.uploadReason.server'),
+        },
+      )
     : ''
 
   const validate = (): FieldErrors => {

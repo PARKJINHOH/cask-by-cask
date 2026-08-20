@@ -164,7 +164,11 @@
       "videoProgress": "Uploading video...",
       "imageTooLarge": "Images must be {{max}}MB or smaller.",
       "imageCount": "You can attach up to {{max}} images.",
-      "imageFailed": "The image failed to upload. Please try again.",
+      "imageFailedDetail": "Could not upload {{name}} — {{reason}}",
+      "reasonNetwork": "Could not reach the server. Please check your connection.",
+      "reasonAuth": "You do not have permission to upload images. Please sign in again.",
+      "reasonRateLimited": "You have uploaded too many images. Please try again in a moment.",
+      "reasonServer": "The server could not process the image. Please try again in a moment.",
       "videoFormat": "Only MP4 and WebM videos can be uploaded.",
       "videoTooLarge": "Videos must be {{max}}MB or smaller.",
       "videoCount": "You can attach up to {{max}} videos.",
@@ -1223,9 +1227,8 @@
     "images": {
       "title": "Spirit verification photos (optional)",
       "help": "Add up to three photos you took. If social publishing is selected, they will follow the review cover card.",
-      "add": "Add photos (JPG, PNG, WEBP · up to 10MB each)",
+      "add": "Add photos (up to 10MB each)",
       "limit": "You can add up to three review photos.",
-      "format": "Only JPG, PNG, and WEBP photos are supported.",
       "size": "Each photo must be 10MB or smaller.",
       "publicNotice": "These photos will be public with your review and posted to any external social platform you select.",
       "previewAlt": "Review photo {{number}}",
@@ -1527,6 +1530,13 @@
     "discard": "Leave without saving"
   },
   "common": {
+    "uploadReason": {
+      "network": "Could not reach the server. Please check your connection.",
+      "auth": "You do not have permission to do that. Please sign in again.",
+      "tooLarge": "The upload exceeded the size limit. Please use a smaller file.",
+      "rateLimited": "Too many requests. Please try again in a moment.",
+      "server": "The server could not process the request. Please try again in a moment."
+    },
     "loading": "Loading...",
     "error": "An error occurred.",
     "errorTitle": "Couldn't load this",
@@ -2813,7 +2823,6 @@
       "images": "Photos",
       "add": "Choose photos (JPG · PNG · WEBP)",
       "limit": "You can upload up to {{max}} photos.",
-      "format": "Only JPG, PNG and WEBP files can be uploaded.",
       "size": "Each photo must be {{max}}MB or smaller.",
       "imagesRequired": "Please choose at least one photo.",
       "primary": "Cover",

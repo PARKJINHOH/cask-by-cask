@@ -10,6 +10,7 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.storage.FileStorageService;
 import com.caskbycask.global.util.NoticeImageValidator;
+import com.caskbycask.global.util.NoticeImageValidator.ValidatedImage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
@@ -193,11 +194,10 @@ public class PhotoCardDraftService {
      * 저장만 변환 없이 한다.
      */
     private StoredPhoto storePhoto(MultipartFile photo) {
-        String mimeType = imageValidator.validate(photo);
-        String savedFileName = imageValidator.generateSavedFileName(photo.getOriginalFilename());
+        ValidatedImage validated = imageValidator.inspect(photo);
         String subPath = PHOTO_DIRECTORY + "/" + YearMonth.now().format(MONTH_DIR);
-        fileStorageService.upload(photo, savedFileName, subPath);
-        return new StoredPhoto(savedFileName, subPath, mimeType);
+        fileStorageService.upload(photo, validated.savedFileName(), subPath);
+        return new StoredPhoto(validated.savedFileName(), subPath, validated.mimeType());
     }
 
     private LocalDateTime nextExpiry() {

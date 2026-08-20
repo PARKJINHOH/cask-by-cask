@@ -1,5 +1,6 @@
 package com.caskbycask.global.exception;
 
+import com.caskbycask.global.util.AllowedImageFormat;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -86,13 +87,30 @@ public enum ErrorCode {
     REVIEW_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "REVIEW_004", "리뷰 이미지는 최대 3장까지 등록할 수 있습니다."),
     REVIEW_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "REVIEW_005", "리뷰 이미지 파일은 장당 10MB를 초과할 수 없습니다."),
     REVIEW_IMAGE_TOTAL_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "REVIEW_006", "리뷰 이미지 총 용량은 30MB를 초과할 수 없습니다."),
-    REVIEW_IMAGE_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "REVIEW_007", "JPG, PNG, WEBP 형식의 이미지만 등록할 수 있습니다."),
+    // 판별 기준은 확장자가 아니라 파일 내용이다(NoticeImageValidator / AllowedImageFormat 참고).
+    // 리뷰 사진은 저장 전에 반드시 WebP 로 다시 인코딩하는데 서버에 AVIF 디코더가 없어 AVIF 만 뺀다.
+    REVIEW_IMAGE_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "REVIEW_007",
+            "이미지 파일이 아니거나 지원하지 않는 형식입니다. ("
+                    + AllowedImageFormat.labelsExcept(AllowedImageFormat.AVIF) + ")"),
     REVIEW_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_008", "리뷰 이미지를 찾을 수 없습니다."),
     REVIEW_IMAGE_DIMENSIONS_EXCEEDED(HttpStatus.BAD_REQUEST, "REVIEW_009", "리뷰 이미지는 4천만 픽셀을 초과할 수 없습니다."),
     REVIEW_IMAGE_PLAN_INVALID(HttpStatus.BAD_REQUEST, "REVIEW_010", "리뷰 이미지 변경 정보가 올바르지 않습니다."),
     REVIEW_AROMA_PROFILE_INVALID(HttpStatus.BAD_REQUEST, "REVIEW_011", "아로마 프로파일 정보가 올바르지 않습니다."),
     REVIEW_AROMA_PROFILE_UNSUPPORTED(HttpStatus.BAD_REQUEST, "REVIEW_012", "이 주류 카테고리는 아로마 프로파일을 지원하지 않습니다."),
     REVIEW_SCORE_PARTIAL(HttpStatus.BAD_REQUEST, "REVIEW_013", "점수는 향·맛·피니시를 모두 입력하거나 모두 비워 주세요."),
+    // 사진을 왜 못 받았는지 사유별로 나눠 둔다 — 알럿에 그대로 나가야 다음에 뭘 할지 알 수 있다.
+    REVIEW_IMAGE_EMPTY(HttpStatus.BAD_REQUEST, "REVIEW_014",
+            "사진 파일이 비어 있습니다. 파일을 다시 선택해주세요."),
+    REVIEW_IMAGE_UNREADABLE(HttpStatus.BAD_REQUEST, "REVIEW_015",
+            "사진 파일을 읽지 못했습니다. 파일이 손상되지 않았는지 확인해주세요."),
+    REVIEW_IMAGE_HEIC_UNSUPPORTED(HttpStatus.BAD_REQUEST, "REVIEW_016",
+            "HEIC·HEIF 사진은 등록할 수 없습니다. JPG 또는 PNG 로 저장한 뒤 올려주세요."),
+    REVIEW_IMAGE_SVG_UNSUPPORTED(HttpStatus.BAD_REQUEST, "REVIEW_017",
+            "SVG 는 보안상 등록할 수 없습니다. PNG 로 저장해 올려주세요."),
+    REVIEW_IMAGE_TIFF_UNSUPPORTED(HttpStatus.BAD_REQUEST, "REVIEW_018",
+            "TIFF 사진은 등록할 수 없습니다. JPG 또는 PNG 로 저장한 뒤 올려주세요."),
+    REVIEW_IMAGE_AVIF_UNSUPPORTED(HttpStatus.BAD_REQUEST, "REVIEW_019",
+            "AVIF 사진은 등록할 수 없습니다. JPG 또는 PNG 로 저장한 뒤 올려주세요."),
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "댓글을 찾을 수 없습니다."),
@@ -144,10 +162,21 @@ public enum ErrorCode {
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "공지사항을 찾을 수 없습니다."),
     NOTICE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_002", "공지사항 이미지를 찾을 수 없습니다."),
     NOTICE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTICE_003", "공지사항 접근 권한이 없습니다."),
-    NOTICE_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "NOTICE_004", "허용되지 않는 이미지 형식입니다. (JPG, JPEG, PNG, GIF, WEBP)"),
-    NOTICE_INVALID_IMAGE_MAGIC_BYTES(HttpStatus.BAD_REQUEST, "NOTICE_005", "이미지 파일의 실제 형식이 확장자와 일치하지 않습니다."),
+    // 이미지 업로드 실패 사유는 코드를 나눠 둔다 — 알럿에 "왜 실패했는지"가 그대로 나가야 하기 때문.
+    // 판별 기준은 확장자가 아니라 파일 내용이다(NoticeImageValidator / AllowedImageFormat 참고).
+    NOTICE_INVALID_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "NOTICE_004",
+            "이미지 파일이 아니거나 지원하지 않는 형식입니다. (" + AllowedImageFormat.labels() + ")"),
+    NOTICE_IMAGE_UNREADABLE(HttpStatus.BAD_REQUEST, "NOTICE_005",
+            "이미지 파일을 읽지 못했습니다. 파일이 손상되지 않았는지 확인해주세요."),
     NOTICE_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "NOTICE_006", "이미지 파일 크기는 10MB를 초과할 수 없습니다."),
     DELETE_USED_IMAGE(HttpStatus.BAD_REQUEST, "NOTICE_007", "공지에 사용 중인 이미지는 삭제할 수 없습니다."),
+    NOTICE_IMAGE_EMPTY(HttpStatus.BAD_REQUEST, "NOTICE_008", "이미지 파일이 비어 있습니다. 파일을 다시 선택해주세요."),
+    NOTICE_IMAGE_HEIC_UNSUPPORTED(HttpStatus.BAD_REQUEST, "NOTICE_009",
+            "HEIC·HEIF 사진은 업로드할 수 없습니다. JPG 또는 PNG 로 저장한 뒤 올려주세요."),
+    NOTICE_IMAGE_SVG_UNSUPPORTED(HttpStatus.BAD_REQUEST, "NOTICE_010",
+            "SVG 는 보안상 업로드할 수 없습니다. PNG 로 저장해 올려주세요."),
+    NOTICE_IMAGE_TIFF_UNSUPPORTED(HttpStatus.BAD_REQUEST, "NOTICE_011",
+            "TIFF 이미지는 업로드할 수 없습니다. JPG 또는 PNG 로 저장한 뒤 올려주세요."),
 
     // Popup
     POPUP_NOT_FOUND(HttpStatus.NOT_FOUND, "POPUP_001", "팝업을 찾을 수 없습니다."),
@@ -360,7 +389,10 @@ public enum ErrorCode {
     CONSTRAINT_VIOLATION(HttpStatus.CONFLICT, "COMMON_004", "연관된 데이터가 있어 삭제할 수 없습니다."),
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "COMMON_005", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_006", "지원하지 않는 요청 방식입니다."),
-    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "COMMON_007", "지원하지 않는 미디어 타입입니다.");
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "COMMON_007", "지원하지 않는 미디어 타입입니다."),
+    // 톰캣이 multipart 를 잘라 낸 경우 — 컨트롤러에 닿기 전에 터지므로 도메인 에러코드로는 못 잡는다.
+    UPLOAD_SIZE_EXCEEDED(HttpStatus.PAYLOAD_TOO_LARGE, "COMMON_008",
+            "업로드 용량 제한을 초과했습니다. 파일 크기를 줄여 다시 시도해주세요.");
 
     private final HttpStatus httpStatus;
     private final String code;

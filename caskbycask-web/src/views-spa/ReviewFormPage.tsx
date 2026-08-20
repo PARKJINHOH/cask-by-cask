@@ -363,10 +363,21 @@ export default function ReviewFormPage() {
     isSubmitting
   const serverError = createMutation.error || createVariantReviewRequest.error || updateMutation.error
   const serverErrorMessage = serverError
-    ? getReviewSaveErrorMessage(serverError, t('review.saveError'), {
-        REVIEW_011: t('review.aromaProfile.errorInvalid'),
-        REVIEW_012: t('review.aromaProfile.errorUnsupported'),
-      })
+    ? getReviewSaveErrorMessage(
+        serverError,
+        t('review.saveError'),
+        {
+          REVIEW_011: t('review.aromaProfile.errorInvalid'),
+          REVIEW_012: t('review.aromaProfile.errorUnsupported'),
+        },
+        {
+          network: t('common.uploadReason.network'),
+          auth: t('common.uploadReason.auth'),
+          tooLarge: t('common.uploadReason.tooLarge'),
+          rateLimited: t('common.uploadReason.rateLimited'),
+          server: t('common.uploadReason.server'),
+        },
+      )
     : ''
 
   // 저장 실패는 제출 버튼 바로 위에 문구로도 남지만, 폼이 길어 사용자가 다른 곳을 보고 있을 수 있다.

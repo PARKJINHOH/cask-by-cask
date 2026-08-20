@@ -16,6 +16,7 @@ import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.storage.FileStorageService;
 import com.caskbycask.global.util.NoticeImageValidator;
+import com.caskbycask.global.util.NoticeImageValidator.ValidatedImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -228,9 +229,10 @@ public class EmojiService {
     }
 
     public String uploadImage(MultipartFile file) {
-        String mimeType = imageValidator.validate(file);
-        String originalSavedFileName = imageValidator.generateSavedFileName(file.getOriginalFilename());
-        return fileStorageService.uploadImage(file, originalSavedFileName, "emojis", mimeType).imageUrl();
+        ValidatedImage validated = imageValidator.inspect(file);
+        return fileStorageService
+                .uploadImage(file, validated.savedFileName(), "emojis", validated.mimeType())
+                .imageUrl();
     }
 
     // ═══════════════════════════════════════════

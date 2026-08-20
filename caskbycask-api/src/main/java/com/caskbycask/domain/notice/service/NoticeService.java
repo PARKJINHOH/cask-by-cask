@@ -266,7 +266,7 @@ public class NoticeService {
 
     @Transactional
     public NoticeImageResponse uploadImage(MultipartFile file, Long uploaderId) {
-        // [보안] 4단계 검증 + 연월별 디렉토리 저장 (공통 흐름)
+        // [보안] 공통 검증(크기 → 내용 기반 포맷 판별 → UUID 파일명) + 연월별 디렉토리 저장
         StoredImage stored = validatedImageUploader.upload(file, "notices");
 
         User uploader = userRepository.getByIdOrThrow(uploaderId);

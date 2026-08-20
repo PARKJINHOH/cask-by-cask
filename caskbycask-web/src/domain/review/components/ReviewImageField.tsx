@@ -5,7 +5,6 @@ import type { ReviewImageItem, ReviewImagePlanItem } from '../types/review.types
 
 const MAX_IMAGES = 3
 const MAX_FILE_SIZE = 10 * 1024 * 1024
-const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 export interface ReviewImageDraft {
   key: string
@@ -55,15 +54,14 @@ export default function ReviewImageField({ value, onChange, disabled = false }: 
     onChange(value.map((draft) => draft.key === key ? update(draft) : draft))
   }
 
+  // 형식은 여기서 거르지 않는다 — 사용자가 직접 고른 파일이므로 서버가 내용(Magic Bytes)을 보고 판정한다.
+  // 브라우저가 주는 file.type 은 확장자에서 추측한 값이라, 메신저를 거치며 이름이 바뀐 사진이나
+  // 확장자가 없는 스크린샷을 멀쩡한데도 막아 버린다. 장수·용량만 미리 본다(즉시 알려 줄 수 있는 것들).
   const addFiles = (files: File[]) => {
     setError('')
     const room = MAX_IMAGES - value.length
     if (files.length > room) setError(t('review.images.limit'))
     const accepted = files.slice(0, Math.max(0, room)).filter((file) => {
-      if (!ACCEPTED_TYPES.has(file.type)) {
-        setError(t('review.images.format'))
-        return false
-      }
       if (file.size > MAX_FILE_SIZE) {
         setError(t('review.images.size'))
         return false
@@ -164,7 +162,7 @@ export default function ReviewImageField({ value, onChange, disabled = false }: 
       {value.length < MAX_IMAGES && (
         <label className={`flex min-h-20 cursor-pointer items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-white px-4 py-3 text-center text-xs font-semibold leading-5 text-neutral-500 hover:border-primary-300 hover:text-primary-800 ${disabled ? 'pointer-events-none opacity-40' : ''}`}>
           {t('review.images.add')}
-          <input type="file" multiple accept="image/jpeg,image/png,image/webp" className="sr-only"
+          <input type="file" multiple accept="image/*" className="sr-only"
             disabled={disabled}
             onChange={(event) => {
               addFiles(Array.from(event.currentTarget.files ?? []))

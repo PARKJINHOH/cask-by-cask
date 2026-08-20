@@ -10,6 +10,8 @@ import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.storage.FileStorageService;
 import com.caskbycask.global.storage.ImageUploadResult;
 import com.caskbycask.global.storage.WebpConversionMode;
+import com.caskbycask.global.util.AllowedImageFormat;
+import com.caskbycask.global.util.NoticeImageValidator;
 import com.sksamuel.scrimage.ImmutableImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,8 +33,18 @@ public class ReviewImageService {
     private static final long MAX_PIXELS = 40_000_000L;
     private static final DateTimeFormatter MONTH_DIR = DateTimeFormatter.ofPattern("yyyyMM");
 
+    /**
+     * 리뷰 사진은 저장 전에 <b>반드시</b> WebP 로 다시 인코딩한다(EXIF·원본 미보관).
+     * 그래서 재인코딩을 통과하지 못하는 포맷은 받아 봐야 저장 단계에서 터진다 —
+     * AVIF 는 서버에 디코더가 없어(WebpConversionService 참고) 여기서 미리, 사유를 밝혀 거절한다.
+     * 나머지는 공용 표({@link AllowedImageFormat})를 그대로 따른다.
+     */
+    private static final Set<AllowedImageFormat> SUPPORTED_FORMATS =
+            EnumSet.complementOf(EnumSet.of(AllowedImageFormat.AVIF));
+
     private final ReviewImageRepository imageRepository;
     private final FileStorageService fileStorageService;
+    private final NoticeImageValidator imageValidator;
 
     public List<ReviewImage> findByReviewId(Long reviewId) {
         return imageRepository.findByReviewIdOrderBySortOrderAscIdAsc(reviewId);
@@ -226,49 +238,67 @@ public class ReviewImageService {
         files.forEach(this::validateFile);
     }
 
+    /**
+     * 사진 한 장을 검증하고 내용에서 판별한 포맷을 돌려준다.
+     * <p>
+     * 판별은 오직 파일 내용(Magic Bytes)으로 한다 — 확장자도, 브라우저가 붙인 Content-Type 도 보지 않는다.
+     * 카톡을 거치며 {@code .png} 로 이름만 바뀐 JPEG, 확장자가 없는 스크린샷, {@code .jfif} 가 모두 정상 등록된다.
+     * 확장자 스푸핑 방어는 저장 파일명을 {@code UUID + ".webp"} 로 새로 만드는 것으로 끝난다
+     * (원본 이름은 경로에 쓰이지 않는다 — {@link #store} 참고).
+     * <p>
+     * 크기 상한은 스트림을 열기 <b>전에</b> 본다. 10MB 를 넘긴 파일을 굳이 읽을 이유가 없다.
+     */
     private DetectedImage validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new CustomException(ErrorCode.REVIEW_IMAGE_INVALID_FORMAT);
+            throw new CustomException(ErrorCode.REVIEW_IMAGE_EMPTY);
         }
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new CustomException(ErrorCode.REVIEW_IMAGE_SIZE_EXCEEDED);
         }
 
-        String extension = extension(file.getOriginalFilename());
-        byte[] bytes;
+        NoticeImageValidator.Detection detection = imageValidator.detect(file);
+        if (!detection.supported()) {
+            throw new CustomException(reviewErrorFor(detection.reason()));
+        }
+        AllowedImageFormat format = detection.format();
+        if (!SUPPORTED_FORMATS.contains(format)) {
+            throw new CustomException(ErrorCode.REVIEW_IMAGE_AVIF_UNSUPPORTED);
+        }
+
+        validatePixels(file);
+        return new DetectedImage(format.getMimeType());
+    }
+
+    /**
+     * 디코딩 폭탄 방어. 헤더가 멀쩡해도 본문이 깨져 있으면 여기서 걸린다 —
+     * 그 경우는 "형식이 아니다"가 아니라 "손상됐다"로 알려야 사용자가 다음에 뭘 할지 안다.
+     */
+    private void validatePixels(MultipartFile file) {
         try {
-            bytes = file.getBytes();
-        } catch (Exception exception) {
-            throw new CustomException(ErrorCode.REVIEW_IMAGE_INVALID_FORMAT);
-        }
-        String mimeType = detectMime(bytes);
-        if (!mimeType.equals(file.getContentType())) {
-            throw new CustomException(ErrorCode.REVIEW_IMAGE_INVALID_FORMAT);
-        }
-        boolean matches = switch (extension) {
-            case "jpg", "jpeg" -> "image/jpeg".equals(mimeType);
-            case "png" -> "image/png".equals(mimeType);
-            case "webp" -> "image/webp".equals(mimeType);
-            default -> false;
-        };
-        if (!matches) {
-            throw new CustomException(ErrorCode.REVIEW_IMAGE_INVALID_FORMAT);
-        }
-        try {
-            var image = ImmutableImage.loader().fromBytes(bytes).awt();
-            long pixels = (long) image.getWidth() * image.getHeight();
+            var image = ImmutableImage.loader().fromBytes(file.getBytes()).awt();
             if (image.getWidth() <= 0 || image.getHeight() <= 0) {
-                throw new CustomException(ErrorCode.REVIEW_IMAGE_INVALID_FORMAT);
+                throw new CustomException(ErrorCode.REVIEW_IMAGE_UNREADABLE);
             }
-            if (pixels > MAX_PIXELS) {
+            if ((long) image.getWidth() * image.getHeight() > MAX_PIXELS) {
                 throw new CustomException(ErrorCode.REVIEW_IMAGE_DIMENSIONS_EXCEEDED);
             }
         } catch (CustomException exception) {
             throw exception;
         } catch (Exception exception) {
-            throw new CustomException(ErrorCode.REVIEW_IMAGE_INVALID_FORMAT);
+            throw new CustomException(ErrorCode.REVIEW_IMAGE_UNREADABLE);
         }
-        return new DetectedImage(mimeType, extension);
+    }
+
+    /** 공용 판별기의 도메인 중립 사유를 리뷰 도메인의 에러코드로 옮긴다. */
+    private static ErrorCode reviewErrorFor(NoticeImageValidator.Unsupported reason) {
+        return switch (reason) {
+            case EMPTY -> ErrorCode.REVIEW_IMAGE_EMPTY;
+            case UNREADABLE -> ErrorCode.REVIEW_IMAGE_UNREADABLE;
+            case HEIC -> ErrorCode.REVIEW_IMAGE_HEIC_UNSUPPORTED;
+            case SVG -> ErrorCode.REVIEW_IMAGE_SVG_UNSUPPORTED;
+            case TIFF -> ErrorCode.REVIEW_IMAGE_TIFF_UNSUPPORTED;
+            case UNKNOWN -> ErrorCode.REVIEW_IMAGE_INVALID_FORMAT;
+        };
     }
 
     private void deleteImages(List<ReviewImage> images) {
@@ -308,37 +338,5 @@ public class ReviewImageService {
         return files.stream().filter(Objects::nonNull).toList();
     }
 
-    private static String extension(String fileName) {
-        if (fileName == null || !fileName.contains(".")) {
-            throw new CustomException(ErrorCode.REVIEW_IMAGE_INVALID_FORMAT);
-        }
-        return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
-    }
-
-    private static String detectMime(byte[] bytes) {
-        if (bytes.length >= 3
-                && (bytes[0] & 0xff) == 0xff
-                && (bytes[1] & 0xff) == 0xd8
-                && (bytes[2] & 0xff) == 0xff) {
-            return "image/jpeg";
-        }
-        byte[] png = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
-        if (startsWith(bytes, png)) return "image/png";
-        if (bytes.length >= 12
-                && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
-                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') {
-            return "image/webp";
-        }
-        throw new CustomException(ErrorCode.REVIEW_IMAGE_INVALID_FORMAT);
-    }
-
-    private static boolean startsWith(byte[] source, byte[] prefix) {
-        if (source.length < prefix.length) return false;
-        for (int index = 0; index < prefix.length; index++) {
-            if (source[index] != prefix[index]) return false;
-        }
-        return true;
-    }
-
-    private record DetectedImage(String mimeType, String extension) {}
+    private record DetectedImage(String mimeType) {}
 }
