@@ -44,24 +44,9 @@ public class AiNewsSourceConfig extends BaseTimeEntity {
     private boolean enabled = true;
 
     /**
-     * 관리자가 차단한 출처. 수집 과정에서 자동 등록된 행을 삭제하면 지우는 대신 이 상태로 남긴다 —
-     * 행이 남아 있어야 {@code resolveSource} 가 같은 도메인을 다시 등록하지 않는다.
+     * 자동 등록 시절(자동 수집이 인용 도메인마다 행을 만들던 때)에 생긴 출처인지 표시한다.
+     * 지금은 아무도 {@code true} 로 만들지 않는다 — 남아 있는 옛 행을 관리자가 골라내는 용도다.
      */
-    @Builder.Default
-    @Column(nullable = false)
-    private boolean blocked = false;
-
-    private LocalDateTime blockedAt;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private boolean autoPublishAllowed = false;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private boolean imageUseAllowed = false;
-
-    /** 관리자가 직접 등록한 것이 아니라 기사 수집 중 자동으로 등록된 출처. 삭제 시 차단으로 남긴다. */
     @Builder.Default
     @Column(nullable = false)
     private boolean autoDiscovered = false;
@@ -76,10 +61,8 @@ public class AiNewsSourceConfig extends BaseTimeEntity {
     @Column(length = 1000)
     private String lastCrawlError;
 
-    /** 차단 상태는 여기서 건드리지 않는다 — 일반 수정으로 차단이 풀리면 안 된다({@link #unblock()} 전용). */
     public void update(String sourceName, String sourceUrl, String domain, String pathPrefix,
-                       AiNewsSourceType sourceType, boolean enabled,
-                       boolean autoPublishAllowed, boolean imageUseAllowed) {
+                       AiNewsSourceType sourceType, boolean enabled) {
         boolean collectionChanged = !this.sourceUrl.equals(sourceUrl)
                 || this.sourceType != sourceType || this.enabled != enabled;
         this.sourceName = sourceName;
@@ -87,31 +70,12 @@ public class AiNewsSourceConfig extends BaseTimeEntity {
         this.domain = domain;
         this.pathPrefix = pathPrefix;
         this.sourceType = sourceType;
-        this.enabled = enabled && !this.blocked;
-        this.autoPublishAllowed = autoPublishAllowed && !this.blocked;
-        this.imageUseAllowed = imageUseAllowed && !this.blocked;
+        this.enabled = enabled;
         if (collectionChanged) {
             this.crawlStatus = AiNewsSourceCrawlStatus.NOT_CHECKED;
             this.lastCrawledAt = null;
             this.lastCrawlError = null;
         }
-    }
-
-    /** 삭제 대신 차단. 행이 남아야 같은 도메인이 수집 과정에서 다시 등록되지 않는다. */
-    public void block(LocalDateTime blockedAt) {
-        this.blocked = true;
-        this.blockedAt = blockedAt;
-        this.enabled = false;
-        this.autoPublishAllowed = false;
-        this.imageUseAllowed = false;
-        this.sourceType = AiNewsSourceType.UNAPPROVED;
-    }
-
-    /** 차단 해제. 곧바로 수집에 쓰이지 않도록 비활성 상태로 되돌린다 — 관리자가 검토 후 직접 켠다. */
-    public void unblock() {
-        this.blocked = false;
-        this.blockedAt = null;
-        this.enabled = false;
     }
 
     public void recordCrawlResult(AiNewsSourceCrawlStatus status, String error, LocalDateTime checkedAt) {

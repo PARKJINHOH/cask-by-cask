@@ -2,29 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import sys
-import tempfile
 import traceback
-import unicodedata
 from datetime import datetime, timezone
-from pathlib import Path
 
-from alerts.ai_news_error_alert import (
-    append_error_detail,
-    append_review_detail,
-    format_error_alert,
-    format_review_alert,
-)
+from alerts.ai_news_error_alert import append_error_detail, format_error_alert
 from alerts.slack_notifier import SlackNotifier
 from logger import setup_logging
 from news_config import NewsSettings
-from news_images import fetch_approved_official_image
-from news_models import DraftArticle, SearchSource, canonicalize_url, local_datetime_string
-from news_source_config import is_blocked_source, matching_source_config
-from news_official import collect_reference_sources, collect_registered_sources
-from news_gemini import GeminiNewsWriter
-from news_prompts import AI_NEWS_TITLE_MAX_LENGTH
+from news_models import NewsLead, SearchSource, canonicalize_url, local_datetime_string
+from news_source_config import matching_source_config
+from news_official import collect_registered_sources, rotation_category
+from news_gemini import GeminiLeadFinder
 from news_tavily import TavilyNewsSearch
 from uploader.ai_news_api import AiNewsApi
 
@@ -44,23 +33,6 @@ def _dedupe_sources(sources: list[SearchSource]) -> list[SearchSource]:
     return result
 
 
-def _drop_blocked_sources(sources: list[SearchSource], config: dict, log) -> list[SearchSource]:
-    """관리자가 차단한 출처를 후보에서 제외한다.
-
-    일반 검색은 도메인을 제한하지 않아 주류와 무관한 도메인이 계속 유입된다. 관리자가 출처를
-    삭제하면 백엔드가 차단으로 남기므로(재등록 방지), 여기서 같은 목록을 받아 원고 근거로
-    쓰이기 전에 걸러낸다.
-    """
-    blocked_scopes = config.get("blockedSources") or []
-    if not blocked_scopes:
-        return sources
-    kept = [s for s in sources if not is_blocked_source(s.url, s.domain, blocked_scopes)]
-    dropped = len(sources) - len(kept)
-    if dropped:
-        log.info("차단된 출처 %s건을 후보에서 제외했습니다.", dropped)
-    return kept
-
-
 def _apply_source_trust(sources: list[SearchSource], config: dict) -> None:
     for source in sources:
         matched = matching_source_config(source.url, source.domain, config.get("sources", []))
@@ -68,27 +40,17 @@ def _apply_source_trust(sources: list[SearchSource], config: dict) -> None:
                               if matched and matched.get("enabled") else "UNAPPROVED")
 
 
-def _article_payload(draft: DraftArticle, sources: list[SearchSource]) -> dict:
-    selected = [sources[i] for i in draft.source_indexes if 0 <= i < len(sources)]
-    canonical_hash = _canonical_hash(selected) if draft.article_type == "RELEASE_NEWS" else None
+def _lead_payload(lead: NewsLead, sources: list[SearchSource]) -> dict:
+    """소재 저장 페이로드. 본문(content)이 없다 — 관리자가 근거를 보고 직접 쓴다."""
+    selected = [sources[i] for i in lead.source_indexes if 0 <= i < len(sources)]
     return {
-        "articleType": draft.article_type,
-        "category": draft.category,
-        "title": draft.title,
-        "content": draft.content_html,
-        "dedupeKey": draft.dedupe_key,
-        "confidenceScore": draft.confidence,
-        "canonicalUrlHash": canonical_hash,
-        "semanticFingerprint": draft.semantic_fingerprint,
-        "topicId": draft.topic_id,
-        "prefixId": None,
-        "pinned": False,
-        "autoPublishRequested": draft.auto_publish_requested,
-        "imageUrl": draft.image_url,
-        "imageKind": draft.image_kind,
-        "imageRightsEvidence": draft.image_rights_evidence,
-        "modelName": draft.model_name,
-        "hashtags": draft.hashtags,
+        "category": lead.category,
+        "title": lead.title,
+        "leadSummary": lead.summary,
+        "dedupeKey": lead.dedupe_key,
+        "canonicalUrlHash": _canonical_hash(selected),
+        "confidenceScore": lead.confidence,
+        "modelName": lead.model_name,
         "sources": [source.evidence_payload() for source in selected],
     }
 
@@ -100,46 +62,8 @@ def _canonical_hash(sources: list[SearchSource]) -> str | None:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
-def _topic_signatures(*values: str | None) -> set[str]:
-    signatures: set[str] = set()
-    for value in values:
-        if not value:
-            continue
-        for fragment in re.split(r"[,;|\n]", value):
-            normalized = unicodedata.normalize("NFKC", fragment).lower()
-            normalized = re.sub(r"[^a-z0-9가-힣]", "", normalized)
-            if normalized:
-                signatures.add(normalized)
-    return signatures
-
-
-def _find_exact_tip_duplicate(topic: dict, corpus: list[dict]) -> dict | None:
-    current = _topic_signatures(topic.get("title"), topic.get("normalizedKey"), topic.get("aliases"))
-    for previous in corpus:
-        past = _topic_signatures(
-            previous.get("title"), previous.get("topicKey"),
-            previous.get("topicTitle"), previous.get("topicAliases"),
-        )
-        if current & past:
-            return previous
-    return None
-
-
-def _duplicate_payload(topic: dict, draft: DraftArticle | None, reason: str,
-                       model_name: str) -> dict:
-    return {
-        "category": topic["category"],
-        "title": (draft.title if draft else topic["title"])[:AI_NEWS_TITLE_MAX_LENGTH],
-        "dedupeKey": draft.dedupe_key if draft else f"tip:{topic['normalizedKey']}",
-        "semanticFingerprint": draft.semantic_fingerprint if draft else topic.get("normalizedKey"),
-        "topicId": int(topic["id"]),
-        "duplicateReason": reason[:1000],
-        "modelName": model_name,
-    }
-
-
 def _record_usage(api: AiNewsApi, run_id: int, settings: NewsSettings,
-                  writer: GeminiNewsWriter, tavily_credits: int) -> None:
+                  finder: GeminiLeadFinder, tavily_credits: int) -> None:
     api.record_usage({
         "runId": run_id,
         "provider": "TAVILY",
@@ -151,17 +75,11 @@ def _record_usage(api: AiNewsApi, run_id: int, settings: NewsSettings,
         "estimatedCostUsd": 0,
         "usageAt": local_datetime_string(),
     })
-    for model, values in writer.usage.by_model.items():
-        if model == settings.classifier_model:
-            estimated = (
-                values["input"] * settings.classifier_input_usd_per_million
-                + values["output"] * settings.classifier_output_usd_per_million
-            ) / 1_000_000
-        else:
-            estimated = (
-                values["input"] * settings.writer_input_usd_per_million
-                + values["output"] * settings.writer_output_usd_per_million
-            ) / 1_000_000
+    for model, values in finder.usage.by_model.items():
+        estimated = (
+            values["input"] * settings.classifier_input_usd_per_million
+            + values["output"] * settings.classifier_output_usd_per_million
+        ) / 1_000_000
         if settings.gemini_free_tier:
             estimated = 0
         api.record_usage({
@@ -175,83 +93,17 @@ def _record_usage(api: AiNewsApi, run_id: int, settings: NewsSettings,
             "estimatedCostUsd": estimated,
             "usageAt": local_datetime_string(),
         })
-    if writer.usage.image_count:
-        api.record_usage({
-            "runId": run_id,
-            "provider": "GEMINI",
-            "modelName": settings.image_model,
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "imageCount": writer.usage.image_count,
-            "tavilyCredits": 0,
-            "estimatedCostUsd": writer.usage.estimated_cost_usd,
-            "usageAt": local_datetime_string(),
-        })
 
 
-def _process_draft(api: AiNewsApi, writer: GeminiNewsWriter, draft: DraftArticle,
-                   sources: list[SearchSource], temp_dir: Path, config: dict, log) -> dict | None:
-    selected = [sources[i] for i in draft.source_indexes if 0 <= i < len(sources)]
-    canonical_hash = _canonical_hash(selected) if draft.article_type == "RELEASE_NEWS" else None
-    duplicate = api.check_duplicate(draft.dedupe_key, canonical_hash,
-                                    draft.semantic_fingerprint, draft.article_type)
+def _process_lead(api: AiNewsApi, lead: NewsLead, sources: list[SearchSource], log) -> dict | None:
+    """소재를 저장한다. 발행은 하지 않는다 — 관리자가 본문을 쓴 뒤 직접 발행한다."""
+    payload = _lead_payload(lead, sources)
+    duplicate = api.check_duplicate(lead.dedupe_key, payload["canonicalUrlHash"])
     if duplicate.get("duplicate"):
-        retry_missing_tip_image = (
-            draft.article_type == "TIP_INFO"
-            and duplicate.get("status") == "PENDING_REVIEW"
-            and duplicate.get("dedupeKey") == draft.dedupe_key
-            and duplicate.get("imageMissing")
-        )
-        if not retry_missing_tip_image:
-            log.info("중복 제외 key=%s articleId=%s", draft.dedupe_key, duplicate.get("articleId"))
-            return None
-
-    if not draft.auto_publish_requested:
-        log.warning(
-            "AI 원고 분량 미달 - 이미지 생성 없이 검토 대기로 저장 key=%s diagnostics=%s",
-            draft.dedupe_key,
-            draft.generation_warning,
-        )
-        response = api.submit_article(_article_payload(draft, sources))
-        log.info("원고 저장 id=%s status=%s title=%s", response.get("id"), response.get("status"), draft.title)
-        return response
-
-    if draft.article_type == "RELEASE_NEWS":
-        approved = fetch_approved_official_image(selected, config, temp_dir, api.timeout, log)
-        if approved:
-            image_path, rights_evidence = approved
-            try:
-                draft.image_url = api.upload_image(image_path)
-                draft.image_kind = "OFFICIAL_APPROVED"
-                draft.image_rights_evidence = rights_evidence
-            except Exception as error:  # noqa: BLE001
-                log.warning("승인 공식 이미지 업로드 실패 - AI 이미지로 대체: %s", error)
-            finally:
-                image_path.unlink(missing_ok=True)
-
-    try:
-        if not draft.image_url and writer.image_generation_enabled:
-            image_path = writer.generate_image(draft.image_prompt, temp_dir, draft.dedupe_key)
-        else:
-            image_path = None
-            if not draft.image_url:
-                log.info("%s AI 이미지 생성 비활성화 - 이미지 없이 검토 대기로 저장",
-                         draft.article_type)
-        try:
-            if image_path:
-                draft.image_url = api.upload_image(image_path)
-                draft.image_kind = "AI_GENERATED"
-                draft.image_rights_evidence = "Google Gemini 생성 이미지; 비브랜드·무문자 프롬프트 및 SynthID 적용"
-        finally:
-            if image_path:
-                image_path.unlink(missing_ok=True)
-    except Exception as error:
-        # 이미지가 없으면 공개하지 않되 생성한 원고와 근거는 버리지 않는다.
-        # 백엔드가 PENDING_REVIEW로 보존하며, 팁은 다음 실행에서 이미지만 재시도한다.
-        log.warning("%s 이미지 생성/업로드 실패 - 검토 대기로 저장: %s",
-                    draft.article_type, error)
-    response = api.submit_article(_article_payload(draft, sources))
-    log.info("원고 저장 id=%s status=%s title=%s", response.get("id"), response.get("status"), draft.title)
+        log.info("중복 소재 제외 key=%s articleId=%s", lead.dedupe_key, duplicate.get("articleId"))
+        return None
+    response = api.submit_lead(payload)
+    log.info("소재 저장 id=%s title=%s", response.get("id"), lead.title)
     return response
 
 
@@ -267,25 +119,18 @@ def run() -> int:
         log.info("AI 소식 자동화가 관리자 설정에서 비활성화되어 있습니다.")
         return 0
 
-    draft_request = api.next_draft_request()
     usage = config["usage"]
-    has_rewrite_requests = bool(config.get("rewriteRequests"))
-    has_draft_request = draft_request is not None
     tavily_limit = int(remote_settings.get("tavilyMonthlyCreditLimit", 900))
     tavily_used = int(usage.get("tavilyCredits", 0))
     if tavily_used >= tavily_limit:
-        notifier.warning_once("ai_news_tavily_budget", "AI 소식 Tavily 한도 도달", json.dumps(usage, ensure_ascii=False))
-        if not has_rewrite_requests and not has_draft_request:
-            return 0
+        notifier.warning_once("ai_news_tavily_budget", "AI 소식 Tavily 한도 도달",
+                              json.dumps(usage, ensure_ascii=False))
+        return 0
     if tavily_limit > 0 and tavily_used / tavily_limit >= 0.8:
         notifier.warning_once("ai_news_tavily_budget_80", "AI 소식 Tavily 한도 80% 도달",
                               json.dumps(usage, ensure_ascii=False))
     remaining_tavily_credits = tavily_limit - tavily_used
-    if remaining_tavily_credits < 2:
-        notifier.warning_once("ai_news_tavily_reserve", "AI 소식 Tavily 잔여 한도 부족",
-                              f"remaining={remaining_tavily_credits}")
-        if not has_rewrite_requests and not has_draft_request:
-            return 0
+
     estimated_cost = float(usage.get("estimatedCostUsd", 0) or 0)
     admin_ai_budget = float(usage.get("openaiBudgetUsd", 0) or 0)
     if admin_ai_budget > 0 and estimated_cost >= admin_ai_budget:
@@ -304,257 +149,62 @@ def run() -> int:
     if admin_token_limit > 0 and used_tokens / admin_token_limit >= 0.8:
         notifier.warning_once("ai_news_gemini_token_limit_80", "AI 소식 Gemini 토큰 한도 80% 도달",
                               json.dumps(usage, ensure_ascii=False))
-    used_images = int(usage.get("imageCount", 0))
-    admin_image_limit = int(usage.get("openaiImageLimit", 0) or 0)
-    if admin_image_limit > 0 and used_images >= admin_image_limit:
-        notifier.warning_once("ai_news_gemini_image_limit", "AI 소식 Gemini 이미지 한도 도달",
-                              json.dumps(usage, ensure_ascii=False))
-        return 0
-    if admin_image_limit > 0 and used_images / admin_image_limit >= 0.8:
-        notifier.warning_once("ai_news_gemini_image_limit_80", "AI 소식 Gemini 이미지 한도 80% 도달",
-                              json.dumps(usage, ensure_ascii=False))
     if settings.hard_monthly_cost_usd > 0 and estimated_cost >= settings.hard_monthly_cost_usd:
-        notifier.warning_once("ai_news_gemini_hard_budget", "AI 소식 Gemini 절대 한도 도달", json.dumps(usage, ensure_ascii=False))
+        notifier.warning_once("ai_news_gemini_hard_budget", "AI 소식 Gemini 절대 한도 도달",
+                              json.dumps(usage, ensure_ascii=False))
         return 0
     if settings.hard_monthly_tokens > 0 and used_tokens >= settings.hard_monthly_tokens:
         notifier.warning_once("ai_news_gemini_hard_tokens", "AI 소식 Gemini 절대 토큰 한도 도달",
                               json.dumps(usage, ensure_ascii=False))
         return 0
-    if settings.hard_monthly_images > 0 and used_images >= settings.hard_monthly_images:
-        notifier.warning_once("ai_news_gemini_hard_images", "AI 소식 Gemini 절대 이미지 한도 도달",
-                              json.dumps(usage, ensure_ascii=False))
-        return 0
 
-    dry_run = bool(remote_settings.get("dryRun")) or settings.dry_run_override
     run_key = datetime.now(timezone.utc).strftime("ai-news-%Y%m%dT%H%M%SZ")
-    run_info = api.start_run(run_key, "DRY_RUN" if dry_run else "SCHEDULED")
+    run_info = api.start_run(run_key, "SCHEDULED")
     run_id = int(run_info["id"])
+    # publishedCount 는 항상 0 이다 — 발행은 관리자가 한다. 저장된 소재는 reviewCount 로 센다.
     stats = {"candidateCount": 0, "publishedCount": 0, "reviewCount": 0,
              "duplicateCount": 0, "errorCount": 0}
     error_details: list[dict[str, str]] = []
-    review_details: list[dict[str, str]] = []
     search = TavilyNewsSearch(settings.tavily_api_key, settings.http_timeout_sec,
                               settings.search_results_per_query)
-    writer = GeminiNewsWriter(settings.gemini_api_key, settings.classifier_model,
-                              settings.writer_model, settings.image_model,
-                              settings.image_estimated_cost_usd,
-                              settings.image_generation_enabled)
+    finder = GeminiLeadFinder(settings.gemini_api_key, settings.classifier_model)
     fatal_error = None
     try:
-        if draft_request:
-            request_id = int(draft_request["id"])
-            reference_urls = list(draft_request.get("referenceUrls") or [])[:3]
-            request_sources: list[SearchSource] = []
-            source_errors: list[str] = []
-            stats["candidateCount"] += 1
-            try:
-                for reference_url in reference_urls:
-                    try:
-                        request_sources.extend(
-                            collect_reference_sources([reference_url], settings.http_timeout_sec)
-                        )
-                    except Exception as error:  # noqa: BLE001
-                        source_errors.append(f"{reference_url}: {error}")
-                        log.warning("AI 작성 요청 참고 URL 수집 실패 requestId=%s url=%s: %s",
-                                    request_id, reference_url, error)
-
-                if remaining_tavily_credits - search.credits_used >= 1:
-                    try:
-                        # 관리자가 직접 준 참고 URL 은 그대로 쓰고, 검색으로 보강한 결과만 차단 목록으로 거른다.
-                        request_sources.extend(_drop_blocked_sources(search.search(
-                            f"{str(draft_request['prompt'])[:500]} "
-                            "위스키 와인 꼬냑 럼 데킬라 사케 출시 수입 공식 발표",
-                            topic="news",
-                            time_range="month",
-                        ), config, log))
-                    except Exception as error:  # noqa: BLE001
-                        if not request_sources:
-                            raise
-                        log.warning("AI 작성 요청 Tavily 보강 검색 실패 - 참고 URL 근거로 계속 진행 "
-                                    "requestId=%s: %s", request_id, error)
-
-                request_sources = _dedupe_sources(request_sources)
-                _apply_source_trust(request_sources, config)
-                if not request_sources:
-                    detail = "; ".join(source_errors) or "Tavily 잔여 한도가 없고 참고 URL도 없습니다."
-                    raise RuntimeError(f"AI 원고 작성에 사용할 참고 근거를 수집하지 못했습니다. {detail}")
-
-                requested_draft = writer.write_requested_release(draft_request, request_sources)
-                payload = _article_payload(requested_draft, request_sources)
-                payload["autoPublishRequested"] = False
-                response = api.complete_draft_request(request_id, payload)
-                stats["reviewCount"] += 1
-                if requested_draft.generation_warning:
-                    append_review_detail(
-                        review_details,
-                        "관리자 AI 작성 요청",
-                        requested_draft.generation_warning,
-                        requestId=request_id,
-                        articleId=response.get("articleId"),
-                    )
-                log.info("관리자 AI 작성 요청 임시저장 완료 requestId=%s articleId=%s title=%s",
-                         request_id, response.get("articleId"), requested_draft.title)
-            except Exception as error:  # noqa: BLE001
-                stats["errorCount"] += 1
-                append_error_detail(error_details, "관리자 AI 작성 요청", error,
-                                    requestId=request_id)
-                try:
-                    api.fail_draft_request(request_id, str(error))
-                except Exception as report_error:  # noqa: BLE001
-                    log.warning("AI 작성 요청 실패 상태 보고 실패 requestId=%s: %s",
-                                request_id, report_error)
-                log.exception("관리자 AI 작성 요청 처리 실패 requestId=%s: %s", request_id, error)
-
-        for rewrite_request in list(config.get("rewriteRequests") or []):
-            stats["candidateCount"] += 1
-            try:
-                rewritten = writer.rewrite_article(rewrite_request)
-                api.complete_rewrite(int(rewrite_request["articleId"]), {
-                    "title": rewritten.title,
-                    "content": rewritten.content_html,
-                    "confidenceScore": rewritten.confidence,
-                    "semanticFingerprint": rewritten.semantic_fingerprint,
-                    "modelName": rewritten.model_name,
-                    "hashtags": rewritten.hashtags,
-                })
-                stats["reviewCount"] += 1
-                log.info("AI 원고 재작성 완료 articleId=%s", rewrite_request.get("articleId"))
-            except Exception as error:  # noqa: BLE001
-                stats["errorCount"] += 1
-                append_error_detail(error_details, "AI 원고 재작성", error,
-                                    articleId=rewrite_request.get("articleId"))
-                log.exception("AI 원고 재작성 실패 articleId=%s: %s",
-                              rewrite_request.get("articleId"), error)
-
-        now_year = datetime.now(timezone.utc).year
-        if remaining_tavily_credits - search.credits_used >= 2:
-            registered_sources = collect_registered_sources(
-                config, search, api, log, settings.http_timeout_sec, allow_tavily=True
-            )
-            general_sources = search.search(
-                f"위스키 와인 꼬냑 럼 데킬라 사케 신제품 출시 예정 국내 출시 수입 "
-                f"new whisky wine cognac rum tequila sake release announced launch {now_year}"
-            )
-            # 등록 출처는 활성 상태라 차단될 수 없다. 걸러지는 것은 일반 검색이 물어온 도메인이다.
-            release_sources = _drop_blocked_sources(
-                _dedupe_sources(general_sources + registered_sources), config, log)
-        else:
-            release_sources = []
-        _apply_source_trust(release_sources, config)
-        remaining_daily = max(0, int(remote_settings.get("dailyReleaseLimit", 3))
-                              - int(config.get("releasePublishedToday", 0)))
-        max_candidates = min(settings.max_candidates_per_run, remaining_daily)
-        candidates = writer.classify_releases(release_sources, max_candidates, {
+        # 근거는 관리자가 등록한 허용목록에서만 모은다. 실행마다 주종 하나에 집중한다.
+        focus_category = rotation_category(run_id, {
             "WHISKY": int(remote_settings.get("whiskyRatio", 60)),
             "WINE": int(remote_settings.get("wineRatio", 20)),
             "COGNAC": int(remote_settings.get("cognacRatio", 20)),
         })
-        stats["candidateCount"] += len(candidates)
+        if remaining_tavily_credits - search.credits_used >= 1:
+            log.info("이번 실행 집중 주종=%s", focus_category)
+            found_sources = _dedupe_sources(collect_registered_sources(
+                config, search, api, log, settings.http_timeout_sec,
+                allow_tavily=True, category=focus_category,
+            ))
+        else:
+            found_sources = []
+        _apply_source_trust(found_sources, config)
 
-        with tempfile.TemporaryDirectory(prefix="caskbycask-ai-news-") as tmp:
-            temp_dir = Path(tmp)
-            for candidate in candidates:
-                try:
-                    draft = writer.write_release(candidate, release_sources)
-                    response = _process_draft(api, writer, draft, release_sources, temp_dir, config, log)
-                    if response is None:
-                        stats["duplicateCount"] += 1
-                    elif response.get("status") == "PUBLISHED":
-                        stats["publishedCount"] += 1
-                    else:
-                        stats["reviewCount"] += 1
-                        if draft.generation_warning:
-                            append_review_detail(
-                                review_details,
-                                "출시 소식 후보",
-                                draft.generation_warning,
-                                eventKey=candidate.get("event_key"),
-                                category=candidate.get("category"),
-                                articleId=response.get("id"),
-                            )
-                except Exception as error:  # noqa: BLE001
-                    stats["errorCount"] += 1
-                    append_error_detail(
-                        error_details, "출시 소식 후보", error,
-                        eventKey=candidate.get("event_key"),
-                        category=candidate.get("category"),
-                        summary=candidate.get("summary"),
-                    )
-                    log.exception("출시 소식 후보 처리 실패: %s", error)
+        # 일일 한도는 발행이 아니라 소재 생성 기준이다 — 발행은 관리자가 나중에 한다.
+        remaining_daily = max(0, int(remote_settings.get("dailyReleaseLimit", 3))
+                              - int(config.get("releaseCreatedToday", 0)))
+        max_leads = min(settings.max_leads_per_run, remaining_daily)
+        leads = finder.find_leads(found_sources, max_leads, focus_category)
+        stats["candidateCount"] += len(leads)
 
-            if config.get("tipDue") and remaining_tavily_credits - search.credits_used >= 1:
-                ready_topics = list(config.get("readyTopics") or [])
-                if not ready_topics:
-                    for suggestion in writer.suggest_topics(config.get("allTopicKeys") or [], 3):
-                        try:
-                            ready_topics.append(api.create_topic_suggestion({
-                                **suggestion, "status": "READY", "allowRepublish": False, "aiSuggested": True,
-                            }))
-                        except Exception as error:  # noqa: BLE001
-                            log.warning("AI 제안 주제 저장 실패 key=%s: %s", suggestion.get("normalizedKey"), error)
-                topic = ready_topics[0] if ready_topics else None
-            else:
-                topic = None
-            if topic:
-                stats["candidateCount"] += 1
-                try:
-                    duplicate_corpus = list(config.get("tipDuplicateCorpus") or [])
-                    exact_match = None if topic.get("allowRepublish") else _find_exact_tip_duplicate(
-                        topic, duplicate_corpus)
-                    if exact_match:
-                        reason = (
-                            "정규화 주제 키/동의어가 과거 글과 일치합니다. "
-                            f"matchedArticleId={exact_match.get('articleId')}"
-                        )
-                        api.record_duplicate(_duplicate_payload(
-                            topic, None, reason, settings.classifier_model))
-                        stats["duplicateCount"] += 1
-                        log.info("팁 주제 사전 중복 차단 topic=%s reason=%s", topic.get("id"), reason)
-                    else:
-                        tip_sources = _drop_blocked_sources(_dedupe_sources(search.search(
-                            f"{topic['title']} {topic.get('aliases') or ''} "
-                            "whisky wine cognac rum tequila sake authoritative guide",
-                            topic="general", time_range=None,
-                        )), config, log)
-                        _apply_source_trust(tip_sources, config)
-                        draft = writer.write_tip(topic, tip_sources)
-                        duplicate_judgement = writer.judge_tip_duplicate(topic, draft, duplicate_corpus)
-                        if duplicate_judgement.get("duplicate") and not topic.get("allowRepublish"):
-                            reason = (
-                                f"의미 유사도 {duplicate_judgement.get('semanticSimilarity', 0):.3f}; "
-                                f"matchedArticleId={duplicate_judgement.get('matchedArticleId')}; "
-                                f"{duplicate_judgement.get('reason')}"
-                            )
-                            api.record_duplicate(_duplicate_payload(
-                                topic, draft, reason, settings.classifier_model))
-                            stats["duplicateCount"] += 1
-                            log.info("팁 의미 중복 차단 topic=%s reason=%s", topic.get("id"), reason)
-                        else:
-                            response = _process_draft(api, writer, draft, tip_sources, temp_dir, config, log)
-                            if response is None:
-                                stats["duplicateCount"] += 1
-                            elif response.get("status") == "PUBLISHED":
-                                stats["publishedCount"] += 1
-                            else:
-                                stats["reviewCount"] += 1
-                                if draft.generation_warning:
-                                    append_review_detail(
-                                        review_details,
-                                        "팁·정보 주제",
-                                        draft.generation_warning,
-                                        topicId=topic.get("id"),
-                                        topicKey=topic.get("normalizedKey"),
-                                        articleId=response.get("id"),
-                                    )
-                except Exception as error:  # noqa: BLE001
-                    stats["errorCount"] += 1
-                    append_error_detail(
-                        error_details, "팁·정보 주제", error,
-                        topicId=topic.get("id"),
-                        topicKey=topic.get("normalizedKey"),
-                        title=topic.get("title"),
-                    )
-                    log.exception("팁 및 정보 글 처리 실패: %s", error)
+        for lead in leads:
+            try:
+                if _process_lead(api, lead, found_sources, log) is None:
+                    stats["duplicateCount"] += 1
+                else:
+                    stats["reviewCount"] += 1
+            except Exception as error:  # noqa: BLE001
+                stats["errorCount"] += 1
+                append_error_detail(error_details, "소재 저장", error,
+                                    eventKey=lead.event_key, category=lead.category,
+                                    title=lead.title)
+                log.exception("소재 저장 실패: %s", error)
 
     except Exception as error:  # noqa: BLE001
         fatal_error = str(error)
@@ -564,7 +214,7 @@ def run() -> int:
         notifier.danger_once("ai_news_fatal", "AI 소식 자동화 실행 실패", fatal_error)
     finally:
         try:
-            _record_usage(api, run_id, settings, writer, search.credits_used)
+            _record_usage(api, run_id, settings, finder, search.credits_used)
         except Exception as usage_error:  # noqa: BLE001
             stats["errorCount"] += 1
             append_error_detail(error_details, "사용량 기록", usage_error, runId=run_id)
@@ -576,12 +226,6 @@ def run() -> int:
     if stats["errorCount"]:
         notifier.warning_once("ai_news_errors", "AI 소식 일부 처리 실패",
                               format_error_alert(run_id, run_key, stats, error_details))
-    if review_details:
-        notifier.warning_once(
-            "ai_news_short_drafts",
-            "AI 소식 분량 미달 원고 검토 대기",
-            format_review_alert(run_id, run_key, stats, review_details),
-        )
     log.info("AI 소식 실행 완료: %s", stats)
     return 1 if fatal_error else 0
 

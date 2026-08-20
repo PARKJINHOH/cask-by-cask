@@ -1,10 +1,8 @@
 package com.caskbycask.domain.ainews.controller;
 
 import com.caskbycask.domain.ainews.dto.AiNewsDtos;
-import com.caskbycask.domain.ainews.dto.AiNewsDraftRequestDtos;
 import com.caskbycask.domain.ainews.entity.enums.*;
 import com.caskbycask.domain.ainews.service.AiNewsService;
-import com.caskbycask.domain.ainews.service.AiNewsDraftRequestService;
 import com.caskbycask.global.auth.security.CustomUserDetails;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
@@ -26,7 +24,6 @@ import java.time.LocalDateTime;
 public class AiNewsAdminController {
 
     private final AiNewsService aiNewsService;
-    private final AiNewsDraftRequestService draftRequestService;
 
     @GetMapping("/articles")
     public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.ArticleSummaryResponse>>> articles(
@@ -106,14 +103,6 @@ public class AiNewsAdminController {
         return ResponseEntity.ok(ApiResponse.success(aiNewsService.restore(id, user.getUserId())));
     }
 
-    @PostMapping("/articles/{id}/rewrite")
-    public ResponseEntity<ApiResponse<AiNewsDtos.ArticleDetailResponse>> requestRewrite(
-            @PathVariable Long id,
-            @Valid @RequestBody AiNewsDtos.RewriteRequest request,
-            @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success(aiNewsService.requestRewrite(id, request, user.getUserId())));
-    }
-
     @GetMapping("/topics")
     public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.TopicResponse>>> topics(
             @RequestParam(required = false) AiNewsTopicStatus status,
@@ -147,54 +136,24 @@ public class AiNewsAdminController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    /** 예전 AI 자동 제안으로 쌓인 주제를 한 번에 정리한다. 원고가 붙은 주제는 건너뛰고 결과에 알려 준다. */
+    @PostMapping("/topics/bulk-delete")
+    public ResponseEntity<ApiResponse<AiNewsDtos.BulkDeleteResponse>> deleteTopics(
+            @Valid @RequestBody AiNewsDtos.TopicBulkDeleteRequest request,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(aiNewsService.deleteTopics(request.ids(), user.getUserId())));
+    }
+
     @GetMapping("/sources")
     public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.SourceConfigResponse>>> sources(
             @RequestParam(required = false) AiNewsSourceType sourceType,
             @RequestParam(required = false) Boolean enabled,
-            @RequestParam(required = false) Boolean blocked,
+            @RequestParam(required = false) Boolean autoDiscovered,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
-                aiNewsService.sourceConfigs(sourceType, enabled, blocked, keyword, page, size))));
-    }
-
-    @GetMapping("/draft-requests")
-    public ResponseEntity<ApiResponse<PageResponse<AiNewsDraftRequestDtos.Response>>> draftRequests(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(draftRequestService.list(page, size))));
-    }
-
-    @GetMapping("/draft-requests/{id}")
-    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> draftRequest(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(draftRequestService.detail(id)));
-    }
-
-    @PostMapping("/draft-requests")
-    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> createDraftRequest(
-            @Valid @RequestBody AiNewsDraftRequestDtos.CreateRequest request,
-            @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success(draftRequestService.create(request, user.getUserId())));
-    }
-
-    @DeleteMapping("/draft-requests/{id}")
-    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> cancelDraftRequest(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(draftRequestService.cancel(id)));
-    }
-
-    @PostMapping("/draft-requests/{id}/retry")
-    public ResponseEntity<ApiResponse<AiNewsDraftRequestDtos.Response>> retryDraftRequest(
-            @PathVariable Long id,
-            @Valid @RequestBody(required = false) AiNewsDraftRequestDtos.RetryRequest request,
-            @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success(draftRequestService.retry(id, request, user.getUserId())));
-    }
-
-    @DeleteMapping("/draft-requests/{id}/history")
-    public ResponseEntity<ApiResponse<Void>> deleteDraftRequestHistory(@PathVariable Long id) {
-        draftRequestService.deleteHistory(id);
-        return ResponseEntity.ok(ApiResponse.success());
+                aiNewsService.sourceConfigs(sourceType, enabled, autoDiscovered, keyword, page, size))));
     }
 
     @PostMapping("/sources")
@@ -212,7 +171,6 @@ public class AiNewsAdminController {
         return ResponseEntity.ok(ApiResponse.success(aiNewsService.updateSourceConfig(id, request, user.getUserId())));
     }
 
-    /** 자동 등록 출처는 삭제 대신 차단으로 남는다(같은 도메인 재등록 방지). */
     @DeleteMapping("/sources/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteSource(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails user) {
@@ -220,10 +178,13 @@ public class AiNewsAdminController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
-    @PostMapping("/sources/{id}/unblock")
-    public ResponseEntity<ApiResponse<AiNewsDtos.SourceConfigResponse>> unblockSource(
-            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success(aiNewsService.unblockSourceConfig(id, user.getUserId())));
+    /** 자동 등록 시절에 쌓인 출처를 한 번에 정리한다. */
+    @PostMapping("/sources/bulk-delete")
+    public ResponseEntity<ApiResponse<Integer>> deleteSources(
+            @Valid @RequestBody AiNewsDtos.SourceConfigBulkDeleteRequest request,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(
+                aiNewsService.deleteSourceConfigs(request.ids(), user.getUserId())));
     }
 
     @GetMapping("/settings")

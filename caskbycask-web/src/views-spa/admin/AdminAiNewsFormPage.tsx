@@ -1,5 +1,5 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
 import type { AiNewsArticleType, AiNewsCategory, AiNewsSourceEvidence } from '@/domain/admin/types/aiNews.types'
@@ -7,7 +7,6 @@ import { communityApi } from '@/domain/community/api/communityApi'
 import PostEditor from '@/domain/community/components/PostEditor'
 import AdminPageHeader from '@/shared/components/AdminPageHeader'
 import Spinner from '@/shared/components/Spinner'
-import AdminAiNewsRequestPanel from './AdminAiNewsRequestPanel'
 import { formatHashtagInput, MAX_HASHTAGS, MAX_HASHTAG_LENGTH, parseHashtagInput } from '@/shared/utils/hashtags'
 import SocialPublishFields, {
   extractEditorImageUrls,
@@ -16,19 +15,21 @@ import SocialPublishFields, {
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
-import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
-import NumberInput from '@/shared/components/NumberInput'
 
 const MAX_TITLE_LENGTH = 70
+
+const statusLabels: Record<string, string> = {
+  DRAFT: '임시저장', PENDING_REVIEW: '검토 대기', SCHEDULED: '예약 발행', PUBLISHED: '발행됨',
+  REJECTED: '반려', SKIPPED_DUPLICATE: '중복 제외', FAILED: '실패', DELETED: '삭제됨',
+}
+const statusLabel = (status: string) => statusLabels[status] ?? status
 
 export default function AdminAiNewsFormPage() {
   const { id } = useParams()
   const articleId = id ? Number(id) : null
   const isEdit = articleId != null && Number.isFinite(articleId)
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
-  const writeMode = searchParams.get('mode') === 'ai' ? 'ai' : 'manual'
   const [articleType, setArticleType] = useState<AiNewsArticleType>('TIP_INFO')
   const [category, setCategory] = useState<AiNewsCategory>('WHISKY')
   const [title, setTitle] = useState('')
@@ -36,11 +37,8 @@ export default function AdminAiNewsFormPage() {
   const [prefixId, setPrefixId] = useState<number | ''>('')
   const [topicId, setTopicId] = useState<number | ''>('')
   const [pinned, setPinned] = useState(false)
-  const [confidence, setConfidence] = useState(1)
-  const [semanticFingerprint, setSemanticFingerprint] = useState('')
   const [sourceUrls, setSourceUrls] = useState<string[]>([])
   const [hashtagInput, setHashtagInput] = useState('')
-  const [rewritePrompt, setRewritePrompt] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
   const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
   const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
@@ -69,8 +67,6 @@ export default function AdminAiNewsFormPage() {
     setPrefixId(detail.prefixId ?? '')
     setTopicId(detail.topicId ?? '')
     setPinned(detail.pinned)
-    setConfidence(Number(detail.confidenceScore))
-    setSemanticFingerprint(detail.semanticFingerprint ?? '')
     setSourceUrls(detail.sources.map((source) => source.canonicalUrl))
     setHashtagInput(formatHashtagInput(detail.hashtags))
     setScheduledAt(detail.scheduledAt?.slice(0, 16) ?? '')
@@ -101,9 +97,7 @@ export default function AdminAiNewsFormPage() {
         const updated = await adminAiNewsApi.updateArticle(articleId!, {
           category, title: title.trim(), content,
           prefixId: prefixId === '' ? null : prefixId,
-          pinned, confidenceScore: confidence,
-          semanticFingerprint: semanticFingerprint.trim() || null,
-          hashtags,
+          pinned, hashtags,
           sourceUrls: sources.map((source) => source.sourceUrl),
         })
         await Promise.all(socialRetryIds.map((publicationId) => socialApi.retry(publicationId, true)))
@@ -116,11 +110,9 @@ export default function AdminAiNewsFormPage() {
       const created = await adminAiNewsApi.createArticle({
         articleType, category, title: title.trim(), content,
         dedupeKey: `manual:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
-        confidenceScore: confidence,
-        semanticFingerprint: semanticFingerprint.trim() || title.trim().toLowerCase(),
         topicId: topicId === '' ? null : topicId,
         prefixId: prefixId === '' ? null : prefixId,
-        pinned, autoPublishRequested: false, hashtags, sources,
+        pinned, hashtags, sources,
       })
       if (action === 'publish') await adminAiNewsApi.publish(created.id, null, socialSelection)
       if (action === 'schedule') await adminAiNewsApi.publish(created.id, scheduledAt, socialSelection)
@@ -138,7 +130,7 @@ export default function AdminAiNewsFormPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] }); navigate('/admin/community/ai-news', { replace: true }) },
   })
 
-  const canPublish = !detail || !['PUBLISHED', 'DELETED', 'REJECTED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status)
+  const canPublish = !detail || !['PUBLISHED', 'DELETED', 'REJECTED', 'SKIPPED_DUPLICATE'].includes(detail.status)
   const canPublishSocial = detail?.status === 'PUBLISHED'
   const socialPublishRequested = socialSelection.instagram || socialSelection.threads || socialRetryIds.length > 0
 
@@ -152,16 +144,6 @@ export default function AdminAiNewsFormPage() {
     onError: (e) => setError(e instanceof Error ? e.message : '예약발행을 취소하지 못했습니다.'),
   })
 
-  const rewriteMut = useMutation({
-    mutationFn: () => adminAiNewsApi.requestRewrite(articleId!, rewritePrompt.trim()),
-    onSuccess: (next) => {
-      setRewritePrompt('')
-      qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] })
-      qc.setQueryData(['admin', 'ai-news', 'article', articleId], next)
-    },
-    onError: (e) => setError(e instanceof Error ? e.message : 'AI 재작성을 요청하지 못했습니다.'),
-  })
-
   if (isLoading) return <div className="flex justify-center py-24"><Spinner size="lg" className="text-primary-800" /></div>
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -169,31 +151,37 @@ export default function AdminAiNewsFormPage() {
         breadcrumbs={[{ label: '커뮤니티' }, { label: '소식(AI)', to: '/admin/community/ai-news' }, { label: isEdit ? '수정' : '작성' }]}
         backTo="/admin/community/ai-news" useBackToPath title={isEdit ? 'AI 소식 수정' : 'AI 소식 작성'}
       />
-      {!isEdit && (
-        <div className="mb-5 grid grid-cols-2 rounded-xl bg-neutral-100 p-1.5">
-          <button type="button" onClick={() => setSearchParams({}, { replace: true })}
-            className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-              writeMode === 'manual' ? 'bg-white text-primary-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-800'
-            }`}>
-            직접작성
-          </button>
-          <button type="button" onClick={() => setSearchParams({ mode: 'ai' }, { replace: true })}
-            className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-              writeMode === 'ai' ? 'bg-white text-primary-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-800'
-            }`}>
-            AI요청
-          </button>
-        </div>
-      )}
-      {!isEdit && writeMode === 'ai' ? <AdminAiNewsRequestPanel /> : (
       <div className="space-y-5 rounded-xl bg-white p-5 shadow-sm">
         <RequiredFieldsNotice admin />
+        {detail && (detail.leadSummary || detail.sources.length > 0) && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-950">AI가 찾아 온 소재</p>
+            {detail.leadSummary && (
+              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-amber-900">{detail.leadSummary}</p>
+            )}
+            {detail.sources.length > 0 && (
+              <ul className="mt-3 space-y-1">
+                {detail.sources.map((source) => (
+                  <li key={source.canonicalUrl} className="text-xs">
+                    <a href={source.sourceUrl} target="_blank" rel="noopener noreferrer"
+                      className="break-all text-blue-700 underline-offset-2 hover:underline">
+                      {source.sourceTitle || source.sourceUrl}
+                    </a>
+                    <span className="ml-1.5 text-neutral-500">({source.domain})</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-xs text-amber-800">
+              근거를 읽고 본문을 직접 작성하세요. 여기 내용은 발행 글에 들어가지 않습니다.
+            </p>
+          </div>
+        )}
         {detail && (
           <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
-            상태: <strong>{detail.status}</strong> · 중복 키: {detail.dedupeKey}
+            상태: <strong>{statusLabel(detail.status)}</strong> · 중복 키: {detail.dedupeKey}
             {detail.failureReason && <p className="mt-1 text-red-600">검토 사유: {detail.failureReason}</p>}
             {detail.duplicateReason && <p className="mt-1 text-amber-700">중복 판정: {detail.duplicateReason}</p>}
-            {detail.rewritePrompt && <p className="mt-1 text-violet-700">재작성 추가 프롬프트: {detail.rewritePrompt}</p>}
             {detail.status === 'SCHEDULED' && detail.scheduledAt && (
               <p className="mt-1 text-blue-700">예약 발행: {new Date(detail.scheduledAt).toLocaleString('ko-KR')}</p>
             )}
@@ -202,7 +190,7 @@ export default function AdminAiNewsFormPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="글 유형">
             <select disabled={isEdit} value={articleType} onChange={(e) => setArticleType(e.target.value as AiNewsArticleType)} className={inputCls}>
-              <option value="RELEASE_NEWS">출시·국내 소식</option><option value="TIP_INFO">팁 및 정보</option>
+              <option value="RELEASE_NEWS">출시·이벤트 소식</option><option value="TIP_INFO">팁 및 정보</option>
             </select>
           </Field>
           <Field label="주종">
@@ -237,10 +225,6 @@ export default function AdminAiNewsFormPage() {
             ))}
           </div>
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="신뢰도 (0~1)"><NumberInput min="0" max="1" step="0.01" value={confidence} onChange={(e) => setConfidence(Number(e.target.value))} className={inputCls} /></Field>
-          <Field label="의미 중복 지문"><input value={semanticFingerprint} onChange={(e) => setSemanticFingerprint(e.target.value)} className={inputCls} placeholder="동일 주제 판별용 문구" /></Field>
-        </div>
         <label className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-neutral-700">
           <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> 소식 게시판 상단 고정
         </label>
@@ -309,23 +293,6 @@ export default function AdminAiNewsFormPage() {
           retryIds={socialRetryIds}
           onRetryIdsChange={setSocialRetryIds}
         />
-        {detail && !['PUBLISHED', 'SCHEDULED', 'SKIPPED_DUPLICATE', 'REWRITE_REQUESTED'].includes(detail.status) && (
-          <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
-            <p className="text-sm font-semibold text-violet-900">AI 재작성 요청 <RequiredMark /></p>
-            <p className="mt-1 text-xs leading-5 text-violet-700">
-              아래 추가 프롬프트는 이 원고 재작성에만 적용됩니다. 다음 AI 자동화 실행에서 기존 제목과 본문을 바탕으로 다시 작성하며, 결과는 검토 대기로 저장됩니다.
-            </p>
-            <AutoGrowTextarea required aria-required="true" maxLength={4000} rows={4} value={rewritePrompt} onChange={(e) => setRewritePrompt(e.target.value)}
-              className={`${inputCls} mt-3`} placeholder="예: 초보자가 이해하기 쉽게 용어 설명을 보강하고, 각 단락에 구체적인 예시를 추가해주세요." />
-            <div className="mt-2 flex items-center justify-end gap-3">
-              <button type="button" disabled={!rewritePrompt.trim() || rewriteMut.isPending} onClick={() => {
-                if (window.confirm('이 원고를 AI 재작성 대기 상태로 변경하시겠습니까?')) rewriteMut.mutate()
-              }} className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50">
-                AI 재작성 요청
-              </button>
-            </div>
-          </div>
-        )}
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           {isEdit ? <button type="button" onClick={() => { if (window.confirm('삭제하시겠습니까?\n\n이미 Instagram 또는 Threads에 게시된 콘텐츠는 자동으로 삭제되지 않습니다. 해당 플랫폼에서 직접 삭제해 주세요.')) deleteMut.mutate() }} disabled={deleteMut.isPending} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">삭제</button> : <span />}
@@ -346,7 +313,6 @@ export default function AdminAiNewsFormPage() {
           </div>
         </div>
       </div>
-      )}
     </div>
   )
 }

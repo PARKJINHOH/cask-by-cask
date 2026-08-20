@@ -12,9 +12,7 @@ import com.caskbycask.domain.ainews.repository.*;
 import com.caskbycask.domain.community.entity.PostPrefix;
 import com.caskbycask.domain.community.entity.enums.BoardType;
 import com.caskbycask.domain.community.repository.PostPrefixRepository;
-import com.caskbycask.domain.community.service.PostImageService;
 import com.caskbycask.domain.community.service.PostService;
-import com.caskbycask.domain.producer.repository.ProducerRepository;
 import com.caskbycask.domain.social.dto.SocialPublishSelection;
 import com.caskbycask.domain.social.entity.enums.SocialMediaMode;
 import com.caskbycask.domain.social.service.SocialPublishRequestService;
@@ -40,6 +38,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,9 +51,7 @@ class AiNewsServiceTest {
     @Mock AiNewsRunRepository runRepository;
     @Mock AiNewsUsageRepository usageRepository;
     @Mock UserRepository userRepository;
-    @Mock ProducerRepository producerRepository;
     @Mock PostService postService;
-    @Mock PostImageService postImageService;
     @Mock PostPrefixRepository postPrefixRepository;
     @Mock AdminLogService adminLogService;
     @Mock SocialPublishRequestService socialPublishRequestService;
@@ -65,7 +62,7 @@ class AiNewsServiceTest {
     void setUp() {
         service = new AiNewsService(settingsRepository, articleRepository, topicRepository,
                 sourceConfigRepository, runRepository, usageRepository, userRepository,
-                producerRepository, postService, postImageService, postPrefixRepository, adminLogService,
+                postService, postPrefixRepository, adminLogService,
                 socialPublishRequestService);
     }
 
@@ -83,52 +80,10 @@ class AiNewsServiceTest {
                 .build();
         given(articleRepository.findByDedupeKey("release:test")).willReturn(Optional.of(existing));
 
-        AiNewsDtos.DedupeCheckResponse result = service.checkDuplicate(
-                "release:test", null, null, AiNewsArticleType.RELEASE_NEWS);
+        AiNewsDtos.DedupeCheckResponse result = service.checkDuplicate("release:test", null);
 
         assertThat(result.duplicate()).isTrue();
         assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PUBLISHED);
-    }
-
-    @Test
-    void pendingTipHoldsTopicAndUsesGeneralPrefixEvenWithoutImage() {
-        AiNewsTopic topic = AiNewsTopic.builder()
-                .id(7L)
-                .title("럼 숙성 방식")
-                .normalizedKey("rum-aging-basics")
-                .category(AiNewsCategory.OTHER)
-                .status(AiNewsTopicStatus.READY)
-                .build();
-        PostPrefix general = PostPrefix.builder()
-                .id(9L)
-                .boardType(BoardType.NOTICE)
-                .name("일반")
-                .sortOrder(0)
-                .build();
-        AtomicReference<AiNewsArticle> saved = new AtomicReference<>();
-        given(articleRepository.findByDedupeKey("tip:rum-aging-basics")).willReturn(Optional.empty());
-        given(topicRepository.findById(7L)).willReturn(Optional.of(topic));
-        given(settingsRepository.findById(AiNewsSettings.SINGLETON_ID))
-                .willReturn(Optional.of(defaultSettings()));
-        given(postPrefixRepository.findFirstByBoardTypeAndNameOrderBySortOrderAscIdAsc(
-                BoardType.NOTICE, "일반")).willReturn(Optional.of(general));
-        given(articleRepository.saveAndFlush(any(AiNewsArticle.class))).willAnswer(invocation -> {
-            AiNewsArticle article = invocation.getArgument(0);
-            saved.set(article);
-            return article;
-        });
-        given(articleRepository.findDetailById(null))
-                .willAnswer(invocation -> Optional.ofNullable(saved.get()));
-
-        AiNewsDtos.ArticleDetailResponse result = service.ingest(new AiNewsDtos.ArticleUpsertRequest(
-                AiNewsArticleType.TIP_INFO, AiNewsCategory.OTHER,
-                "럼 숙성 방식 이해하기", "<p>본문</p>", "tip:rum-aging-basics",
-                new BigDecimal("0.95"), null, "rum-aging-basics", 7L, null,
-                false, false, null, null, null, "gemini-test", List.of("럼"), List.of()));
-
-        assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
-        assertThat(result.prefixId()).isEqualTo(9L);
-        assertThat(topic.getStatus()).isEqualTo(AiNewsTopicStatus.HOLD);
     }
 
     @Test
@@ -276,8 +231,7 @@ class AiNewsServiceTest {
         AiNewsDtos.ArticleDetailResponse result = service.updateArticle(12L,
                 new AiNewsDtos.ArticleAdminUpdateRequest(
                         AiNewsCategory.WHISKY, "수정된 출시 소식", "<p>수정 본문</p>",
-                        null, false, BigDecimal.ONE, null,
-                        List.of("위스키", "신제품"),
+                        null, false, List.of("위스키", "신제품"),
                         List.of("https://example.com/original",
                                 "https://www.new.example/news?utm_source=test&id=2#section")),
                 null);
@@ -307,31 +261,10 @@ class AiNewsServiceTest {
         given(articleRepository.findByDedupeKey("release:changed-key")).willReturn(Optional.empty());
         given(articleRepository.findFirstByCanonicalUrlHash("abc123")).willReturn(Optional.of(existing));
 
-        AiNewsDtos.DedupeCheckResponse result = service.checkDuplicate(
-                "release:changed-key", "ABC123", null, AiNewsArticleType.RELEASE_NEWS);
+        AiNewsDtos.DedupeCheckResponse result = service.checkDuplicate("release:changed-key", "ABC123");
 
         assertThat(result.duplicate()).isTrue();
         assertThat(result.articleId()).isEqualTo(existing.getId());
-    }
-
-    @Test
-    void topicAliasCannotReusePublishedTopicMeaning() {
-        AiNewsTopic existing = AiNewsTopic.builder()
-                .id(7L)
-                .title("셰리 캐스크란?")
-                .normalizedKey("what-is-sherry-cask")
-                .aliases("셰리 캐스크,셰리 숙성")
-                .category(AiNewsCategory.WHISKY)
-                .status(AiNewsTopicStatus.COMPLETED)
-                .build();
-        given(topicRepository.existsByNormalizedKey("sherry-seasoned-cask-guide")).willReturn(false);
-        given(topicRepository.findAll()).willReturn(List.of(existing));
-        AiNewsDtos.TopicUpsertRequest request = new AiNewsDtos.TopicUpsertRequest(
-                "셰리 시즈닝 캐스크 안내", "sherry-seasoned-cask-guide", "셰리 캐스크",
-                AiNewsCategory.WHISKY, AiNewsTopicStatus.READY, false, true);
-
-        assertThatThrownBy(() -> service.createTopic(request, null))
-                .isInstanceOf(CustomException.class);
     }
 
     @Test
@@ -340,32 +273,9 @@ class AiNewsServiceTest {
     }
 
     @Test
-    void tipIsDueOnlyAfterConfiguredInterval() {
-        AiNewsSettings settings = defaultSettings();
-        LocalDateTime lastPublished = LocalDateTime.now().minusHours(47);
-        given(settingsRepository.findById(AiNewsSettings.SINGLETON_ID)).willReturn(Optional.of(settings));
-        given(articleRepository.findLastSuccessfulPublishedAt(AiNewsArticleType.TIP_INFO))
-                .willReturn(lastPublished);
-        given(articleRepository.countSuccessfulPublicationsSince(
-                org.mockito.ArgumentMatchers.eq(AiNewsArticleType.RELEASE_NEWS),
-                org.mockito.ArgumentMatchers.any())).willReturn(0L);
-        given(sourceConfigRepository.findByEnabledTrueOrderBySourceNameAsc()).willReturn(List.of());
-        given(topicRepository.findByStatusOrderByCreatedAtAsc(AiNewsTopicStatus.READY)).willReturn(List.of());
-        given(topicRepository.findAll()).willReturn(List.of());
-        given(usageRepository.sumEstimatedCostSince(org.mockito.ArgumentMatchers.any())).willReturn(BigDecimal.ZERO);
-
-        AiNewsDtos.InternalConfigResponse config = service.internalConfig();
-
-        assertThat(config.tipDue()).isFalse();
-        verify(articleRepository).findByArticleTypeAndStatusInOrderByCreatedAtAsc(
-                AiNewsArticleType.TIP_INFO, List.of(AiNewsArticleStatus.PUBLISHED));
-    }
-
-    @Test
     void categoryRatiosMustSumToOneHundred() {
         AiNewsDtos.SettingsUpdateRequest request = new AiNewsDtos.SettingsUpdateRequest(
-                false, false, true, 3, 48, new BigDecimal("0.9"), 900,
-                null, null, null, 60, 30, 30);
+                false, 3, 900, null, null, 60, 30, 30);
 
         assertThatThrownBy(() -> service.updateSettings(request, 1L))
                 .isInstanceOf(CustomException.class);
@@ -381,7 +291,7 @@ class AiNewsServiceTest {
                 "메타베브코리아 공식 인스타그램",
                 "https://www.instagram.com/metabevkorea/",
                 AiNewsSourceType.OFFICIAL,
-                true, false, false);
+                true);
 
         AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
 
@@ -398,7 +308,7 @@ class AiNewsServiceTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
         AiNewsDtos.SourceConfigUpsertRequest request = new AiNewsDtos.SourceConfigUpsertRequest(
                 "다른 공식 계정", "https://instagram.com/another_account",
-                AiNewsSourceType.OFFICIAL, true, false, false);
+                AiNewsSourceType.OFFICIAL, true);
 
         AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
 
@@ -414,7 +324,7 @@ class AiNewsServiceTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
         AiNewsDtos.SourceConfigUpsertRequest request = new AiNewsDtos.SourceConfigUpsertRequest(
                 "Wine21", "https://www.wine21.com/11_news/news_list.html",
-                AiNewsSourceType.TRUSTED_MEDIA, true, false, false);
+                AiNewsSourceType.TRUSTED_MEDIA, true);
 
         AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
 
@@ -465,9 +375,8 @@ class AiNewsServiceTest {
         AiNewsTopic topic = AiNewsTopic.builder()
                 .id(7L)
                 .title("셰리 캐스크란?")
-                .normalizedKey("what-is-sherry-cask")
                 .category(AiNewsCategory.WHISKY)
-                .status(AiNewsTopicStatus.COMPLETED)
+                .status(AiNewsTopicStatus.DONE)
                 .build();
         given(topicRepository.findById(7L)).willReturn(Optional.of(topic));
         given(articleRepository.existsByTopicId(7L)).willReturn(true);
@@ -477,43 +386,149 @@ class AiNewsServiceTest {
     }
 
     @Test
-    void deletedArticleCanBeQueuedAndCompletedForRewrite() {
-        AiNewsArticle article = AiNewsArticle.builder()
-                .id(21L)
-                .articleType(AiNewsArticleType.TIP_INFO)
-                .status(AiNewsArticleStatus.DELETED)
+    void unregisteredEvidenceDomainDoesNotCreateASourceConfigRow() {
+        // 출처 목록이 끝없이 불어나던 원인. 미등록 도메인은 등급만 미승인으로 매기고 행은 만들지 않는다.
+        AtomicReference<AiNewsArticle> saved = new AtomicReference<>();
+        given(articleRepository.findByDedupeKey("release:new-domain")).willReturn(Optional.empty());
+        given(sourceConfigRepository.findByDomain("unknown-blog.example")).willReturn(List.of());
+        given(articleRepository.saveAndFlush(any(AiNewsArticle.class))).willAnswer(invocation -> {
+            AiNewsArticle article = invocation.getArgument(0);
+            saved.set(article);
+            return article;
+        });
+        given(articleRepository.findDetailById(null))
+                .willAnswer(invocation -> Optional.ofNullable(saved.get()));
+
+        service.ingestLead(new AiNewsDtos.LeadIngestRequest(
+                AiNewsCategory.WHISKY, "새 도메인 근거 소식", "요약", "release:new-domain",
+                null, new BigDecimal("0.9"), "gemini-test",
+                List.of(new AiNewsDtos.SourceEvidenceRequest(
+                        "https://unknown-blog.example/post", "https://unknown-blog.example/post",
+                        "unknown-blog.example", "낯선 블로그", AiNewsSourceType.UNAPPROVED,
+                        null, null, null, null))));
+
+        verify(sourceConfigRepository, never()).save(any(AiNewsSourceConfig.class));
+        assertThat(saved.get().getSources()).singleElement()
+                .extracting(AiNewsArticleSource::getSourceType)
+                .isEqualTo(AiNewsSourceType.UNAPPROVED);
+    }
+
+    @Test
+    void rejectingATipArticleReturnsItsTopicToPlanned() {
+        AiNewsTopic topic = AiNewsTopic.builder()
+                .id(5L)
+                .title("셰리 캐스크란?")
                 .category(AiNewsCategory.WHISKY)
-                .title("기존 제목")
-                .content("<p>기존 본문</p>")
-                .confidenceScore(BigDecimal.ONE)
-                .dedupeKey("tip:rewrite-test")
+                .status(AiNewsTopicStatus.DONE)
                 .build();
-        given(articleRepository.findDetailById(21L)).willReturn(Optional.of(article));
+        AiNewsArticle article = AiNewsArticle.builder()
+                .id(31L)
+                .articleType(AiNewsArticleType.TIP_INFO)
+                .status(AiNewsArticleStatus.PENDING_REVIEW)
+                .category(AiNewsCategory.WHISKY)
+                .title("셰리 캐스크")
+                .content("<p>본문</p>")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("tip:what-is-sherry-cask")
+                .topic(topic)
+                .build();
+        given(articleRepository.findDetailById(31L)).willReturn(Optional.of(article));
 
-        service.requestRewrite(21L, new AiNewsDtos.RewriteRequest("초보자 예시를 보강해주세요."), 1L);
+        service.reject(31L, "다시 쓰자", null);
 
-        assertThat(article.getStatus()).isEqualTo(AiNewsArticleStatus.REWRITE_REQUESTED);
-        assertThat(article.getRewritePrompt()).isEqualTo("초보자 예시를 보강해주세요.");
+        assertThat(article.getStatus()).isEqualTo(AiNewsArticleStatus.REJECTED);
+        assertThat(topic.getStatus()).isEqualTo(AiNewsTopicStatus.PLANNED);
+    }
 
-        service.completeRewrite(21L, new AiNewsDtos.RewriteResultRequest(
-                "개선된 제목", "<p>개선된 본문</p>", new BigDecimal("0.95"), "개선 지문", "writer-model",
-                List.of("셰리캐스크")));
+    @Test
+    void ingestedLeadIsStoredWithoutBodyForTheAdminToWrite() {
+        PostPrefix general = PostPrefix.builder()
+                .id(9L).boardType(BoardType.NOTICE).name("일반").sortOrder(0).build();
+        AtomicReference<AiNewsArticle> saved = new AtomicReference<>();
+        given(articleRepository.findByDedupeKey("release:balvenie-14-caribbean")).willReturn(Optional.empty());
+        given(postPrefixRepository.findFirstByBoardTypeAndNameOrderBySortOrderAscIdAsc(
+                BoardType.NOTICE, "일반")).willReturn(Optional.of(general));
+        given(sourceConfigRepository.findByDomain("whiskymag.example")).willReturn(List.of());
+        given(articleRepository.saveAndFlush(any(AiNewsArticle.class))).willAnswer(invocation -> {
+            AiNewsArticle article = invocation.getArgument(0);
+            saved.set(article);
+            return article;
+        });
+        given(articleRepository.findDetailById(null))
+                .willAnswer(invocation -> Optional.ofNullable(saved.get()));
 
-        assertThat(article.getStatus()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
-        assertThat(article.getTitle()).isEqualTo("개선된 제목");
-        assertThat(article.getRewritePrompt()).isNull();
-        assertThat(article.getHashtags()).containsExactly("셰리캐스크");
+        AiNewsDtos.ArticleDetailResponse result = service.ingestLead(new AiNewsDtos.LeadIngestRequest(
+                AiNewsCategory.WHISKY, "발베니 14년 캐리비안 캐스크 국내 출시",
+                "윌리엄그랜트앤선즈코리아가 9월 정식 수입한다고 발표했습니다.",
+                "release:balvenie-14-caribbean", null, new BigDecimal("0.9"), "gemini-test",
+                List.of(new AiNewsDtos.SourceEvidenceRequest(
+                        "https://whiskymag.example/news/1", "https://whiskymag.example/news/1",
+                        "whiskymag.example", "Balvenie 14", AiNewsSourceType.TRUSTED_MEDIA,
+                        null, null, null, null))));
+
+        assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
+        // 본문은 관리자가 쓴다. AI 는 제목·요약·근거까지만 만든다.
+        assertThat(result.content()).isEmpty();
+        assertThat(result.leadSummary()).contains("9월 정식 수입");
+        assertThat(result.prefixId()).isEqualTo(9L);
+        assertThat(result.sources()).singleElement()
+                .extracting(AiNewsDtos.SourceResponse::domain).isEqualTo("whiskymag.example");
+    }
+
+    @Test
+    void leadWithoutBodyCannotBePublished() {
+        AiNewsArticle lead = AiNewsArticle.builder()
+                .id(55L)
+                .articleType(AiNewsArticleType.RELEASE_NEWS)
+                .status(AiNewsArticleStatus.PENDING_REVIEW)
+                .category(AiNewsCategory.WHISKY)
+                .title("본문 없는 소재")
+                .content("")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("release:empty-body")
+                .build();
+        given(articleRepository.findForPublishById(55L)).willReturn(Optional.of(lead));
+
+        assertThatThrownBy(() -> service.publish(55L, null))
+                .isInstanceOf(CustomException.class);
+        assertThat(lead.getStatus()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
+    }
+
+    @Test
+    void sameEventFromAnotherOutletIsCaughtByASharedSourceUrl() {
+        AiNewsArticle existing = AiNewsArticle.builder()
+                .id(61L)
+                .articleType(AiNewsArticleType.RELEASE_NEWS)
+                .status(AiNewsArticleStatus.PENDING_REVIEW)
+                .category(AiNewsCategory.WHISKY)
+                .title("이미 잡은 소재")
+                .content("")
+                .confidenceScore(BigDecimal.ONE)
+                .dedupeKey("release:already-known")
+                .build();
+        given(articleRepository.findByDedupeKey("release:other-key")).willReturn(Optional.empty());
+        given(articleRepository.findFirstByArticleTypeAndSourcesCanonicalUrlInOrderByCreatedAtAsc(
+                org.mockito.ArgumentMatchers.eq(AiNewsArticleType.RELEASE_NEWS),
+                org.mockito.ArgumentMatchers.anyList())).willReturn(Optional.of(existing));
+        given(articleRepository.findDetailById(61L)).willReturn(Optional.of(existing));
+
+        AiNewsDtos.ArticleDetailResponse result = service.ingestLead(new AiNewsDtos.LeadIngestRequest(
+                AiNewsCategory.WHISKY, "다른 매체가 쓴 같은 사건", "요약", "release:other-key",
+                null, new BigDecimal("0.9"), "gemini-test",
+                List.of(new AiNewsDtos.SourceEvidenceRequest(
+                        "https://whiskymag.example/news/1", "https://whiskymag.example/news/1",
+                        "whiskymag.example", "같은 근거", AiNewsSourceType.TRUSTED_MEDIA,
+                        null, null, null, null))));
+
+        assertThat(result.id()).isEqualTo(61L);
+        verify(articleRepository, never()).saveAndFlush(any(AiNewsArticle.class));
     }
 
     private AiNewsSettings defaultSettings() {
         return AiNewsSettings.builder()
                 .id(1L)
                 .automationEnabled(false)
-                .autoPublishEnabled(false)
-                .dryRun(true)
                 .dailyReleaseLimit(3)
-                .tipIntervalHours(48)
-                .confidenceThreshold(new BigDecimal("0.9"))
                 .tavilyMonthlyCreditLimit(900)
                 .whiskyRatio(60)
                 .wineRatio(20)

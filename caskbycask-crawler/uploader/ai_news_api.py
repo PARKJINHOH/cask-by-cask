@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import requests
@@ -40,37 +39,19 @@ class AiNewsApi:
                                   headers=self.headers, json=stats, timeout=self.timeout)
         return self._data(response)
 
-    def submit_article(self, payload: dict) -> dict:
-        response = requests.post(f"{self.base_url}/api/internal/ai-news/articles", headers=self.headers,
+    def submit_lead(self, payload: dict) -> dict:
+        """소재를 저장한다. 본문 없이 제목·요약·근거만 보낸다."""
+        response = requests.post(f"{self.base_url}/api/internal/ai-news/leads", headers=self.headers,
                                  json=payload, timeout=max(self.timeout, 60))
         return self._data(response)
 
-    def complete_rewrite(self, article_id: int, payload: dict) -> dict:
-        response = requests.post(
-            f"{self.base_url}/api/internal/ai-news/articles/{article_id}/rewrite-result",
-            headers=self.headers, json=payload, timeout=max(self.timeout, 60),
-        )
-        return self._data(response)
-
-    def create_topic_suggestion(self, payload: dict) -> dict:
-        response = requests.post(f"{self.base_url}/api/internal/ai-news/topics/suggestions",
-                                 headers=self.headers, json=payload, timeout=self.timeout)
-        return self._data(response)
-
-    def check_duplicate(self, dedupe_key: str, canonical_url_hash: str | None,
-                        semantic_fingerprint: str, article_type: str) -> dict:
+    def check_duplicate(self, dedupe_key: str, canonical_url_hash: str | None) -> dict:
         response = requests.get(
             f"{self.base_url}/api/internal/ai-news/dedupe",
             headers=self.headers,
-            params={"dedupeKey": dedupe_key, "canonicalUrlHash": canonical_url_hash,
-                    "semanticFingerprint": semantic_fingerprint, "type": article_type},
+            params={"dedupeKey": dedupe_key, "canonicalUrlHash": canonical_url_hash},
             timeout=self.timeout,
         )
-        return self._data(response)
-
-    def record_duplicate(self, payload: dict) -> dict:
-        response = requests.post(f"{self.base_url}/api/internal/ai-news/duplicates",
-                                 headers=self.headers, json=payload, timeout=self.timeout)
         return self._data(response)
 
     def record_usage(self, payload: dict) -> None:
@@ -87,38 +68,3 @@ class AiNewsApi:
             timeout=self.timeout,
         )
         self._data(response)
-
-    def next_draft_request(self) -> dict | None:
-        response = requests.get(
-            f"{self.base_url}/api/internal/ai-news/draft-requests/next",
-            headers=self.headers, timeout=self.timeout,
-        )
-        return self._data(response)
-
-    def complete_draft_request(self, request_id: int, payload: dict) -> dict:
-        response = requests.post(
-            f"{self.base_url}/api/internal/ai-news/draft-requests/{request_id}/complete",
-            headers=self.headers, json=payload, timeout=max(self.timeout, 60),
-        )
-        return self._data(response)
-
-    def fail_draft_request(self, request_id: int, reason: str) -> dict:
-        response = requests.post(
-            f"{self.base_url}/api/internal/ai-news/draft-requests/{request_id}/fail",
-            headers=self.headers, json={"reason": reason[:1000]}, timeout=self.timeout,
-        )
-        return self._data(response)
-
-    def upload_image(self, path: Path) -> str:
-        mime = {
-            ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
-        }.get(path.suffix.lower(), "application/octet-stream")
-        with path.open("rb") as handle:
-            response = requests.post(
-                f"{self.base_url}/api/internal/ai-news/images",
-                headers=self.headers,
-                files={"image": (path.name, handle, mime)},
-                timeout=max(self.timeout, 60),
-            )
-        data = self._data(response)
-        return data["imageUrl"]

@@ -1,121 +1,64 @@
 from __future__ import annotations
 
-import base64
-import html
 import json
 import re
-from pathlib import Path
 from typing import Any
 
 from google import genai
 from google.genai import types
 
 from logger import get_logger
-from news_models import DraftArticle, SearchSource, UsageAccumulator
+from news_models import NewsLead, SearchSource, UsageAccumulator
 from news_prompts import (
-    AI_NEWS_MIN_TEXT_LENGTH,
-    AI_NEWS_RECOMMENDED_TEXT_LENGTH,
+    AI_NEWS_LEAD_PROMPT,
+    AI_NEWS_SUMMARY_MAX_LENGTH,
     AI_NEWS_TITLE_MAX_LENGTH,
-    AI_NEWS_WRITING_PROMPT,
 )
 
 
-AI_NEWS_RETRY_MAX_OUTPUT_TOKENS = 8192
 log = get_logger("news_gemini")
 
 
-ARTICLE_SCHEMA = {
+LEAD_SCHEMA = {
     "type": "object",
     "properties": {
-        "title": {"type": "string"},
-        "content_html": {"type": "string"},
-        "confidence": {"type": "number"},
-        "semantic_fingerprint": {"type": "string"},
-        "image_prompt": {"type": "string"},
-        "hashtags": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
-    },
-    "required": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
-}
-
-REQUESTED_ARTICLE_SCHEMA = {
-    "type": "object",
-    "properties": {
-        **ARTICLE_SCHEMA["properties"],
-        "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC", "OTHER"]},
-    },
-    "required": [*ARTICLE_SCHEMA["required"], "category"],
-}
-
-RELEASE_CLASSIFICATION_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "candidates": {
+        "leads": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC", "OTHER"]},
                     "event_key": {"type": "string"},
+                    "title": {"type": "string"},
                     "summary": {"type": "string"},
                     "source_indexes": {"type": "array", "items": {"type": "integer"}},
                     "confidence": {"type": "number"},
                 },
-                "required": ["category", "event_key", "summary", "source_indexes", "confidence"],
+                "required": ["category", "event_key", "title", "summary",
+                             "source_indexes", "confidence"],
             },
         },
     },
-    "required": ["candidates"],
-}
-
-TIP_DUPLICATE_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "duplicate": {"type": "boolean"},
-        "semantic_similarity": {"type": "number"},
-        "matched_article_id": {"type": "integer"},
-        "reason": {"type": "string"},
-    },
-    "required": ["duplicate", "semantic_similarity", "reason"],
-}
-
-TOPIC_SUGGESTION_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "topics": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "normalized_key": {"type": "string"},
-                    "category": {"type": "string", "enum": ["WHISKY", "WINE", "COGNAC", "OTHER"]},
-                    "aliases": {"type": "string"},
-                },
-                "required": ["title", "normalized_key", "category", "aliases"],
-            },
-        },
-    },
-    "required": ["topics"],
+    "required": ["leads"],
 }
 
 
-class GeminiNewsWriter:
-    def __init__(self, api_key: str, classifier_model: str, writer_model: str,
-                 image_model: str, image_estimated_cost_usd: float = 0.0,
-                 image_generation_enabled: bool = False):
+class GeminiLeadFinder:
+    """검색 결과에서 쓸 만한 사건을 골라 제목과 요약만 만든다.
+
+    **본문은 만들지 않는다.** 예전에는 여기서 1,500~2,500자 원고까지 썼는데 품질이 기준에 못 미쳐
+    관리자가 매번 근거 URL 을 보고 처음부터 다시 썼다 — 가장 비싼 산출물이 곧 폐기물이었다.
+    지금은 사실 한 줄(제목)과 판단용 요약만 만들고 나머지는 사람이 한다.
+    """
+
+    def __init__(self, api_key: str, classifier_model: str):
         self.client = genai.Client(api_key=api_key)
         self.classifier_model = classifier_model
-        self.writer_model = writer_model
-        self.image_model = image_model
-        self.image_estimated_cost_usd = image_estimated_cost_usd
-        self.image_generation_enabled = image_generation_enabled
         self.usage = UsageAccumulator()
-        self._image_unavailable_reason: str | None = None
-        self._last_response_metadata: dict[str, Any] = {}
 
-    def classify_releases(self, sources: list[SearchSource], max_candidates: int,
-                          category_ratios: dict[str, int] | None = None) -> list[dict[str, Any]]:
-        if not sources or max_candidates <= 0:
+    def find_leads(self, sources: list[SearchSource], max_leads: int,
+                   focus_category: str = "WHISKY") -> list[NewsLead]:
+        if not sources or max_leads <= 0:
             return []
         compact = [{
             "index": i,
@@ -124,415 +67,49 @@ class GeminiNewsWriter:
             "published_at": s.published_at,
             "text": s.content[:2500],
         } for i, s in enumerate(sources)]
-        system = """
-주류 뉴스 후보를 선별한다. JSON {"candidates": [...]}만 반환하라.
-위스키·와인·꼬냑의 실제 신제품 출시, 출시 예정, 한국 출시·수입 소식만 후보로 삼는다.
-단순 할인, 개인 리뷰, 질문, 루머, 과거 재탕, 근거가 없는 커뮤니티 추측은 제외한다.
-같은 제품/사건을 다룬 여러 결과는 하나로 묶는다.
-후보가 충분하면 입력된 target_category_ratio를 장기 목표 비중으로 반영한다.
-각 후보 필드: category(WHISKY/WINE/COGNAC/OTHER), event_key(영문 소문자 안정 키),
-summary, source_indexes(서로 다른 근거 인덱스), confidence(0~1).
-""".strip()
-        result = self._request_json(self.classifier_model, system, {
-            "max_candidates": max(0, max_candidates),
-            "target_category_ratio": category_ratios or {"WHISKY": 60, "WINE": 20, "COGNAC": 20},
+        result = self._request_json(self.classifier_model, AI_NEWS_LEAD_PROMPT, {
+            "max_leads": max(0, max_leads),
+            "focus_category": focus_category,
             "sources": compact,
-        }, RELEASE_CLASSIFICATION_SCHEMA)
-        candidates = result.get("candidates", []) if isinstance(result, dict) else []
-        cleaned: list[dict[str, Any]] = []
-        for item in candidates[:max_candidates]:
-            category = str(item.get("category", "")).upper()
-            indexes = [int(i) for i in item.get("source_indexes", []) if str(i).isdigit() and int(i) < len(sources)]
-            event_key = self._safe_key(str(item.get("event_key", "")))
-            if category not in {"WHISKY", "WINE", "COGNAC", "OTHER"} or not indexes or not event_key:
-                continue
-            cleaned.append({**item, "category": category, "source_indexes": sorted(set(indexes)), "event_key": event_key})
-        return cleaned
+        }, LEAD_SCHEMA)
 
-    def write_release(self, candidate: dict[str, Any], sources: list[SearchSource]) -> DraftArticle:
-        selected = [sources[i] for i in candidate["source_indexes"]]
-        evidence = [{"index": i, "title": s.title, "domain": s.domain, "text": s.content[:6000]}
-                    for i, s in zip(candidate["source_indexes"], selected)]
-        prompt = {
-            "task": "출시 소식 원고 작성과 최종 사실 검증",
-            "candidate": candidate,
-            "evidence": evidence,
-            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
-            "image_prompt_rule": "브랜드 로고나 실제 라벨을 만들지 않는 가로형 비브랜드 에디토리얼 이미지용 영문 프롬프트",
-        }
-        result = self._request_article(prompt, allow_short_review=True)
-        return self._draft_from_result("RELEASE_NEWS", candidate["category"],
-                                       f"release:{candidate['event_key']}", None,
-                                       candidate["source_indexes"], result)
+        raw_leads = result.get("leads", []) if isinstance(result, dict) else []
+        leads: list[NewsLead] = []
+        for item in raw_leads[:max_leads]:
+            lead = self._lead_from_result(item, len(sources))
+            if lead:
+                leads.append(lead)
+        return leads
 
-    def write_requested_release(self, request: dict[str, Any], sources: list[SearchSource]) -> DraftArticle:
-        evidence = [{"index": i, "title": source.title, "url": source.url,
-                     "domain": source.domain, "text": source.content[:6000]}
-                    for i, source in enumerate(sources)]
-        prompt = {
-            "task": "관리자가 우선 요청한 출시·국내 소식 원고 작성과 사실 검증",
-            "admin_prompt": request["prompt"],
-            "evidence": evidence,
-            "rules": [
-                "관리자 요청 의도를 따르되 제공된 근거에 없는 사실은 만들지 않는다.",
-                "주종을 WHISKY, WINE, COGNAC, OTHER 중 하나로 판단한다.",
-                "결과는 자동 발행하지 않고 관리자 임시저장 원고로 만든다.",
-            ],
-        }
-        result = self._request_article(
-            prompt,
-            response_schema=REQUESTED_ARTICLE_SCHEMA,
-            allow_short_review=True,
-        )
-        category = str(result.get("category") or "").upper()
-        return self._draft_from_result(
-            "RELEASE_NEWS", category, f"admin-request:{request['id']}", None,
-            list(range(len(sources))), result,
-        )
-
-    def write_tip(self, topic: dict[str, Any], sources: list[SearchSource]) -> DraftArticle:
-        evidence = [{"index": i, "title": s.title, "domain": s.domain, "text": s.content[:6000]}
-                    for i, s in enumerate(sources)]
-        prompt = {
-            "task": "오래 읽히는 팁 및 정보 글 작성과 최종 사실 검증",
-            "topic": {"title": topic["title"], "aliases": topic.get("aliases"), "category": topic["category"]},
-            "evidence": evidence,
-            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
-            "image_prompt_rule": (
-                "교육적이고 세련된 가로형 에디토리얼 일러스트. 글자, 로고, 상표, 실제 제품 라벨, "
-                "존재하지 않는 병은 표현하지 않는 영문 프롬프트"
-            ),
-        }
-        result = self._request_article(prompt, allow_short_review=True)
-        return self._draft_from_result("TIP_INFO", topic["category"],
-                                       f"tip:{topic['normalizedKey']}", int(topic["id"]),
-                                       list(range(len(sources))), result)
-
-    def rewrite_article(self, article: dict[str, Any]) -> DraftArticle:
-        prompt = {
-            "task": "기존 AI 소식 원고 재작성",
-            "article_type": article["articleType"],
-            "category": article["category"],
-            "original_article": {
-                "title": article["title"],
-                "content_html": str(article["content"])[:30000],
-                "semantic_fingerprint": article.get("semanticFingerprint"),
-                "hashtags": article.get("hashtags") or [],
-            },
-            "additional_instruction_for_this_article_only": article["additionalPrompt"],
-            "rules": [
-                "추가 지시는 이 원고 재작성에만 적용하고 다른 원고의 작성 기준으로 일반화하지 않는다.",
-                "기존 원고의 사실관계를 유지하면서 추가 지시를 충실히 반영한다.",
-                "확인되지 않은 새로운 사실, 출처, 수치 또는 인용을 만들어내지 않는다.",
-                "완성된 전체 제목과 전체 HTML 본문을 반환한다.",
-            ],
-            "output_fields": ["title", "content_html", "confidence", "semantic_fingerprint", "image_prompt", "hashtags"],
-            "image_prompt_rule": "기존 대표 이미지는 유지하므로 일반적인 비브랜드 영문 프롬프트만 반환",
-        }
-        result = self._request_article(prompt)
-        return self._draft_from_result(
-            article["articleType"], article["category"], f"rewrite:{article['articleId']}",
-            None, [], result,
-        )
-
-    def judge_tip_duplicate(self, topic: dict[str, Any], draft: DraftArticle,
-                            corpus: list[dict[str, Any]]) -> dict[str, Any]:
-        if not corpus or topic.get("allowRepublish"):
-            return {"duplicate": False, "semanticSimilarity": 0.0,
-                    "matchedArticleId": None, "reason": "비교 대상 없음 또는 재발행 허용"}
-        system = """
-주류 팁·정보 글의 영구 중복 여부를 최종 판정한다. JSON 객체 하나만 반환한다.
-먼저 새 글의 제목·소제목·핵심 질문 지문을 과거 전체 글과 의미상 비교하고,
-표현이나 제목만 다르지만 독자가 얻게 될 핵심 답이 같은 글도 중복으로 본다.
-큰 주제 안에서 다루는 핵심 질문과 교육 목표가 명확히 다를 때만 비중복이다.
-결과 형식은 {"duplicate":true|false,"semantic_similarity":0~1,
-"matched_article_id":숫자 또는 null,"reason":"한국어 판정 근거"}이다.
-""".strip()
-        compact_corpus = [{
-            "article_id": item.get("articleId"),
-            "title": item.get("title"),
-            "semantic_fingerprint": item.get("semanticFingerprint"),
-            "topic_key": item.get("topicKey"),
-            "topic_title": item.get("topicTitle"),
-            "topic_aliases": item.get("topicAliases"),
-            "outline_and_core_questions": str(item.get("contentOutline") or "")[:1000],
-        } for item in corpus]
-        result = self._request_json(self.classifier_model, system, {
-            "new_topic": {
-                "title": topic.get("title"), "normalized_key": topic.get("normalizedKey"),
-                "aliases": topic.get("aliases"),
-            },
-            "new_article": {
-                "title": draft.title,
-                "semantic_fingerprint": draft.semantic_fingerprint,
-                "content_html": draft.content_html[:6000],
-            },
-            "published_or_deleted_tip_history": compact_corpus,
-        }, TIP_DUPLICATE_SCHEMA)
+    def _lead_from_result(self, item: dict[str, Any], source_count: int) -> NewsLead | None:
+        category = str(item.get("category", "")).upper()
+        if category not in {"WHISKY", "WINE", "COGNAC", "OTHER"}:
+            return None
+        event_key = self._safe_key(str(item.get("event_key", "")))
+        title = re.sub(r"\s+", " ", str(item.get("title") or "")).strip()[:AI_NEWS_TITLE_MAX_LENGTH]
+        summary = re.sub(r"\s+", " ", str(item.get("summary") or "")).strip()[:AI_NEWS_SUMMARY_MAX_LENGTH]
+        indexes = sorted({int(i) for i in item.get("source_indexes", [])
+                          if str(i).lstrip("-").isdigit() and 0 <= int(i) < source_count})
+        if not event_key or not title or not indexes:
+            log.warning("소재 후보를 건너뜁니다 - 필수 값 누락 eventKey=%s title=%s indexes=%s",
+                        event_key, title, indexes)
+            return None
         try:
-            similarity = min(1.0, max(0.0, float(result.get("semantic_similarity") or 0)))
+            confidence = min(1.0, max(0.0, float(item.get("confidence") or 0)))
         except (TypeError, ValueError):
-            similarity = 0.0
-        matched = result.get("matched_article_id")
-        try:
-            matched = int(matched) if matched is not None else None
-        except (TypeError, ValueError):
-            matched = None
-        return {
-            "duplicate": bool(result.get("duplicate")),
-            "semanticSimilarity": similarity,
-            "matchedArticleId": matched,
-            "reason": str(result.get("reason") or "AI 최종 중복 판정")[:800],
-        }
-
-    def suggest_topics(self, existing_keys: list[str], count: int = 3) -> list[dict[str, str]]:
-        system = """
-위스키·와인·꼬냑 커뮤니티에 유용한 장기 정보 글 주제를 제안한다.
-기존 키와 의미가 같은 주제, 제품 홍보, 건강 효능, 단순 구매 추천은 제외한다.
-JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소문자-키","category":"WHISKY|WINE|COGNAC|OTHER","aliases":"쉼표 구분"}]}만 반환한다.
-""".strip()
-        result = self._request_json(self.classifier_model, system, {
-            "existing_keys": existing_keys, "count": max(1, min(5, count)),
-        }, TOPIC_SUGGESTION_SCHEMA)
-        topics = []
-        for item in result.get("topics", [])[:count]:
-            category = str(item.get("category", "")).upper()
-            key = self._safe_key(str(item.get("normalized_key", "")))
-            title = str(item.get("title", "")).strip()[:50]
-            if category in {"WHISKY", "WINE", "COGNAC", "OTHER"} and key and title and key not in existing_keys:
-                topics.append({"title": title, "normalizedKey": key, "category": category,
-                               "aliases": str(item.get("aliases") or "")})
-        return topics
-
-    def generate_image(self, prompt: str, output_dir: Path, stem: str) -> Path:
-        if not self.image_generation_enabled:
-            raise RuntimeError("AI 이미지 생성이 운영 설정에서 비활성화되어 있습니다.")
-        image_unavailable_reason = getattr(self, "_image_unavailable_reason", None)
-        if image_unavailable_reason:
-            raise RuntimeError(image_unavailable_reason)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        safe_prompt = (
-            prompt.strip() + "\nLandscape 3:2 editorial illustration, no text, no logo, no trademark, "
-            "no branded bottle, no recognizable product label."
+            confidence = 0.0
+        return NewsLead(
+            category=category,
+            title=title,
+            summary=summary,
+            event_key=event_key,
+            source_indexes=indexes,
+            confidence=confidence,
+            model_name=self.classifier_model,
         )
-        try:
-            result = self.client.interactions.create(
-                model=self.image_model,
-                input=safe_prompt,
-                response_format={
-                    "type": "image",
-                    "mime_type": "image/jpeg",
-                    "aspect_ratio": "3:2",
-                    "image_size": "1K",
-                },
-            )
-        except Exception as error:
-            message = str(error)
-            if "limit: 0" in message or "free_tier_requests" in message:
-                self._image_unavailable_reason = (
-                    f"{self.image_model}은 현재 프로젝트의 무료 티어 이미지 할당량이 0입니다. "
-                    "Google AI Studio 결제를 활성화해야 합니다."
-                )
-            raise
-        output_image = getattr(result, "output_image", None)
-        encoded = getattr(output_image, "data", None)
-        if not encoded:
-            raise RuntimeError("Gemini 이미지 응답에 base64 데이터가 없습니다.")
-        image_bytes = base64.b64decode(encoded)
-        path = output_dir / f"{self._safe_key(stem)[:60] or 'ai-news'}.jpg"
-        path.write_bytes(image_bytes)
-        self.usage.add_image(self.image_estimated_cost_usd)
-        return path
-
-    def _draft_from_result(self, article_type: str, category: str, dedupe_key: str,
-                           topic_id: int | None, source_indexes: list[int], result: dict[str, Any]) -> DraftArticle:
-        title = re.sub(r"\s+", " ", str(result.get("title") or "")).strip()[:AI_NEWS_TITLE_MAX_LENGTH]
-        content = str(result.get("content_html") or "").strip()
-        confidence = min(1.0, max(0.0, float(result.get("confidence") or 0)))
-        fingerprint = re.sub(r"\s+", " ", str(result.get("semantic_fingerprint") or title).lower()).strip()[:1000]
-        image_prompt = str(result.get("image_prompt") or "Elegant educational illustration about spirits").strip()
-        hashtags: list[str] = []
-        seen_hashtags: set[str] = set()
-        raw_hashtags = result.get("hashtags") if isinstance(result.get("hashtags"), list) else []
-        for raw_hashtag in raw_hashtags:
-            hashtag = re.sub(r"[^\w-]", "", str(raw_hashtag).strip().lstrip("#"), flags=re.UNICODE)[:30]
-            hashtag_key = hashtag.casefold()
-            if hashtag and hashtag_key not in seen_hashtags:
-                seen_hashtags.add(hashtag_key)
-                hashtags.append(hashtag)
-            if len(hashtags) >= 10:
-                break
-        if not title or not content:
-            raise RuntimeError("AI 원고 응답에 제목 또는 본문이 없습니다.")
-        content_length = self._plain_text_length(content)
-        minimum_length_met = content_length >= AI_NEWS_MIN_TEXT_LENGTH
-        allow_short_review = bool(result.get("_allow_short_review"))
-        generation_warning = str(result.get("_length_diagnostics") or "").strip() or None
-        if not minimum_length_met and not allow_short_review:
-            detail = f" ({generation_warning})" if generation_warning else ""
-            raise RuntimeError(
-                f"AI 원고 본문이 최소 {AI_NEWS_MIN_TEXT_LENGTH:,}자보다 짧습니다.{detail}"
-            )
-        return DraftArticle(article_type, category, title, content, dedupe_key, fingerprint,
-                            confidence, source_indexes, image_prompt, hashtags=hashtags, topic_id=topic_id,
-                            model_name=self.writer_model,
-                            auto_publish_requested=minimum_length_met,
-                            generation_warning=generation_warning if not minimum_length_met else None)
-
-    def _request_article(
-        self,
-        prompt: dict[str, Any],
-        *,
-        response_schema: dict[str, Any] = ARTICLE_SCHEMA,
-        allow_short_review: bool = False,
-    ) -> dict[str, Any]:
-        evidence_stats = self._evidence_stats(prompt)
-        result = self._request_json(
-            self.writer_model, AI_NEWS_WRITING_PROMPT, prompt, response_schema
-        )
-        first_attempt = self._article_attempt_diagnostic(result, 1)
-        attempts = [first_attempt]
-        if first_attempt["plainTextLength"] >= AI_NEWS_MIN_TEXT_LENGTH:
-            return result
-
-        self._log_short_article(prompt, first_attempt, evidence_stats)
-        shortfall = AI_NEWS_MIN_TEXT_LENGTH - first_attempt["plainTextLength"]
-        revision_prompt = {
-            **prompt,
-            "revision_request": (
-                f"이전 원고의 순수 본문은 실제 검증 결과 "
-                f"{first_attempt['plainTextLength']:,}자이며 최소 기준보다 {shortfall:,}자 부족하다. "
-                "근거 안에서 설명과 독자에게 유용한 세부 내용을 "
-                f"보강하여 HTML 태그와 공백을 제외한 순수 텍스트 "
-                f"{AI_NEWS_RECOMMENDED_TEXT_LENGTH}자로 전체 원고를 다시 작성하라. "
-                "글자 수를 맞추기 위해 근거에 없는 사실을 추가하거나 같은 내용을 반복하지 않는다. "
-                "제목과 본문은 SEO 작성 규칙을 지킨다."
-            ),
-            "length_validation": {
-                "previous_plain_text_length": first_attempt["plainTextLength"],
-                "minimum_plain_text_length": AI_NEWS_MIN_TEXT_LENGTH,
-                "shortfall": shortfall,
-                "evidence_source_count": evidence_stats["sourceCount"],
-                "evidence_text_length": evidence_stats["textLength"],
-                "previous_finish_reason": first_attempt["finishReason"],
-            },
-            "previous_draft": {
-                "title": result.get("title"),
-                "content_html": result.get("content_html"),
-            },
-        }
-        retry_output_tokens = (
-            AI_NEWS_RETRY_MAX_OUTPUT_TOKENS
-            if self._is_output_limit_finish_reason(first_attempt["finishReason"])
-            else None
-        )
-        revised = self._request_json(
-            self.writer_model,
-            AI_NEWS_WRITING_PROMPT,
-            revision_prompt,
-            response_schema,
-            max_output_tokens=retry_output_tokens,
-        )
-        second_attempt = self._article_attempt_diagnostic(revised, 2)
-        attempts.append(second_attempt)
-        if second_attempt["plainTextLength"] >= AI_NEWS_MIN_TEXT_LENGTH:
-            return revised
-
-        self._log_short_article(prompt, second_attempt, evidence_stats)
-        best_result = max(
-            (result, revised),
-            key=lambda item: self._plain_text_length(str(item.get("content_html") or "")),
-        )
-        diagnostics = self._length_diagnostics(
-            prompt, attempts, evidence_stats, retry_output_tokens is not None
-        )
-        if not allow_short_review:
-            raise RuntimeError(
-                f"AI 원고 본문이 최소 {AI_NEWS_MIN_TEXT_LENGTH:,}자보다 짧습니다. "
-                f"{diagnostics}"
-            )
-        return {
-            **best_result,
-            "_allow_short_review": True,
-            "_length_diagnostics": diagnostics,
-        }
-
-    @staticmethod
-    def _plain_text_length(content_html: str) -> int:
-        without_tags = re.sub(r"<[^>]*>", " ", content_html)
-        return len(re.sub(r"\s+", "", html.unescape(without_tags)))
-
-    @staticmethod
-    def _evidence_stats(prompt: dict[str, Any]) -> dict[str, int]:
-        evidence = prompt.get("evidence")
-        if not isinstance(evidence, list):
-            return {"sourceCount": 0, "textLength": 0}
-        text_length = sum(
-            len(re.sub(r"\s+", "", str(item.get("text") or "")))
-            for item in evidence
-            if isinstance(item, dict)
-        )
-        return {"sourceCount": len(evidence), "textLength": text_length}
-
-    def _article_attempt_diagnostic(
-        self, result: dict[str, Any], attempt: int
-    ) -> dict[str, Any]:
-        metadata = getattr(self, "_last_response_metadata", {})
-        return {
-            "attempt": attempt,
-            "plainTextLength": self._plain_text_length(
-                str(result.get("content_html") or "")
-            ),
-            "finishReason": str(metadata.get("finishReason") or "UNKNOWN"),
-            "responseTextLength": int(metadata.get("responseTextLength") or 0),
-        }
-
-    @staticmethod
-    def _log_short_article(
-        prompt: dict[str, Any],
-        attempt: dict[str, Any],
-        evidence_stats: dict[str, int],
-    ) -> None:
-        log.warning(
-            "AI 원고 분량 미달 task=%s attempt=%s plainTextLength=%s required=%s "
-            "finishReason=%s responseTextLength=%s evidenceSourceCount=%s evidenceTextLength=%s",
-            prompt.get("task"),
-            attempt["attempt"],
-            attempt["plainTextLength"],
-            AI_NEWS_MIN_TEXT_LENGTH,
-            attempt["finishReason"],
-            attempt["responseTextLength"],
-            evidence_stats["sourceCount"],
-            evidence_stats["textLength"],
-        )
-
-    @staticmethod
-    def _length_diagnostics(
-        prompt: dict[str, Any],
-        attempts: list[dict[str, Any]],
-        evidence_stats: dict[str, int],
-        output_limit_increased: bool,
-    ) -> str:
-        rendered_attempts = ", ".join(
-            f"{item['attempt']}차={item['plainTextLength']:,}자"
-            f"(finishReason={item['finishReason']})"
-            for item in attempts
-        )
-        return (
-            f"task={prompt.get('task') or 'unknown'}; {rendered_attempts}; "
-            f"근거={evidence_stats['sourceCount']}건/"
-            f"{evidence_stats['textLength']:,}자; "
-            f"출력상한상향={'적용' if output_limit_increased else '미적용'}"
-        )
-
-    @staticmethod
-    def _is_output_limit_finish_reason(finish_reason: str) -> bool:
-        normalized = str(finish_reason).strip().upper().rsplit(".", 1)[-1]
-        return normalized == "MAX_TOKENS"
 
     def _request_json(self, model: str, system: str, payload: dict[str, Any],
-                      response_schema: dict[str, Any],
-                      *, max_output_tokens: int | None = None) -> dict[str, Any]:
+                      response_schema: dict[str, Any]) -> dict[str, Any]:
         user_text = json.dumps(payload, ensure_ascii=False)
         last_error: json.JSONDecodeError | None = None
         last_text = ""
@@ -545,18 +122,12 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
                 "response_json_schema": response_schema,
                 "temperature": 0.1,
             }
-            if max_output_tokens is not None:
-                config_kwargs["max_output_tokens"] = max_output_tokens
             response = self.client.models.generate_content(
                 model=model,
                 contents=user_text,
                 config=types.GenerateContentConfig(**config_kwargs),
             )
             last_text = response.text or "{}"
-            self._last_response_metadata = {
-                "finishReason": self._response_finish_reason(response),
-                "responseTextLength": len(last_text),
-            }
             usage = getattr(response, "usage_metadata", None)
             input_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
             output_tokens = (
@@ -571,21 +142,6 @@ JSON {"topics":[{"title":"한국어 50자 이하","normalized_key":"영문-소�
         raise RuntimeError(
             f"Gemini JSON 응답 파싱에 2회 실패했습니다: {last_error}; 응답={last_text[:500]}"
         ) from last_error
-
-    @staticmethod
-    def _response_finish_reason(response: Any) -> str:
-        candidates = getattr(response, "candidates", None) or []
-        if not candidates:
-            return "UNKNOWN"
-        candidate = candidates[0]
-        if isinstance(candidate, dict):
-            reason = candidate.get("finish_reason") or candidate.get("finishReason")
-        else:
-            reason = getattr(candidate, "finish_reason", None)
-        if reason is None:
-            return "UNKNOWN"
-        value = getattr(reason, "name", None) or getattr(reason, "value", None) or reason
-        return str(value).strip().upper().rsplit(".", 1)[-1] or "UNKNOWN"
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:

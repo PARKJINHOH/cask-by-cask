@@ -91,11 +91,10 @@ nano /app/caskbycask-crawler/.env
 필수로 채울 값:
 | 키 | 설명 |
 |---|---|
-| `GEMINI_API_KEY` | Google AI Studio 키. 핫딜·AI 소식·팁 분석·작성·이미지 생성에 공용 사용 |
+| `GEMINI_API_KEY` | Google AI Studio 키. 핫딜 분석과 AI 소식 소재 선별에 공용 사용 |
 | `AI_NEWS_GEMINI_FREE_TIER` | 텍스트 무료 티어 사용 여부. 기본 `true` |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_USD` | 관리자 설정과 별개의 월 비용 절대 상한 (`0` 비활성) |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 상한 (`0` 비활성) |
-| `AI_NEWS_GEMINI_HARD_MONTHLY_IMAGES` | 월 생성 이미지 절대 상한 (`0` 비활성) |
 | `CASKBYCASK_API_URL` | `http://127.0.0.1:8080` (API가 같은 서버에 있으므로 로컬 호출 권장) |
 | `CASKBYCASK_INTERNAL_KEY` | **백엔드와 동일한** 시크릿(긴 랜덤 문자열) |
 | `NAVER_NID_AUT`, `NAVER_NID_SES` | 네이버 로그인 쿠키 (아래 6번) |
@@ -211,13 +210,8 @@ CRON_TZ=Asia/Seoul
 17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1
 ```
 
-AI 이미지 생성은 요금제를 활성화하기 전까지 아래처럼 비활성화합니다.
-
-```properties
-AI_NEWS_IMAGE_GENERATION_ENABLED=false
-```
-
-이 상태에서는 Gemini 이미지 API를 호출하지 않으며, 승인된 공식 이미지가 없는 출시 글과 모든 팁 글은 이미지 없이 관리자 검토 대기로 저장됩니다.
+AI 소식은 **소재만 모읍니다.** 크롤러는 제목·요약·근거 URL 까지만 저장하고, 본문과 대표 이미지는
+관리자가 에디터에서 직접 만들어 발행합니다. AI 본문 작성과 Gemini 이미지 API 는 호출하지 않습니다.
 
 수동 검증:
 
@@ -254,6 +248,7 @@ GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app
 | `업로드 실패 401/403` | `CASKBYCASK_INTERNAL_KEY` 가 백엔드(`api.env`)와 정확하게 일치하는지 |
 | Slack 알림이 안 옴 | `SLACK_WEBHOOK_URL` 값, Slack Incoming Webhook 앱의 채널 권한, `SLACK_ALERTS_ENABLED=true` 확인 |
 | AI 비용 급증 | 핫딜은 `MAX_NEW_POSTS_PER_RUN`, `MAX_IMAGES_PER_POST`, AI 소식은 관리자 월 한도와 `AI_NEWS_GEMINI_HARD_MONTHLY_*` 조정 |
+| AI 소식 출처가 이상함 | 관리자 `소식(AI) > 출처 관리`에서 등록 출처를 직접 손본다. 수집은 등록 출처 밖으로 나가지 않는다 |
 | 같은 딜이 여러 건 올라옴 | `DUPLICATE_LOOKBACK_HOURS` 상향 또는 `DUPLICATE_JACCARD_THRESHOLD`, `DUPLICATE_NGRAM_THRESHOLD` 하향 |
 | 핫딜 AI 429 | `GEMINI_REQUEST_INTERVAL_SEC` 확인 또는 상향 (기본 5초) |
 | AI 소식 Gemini 429 | Google AI Studio 프로젝트의 무료 티어 rate limit 확인. 다음 2시간 실행을 기다리거나 후보 수를 낮춤 |

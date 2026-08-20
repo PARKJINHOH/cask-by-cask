@@ -25,16 +25,11 @@ public interface AiNewsTopicRepository extends JpaRepository<AiNewsTopic, Long> 
               and (:category is null or t.category = :category)
               and (:keyword is null
                    or lower(t.title) like concat('%', :keyword, '%') escape '!'
-                   or lower(t.normalizedKey) like concat('%', :keyword, '%') escape '!'
-                   or lower(t.aliases) like concat('%', :keyword, '%') escape '!')
+                   or lower(t.memo) like concat('%', :keyword, '%') escape '!')
             order by t.createdAt desc
             """)
     Page<AiNewsTopic> search(@Param("status") AiNewsTopicStatus status,
                              @Param("category") AiNewsCategory category,
                              @Param("keyword") String keyword,
                              Pageable pageable);
-
-    List<AiNewsTopic> findByStatusOrderByCreatedAtAsc(AiNewsTopicStatus status);
-    Optional<AiNewsTopic> findByNormalizedKey(String normalizedKey);
-    boolean existsByNormalizedKey(String normalizedKey);
 }

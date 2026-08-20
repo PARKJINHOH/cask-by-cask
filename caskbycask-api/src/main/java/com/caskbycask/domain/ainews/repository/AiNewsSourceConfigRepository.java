@@ -14,13 +14,13 @@ public interface AiNewsSourceConfigRepository extends JpaRepository<AiNewsSource
 
     /**
      * 관리자 출처 목록. keyword 는 출처 이름·도메인을 함께 훑는다(소문자 + '!' 이스케이프해서 넘길 것).
-     * blocked 는 항상 확정된 값을 받는다 — 기본 목록은 false(차단 숨김)를 넘긴다.
+     * autoDiscovered 는 자동 등록 시절에 쌓인 옛 행만 골라 정리할 때 쓴다.
      */
     @Query("""
             select s from AiNewsSourceConfig s
-            where s.blocked = :blocked
-              and (:sourceType is null or s.sourceType = :sourceType)
+            where (:sourceType is null or s.sourceType = :sourceType)
               and (:enabled is null or s.enabled = :enabled)
+              and (:autoDiscovered is null or s.autoDiscovered = :autoDiscovered)
               and (:keyword is null
                    or lower(s.sourceName) like concat('%', :keyword, '%') escape '!'
                    or lower(s.domain) like concat('%', :keyword, '%') escape '!')
@@ -28,12 +28,11 @@ public interface AiNewsSourceConfigRepository extends JpaRepository<AiNewsSource
             """)
     Page<AiNewsSourceConfig> search(@Param("sourceType") AiNewsSourceType sourceType,
                                     @Param("enabled") Boolean enabled,
-                                    @Param("blocked") boolean blocked,
+                                    @Param("autoDiscovered") Boolean autoDiscovered,
                                     @Param("keyword") String keyword,
                                     Pageable pageable);
 
     List<AiNewsSourceConfig> findByEnabledTrueOrderBySourceNameAsc();
-    List<AiNewsSourceConfig> findByBlockedTrueOrderBySourceNameAsc();
     List<AiNewsSourceConfig> findByDomain(String domain);
     boolean existsByDomainAndPathPrefix(String domain, String pathPrefix);
     boolean existsByDomainAndPathPrefixAndIdNot(String domain, String pathPrefix, Long id);

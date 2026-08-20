@@ -91,32 +91,27 @@ class SearchSource:
 
 
 @dataclass
-class DraftArticle:
-    article_type: str
+class NewsLead:
+    """AI 가 물어온 소재. 본문은 없다 — 관리자가 근거 URL 을 보고 직접 쓴다."""
+
     category: str
     title: str
-    content_html: str
-    dedupe_key: str
-    semantic_fingerprint: str
-    confidence: float
+    summary: str
+    #: 같은 사건을 다시 잡았을 때 걸러 내는 안정 키. 백엔드 dedupeKey 로 그대로 간다.
+    event_key: str
     source_indexes: list[int]
-    image_prompt: str
-    hashtags: list[str] = field(default_factory=list)
-    topic_id: int | None = None
-    image_url: str | None = None
-    image_kind: str | None = None
-    image_rights_evidence: str | None = None
+    confidence: float = 0.0
     model_name: str | None = None
-    auto_publish_requested: bool = True
-    generation_warning: str | None = None
+
+    @property
+    def dedupe_key(self) -> str:
+        return f"release:{self.event_key}"
 
 
 @dataclass
 class UsageAccumulator:
     input_tokens: int = 0
     output_tokens: int = 0
-    image_count: int = 0
-    estimated_cost_usd: float = 0.0
     by_model: dict[str, dict[str, int]] = field(default_factory=dict)
 
     def add_text(self, model: str, input_tokens: int, output_tokens: int) -> None:
@@ -126,6 +121,3 @@ class UsageAccumulator:
         entry["input"] += max(0, input_tokens)
         entry["output"] += max(0, output_tokens)
 
-    def add_image(self, estimated_cost_usd: float) -> None:
-        self.image_count += 1
-        self.estimated_cost_usd += max(0.0, estimated_cost_usd)

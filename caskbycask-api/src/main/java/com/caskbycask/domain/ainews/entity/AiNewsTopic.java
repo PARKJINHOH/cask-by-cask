@@ -8,6 +8,13 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+/**
+ * 관리자가 직접 쓸 팁·정보 글의 '쓸 거리' 메모.
+ *
+ * <p>예전에는 AI 자동화가 다음에 쓸 주제를 고르는 큐였다 — 그래서 정규화 키(중복 판정용),
+ * 동의어, 재발행 허용, 상태 다섯 가지가 필요했다. 지금은 AI 가 팁 글을 쓰지 않으므로
+ * 사람이 읽는 메모 이상일 필요가 없다.
+ */
 @Entity
 @Table(name = "ai_news_topics")
 @Getter
@@ -23,52 +30,34 @@ public class AiNewsTopic extends BaseTimeEntity {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(nullable = false, length = 255, unique = true)
-    private String normalizedKey;
-
-    @Column(columnDefinition = "TEXT")
-    private String aliases;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AiNewsCategory category;
 
+    @Column(columnDefinition = "TEXT")
+    private String memo;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
-    private AiNewsTopicStatus status = AiNewsTopicStatus.READY;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private boolean aiSuggested = false;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private boolean allowRepublish = false;
+    private AiNewsTopicStatus status = AiNewsTopicStatus.PLANNED;
 
     private LocalDateTime lastPublishedAt;
 
-    public void update(String title, String aliases, AiNewsCategory category,
-                       AiNewsTopicStatus status, boolean allowRepublish) {
+    public void update(String title, AiNewsCategory category, String memo, AiNewsTopicStatus status) {
         this.title = title;
-        this.aliases = aliases;
         this.category = category;
+        this.memo = memo;
         this.status = status;
-        this.allowRepublish = allowRepublish;
     }
 
     public void markPublished(LocalDateTime publishedAt) {
         this.lastPublishedAt = publishedAt;
-        this.status = AiNewsTopicStatus.COMPLETED;
-        this.allowRepublish = false;
+        this.status = AiNewsTopicStatus.DONE;
     }
 
-    public void markDuplicateBlocked() {
-        this.status = AiNewsTopicStatus.BLOCKED;
-        this.allowRepublish = false;
-    }
-
-    public void markHold() {
-        if (this.status != AiNewsTopicStatus.COMPLETED) this.status = AiNewsTopicStatus.HOLD;
+    /** 연결된 글이 반려·삭제되면 다시 '쓸 예정'으로 돌린다. */
+    public void markPlanned() {
+        this.status = AiNewsTopicStatus.PLANNED;
     }
 }

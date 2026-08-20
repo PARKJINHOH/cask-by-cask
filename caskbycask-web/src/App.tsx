@@ -69,7 +69,6 @@ const AdminEmojiPage = lazy(() => import('@/views-spa/admin/AdminEmojiPage'))
 const AdminPrefixPage = lazy(() => import('@/views-spa/admin/AdminPrefixPage'))
 const AdminAiNewsPage = lazy(() => import('@/views-spa/admin/AdminAiNewsPage'))
 const AdminAiNewsFormPage = lazy(() => import('@/views-spa/admin/AdminAiNewsFormPage'))
-const AdminAiNewsRequestDetailPage = lazy(() => import('@/views-spa/admin/AdminAiNewsRequestDetailPage'))
 const AdminScorePage = lazy(() => import('@/views-spa/admin/AdminScorePage'))
 const AdminLevelPage = lazy(() => import('@/views-spa/admin/AdminLevelPage'))
 const TermsPage = lazy(() => import('@/views-spa/legal/TermsPage'))
@@ -242,7 +241,6 @@ export default function App() {
               <Route path="community/post-reports" element={<AdminPostReportPage />} />
               <Route path="community/ai-news" element={<AdminAiNewsPage />} />
               <Route path="community/ai-news/new" element={<AdminAiNewsFormPage />} />
-              <Route path="community/ai-news/requests/:requestId" element={<AdminAiNewsRequestDetailPage />} />
               <Route path="community/ai-news/:id/edit" element={<AdminAiNewsFormPage />} />
               <Route path="social" element={<AdminSocialPage />} />
               <Route path="youtube" element={<AdminYoutubePage />} />

@@ -15,6 +15,35 @@ ELIGIBLE_TYPES = {"OFFICIAL", "TRUSTED_MEDIA"}
 SEARCH_ONLY_DOMAINS = {"instagram.com"}
 DIRECT_REQUEST_ATTEMPTS = 2
 
+#: 실행마다 한 주종에 집중해서 검색한다. 위스키·와인·꼬냑을 한 쿼리에 몰아넣으면
+#: Tavily 검색어 상한(399자) 안에서 세 주종이 서로 밀어내 어느 쪽도 제대로 걸리지 않는다.
+CATEGORY_QUERIES = {
+    "WHISKY": "whisky whiskey bourbon single malt new release launch bottling 위스키 신제품 출시 국내 수입",
+    "WINE": "wine vintage release new cuvee launch 와인 신제품 출시 빈티지 국내 수입",
+    "COGNAC": "cognac XO VSOP new release launch 꼬냑 신제품 출시 국내 수입",
+}
+ROTATION_SLOTS = 10
+
+
+def rotation_category(run_index: int, ratios: dict[str, int] | None = None) -> str:
+    """이번 실행에서 집중할 주종을 고른다.
+
+    관리자 설정의 주종 비율(기본 60/20/20)을 ROTATION_SLOTS 회 주기의 슬롯 수로 바꿔 순환한다 —
+    60/20/20 이면 10회 중 위스키 6·와인 2·꼬냑 2 이다. 실행 순번만 있으면 정해지므로
+    따로 상태를 저장하지 않는다.
+    """
+    weights = {key: max(0, int((ratios or {}).get(key, default)))
+               for key, default in (("WHISKY", 60), ("WINE", 20), ("COGNAC", 20))}
+    total = sum(weights.values())
+    if total <= 0:
+        return "WHISKY"
+    schedule: list[str] = []
+    for category, weight in weights.items():
+        schedule.extend([category] * round(ROTATION_SLOTS * weight / total))
+    if not schedule:
+        return max(weights, key=weights.get)
+    return schedule[run_index % len(schedule)]
+
 
 def _get_public_url(
     url: str,
@@ -99,7 +128,13 @@ def _targeted_match(source: SearchSource, configs: list[dict]) -> dict | None:
 
 
 def collect_registered_sources(config: dict, search, api, log, timeout: int,
-                               allow_tavily: bool = True) -> list[SearchSource]:
+                               allow_tavily: bool = True, category: str = "WHISKY") -> list[SearchSource]:
+    """등록 출처(허용목록)에서만 출시 소식 근거를 모은다.
+
+    예전에는 이 함수 밖에서 도메인 무제한 일반 검색을 함께 돌렸는데, 거기서 물어온 도메인이
+    출처 목록에 자동 등록되면서 주류와 무관한 URL 이 끝없이 쌓였다. 지금은 이 함수가 유일한
+    발견 경로다 — 관리자가 등록하지 않은 도메인은 애초에 검색 대상이 아니다.
+    """
     configs = [item for item in config.get("sources", [])
                if item.get("enabled") and item.get("sourceType") in ELIGIBLE_TYPES
                and item.get("sourceUrl")]
@@ -132,8 +167,7 @@ def collect_registered_sources(config: dict, search, api, log, timeout: int,
                 for item in configs
             )[:800]
             targeted = search.search(
-                "latest official whisky wine cognac product release launch import 한국 출시 수입 신제품 "
-                f"{source_hints}",
+                f"{CATEGORY_QUERIES.get(category, CATEGORY_QUERIES['WHISKY'])} {source_hints}",
                 topic="news",
                 time_range="week",
                 include_domains=domains,
@@ -163,19 +197,4 @@ def collect_registered_sources(config: dict, search, api, log, timeout: int,
                 )
         except Exception as error:  # noqa: BLE001
             log.warning("공식 출처 수집 상태 보고 실패 source=%s: %s", item.get("sourceName"), error)
-    return collected
-
-
-def collect_reference_sources(urls: list[str], timeout: int) -> list[SearchSource]:
-    collected: list[SearchSource] = []
-    for url in urls[:3]:
-        domain = (urlsplit(url).hostname or "").lower().removeprefix("www.")
-        if not domain:
-            raise ValueError(f"참고 URL의 도메인을 확인할 수 없습니다: {url}")
-        collected.append(_direct_source({
-            "sourceUrl": url,
-            "sourceName": domain,
-            "domain": domain,
-            "sourceType": "UNAPPROVED",
-        }, timeout))
     return collected

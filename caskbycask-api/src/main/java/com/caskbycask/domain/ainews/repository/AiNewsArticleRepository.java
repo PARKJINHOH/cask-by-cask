@@ -61,14 +61,26 @@ public interface AiNewsArticleRepository extends JpaRepository<AiNewsArticle, Lo
     List<String> findSourceUrlsByPostIdAndStatus(@Param("postId") Long postId,
                                                   @Param("status") AiNewsArticleStatus status);
 
-    Optional<AiNewsArticle> findFirstByArticleTypeAndSemanticFingerprint(AiNewsArticleType articleType,
-                                                                          String semanticFingerprint);
-
     long countByStatus(AiNewsArticleStatus status);
 
-    boolean existsByTopicId(Long topicId);
+    /**
+     * 목록 한 페이지분 원고의 출처 도메인을 한 번에 읽는다.
+     * 행마다 {@code article.getSources()} 를 건드리면 페이지 크기만큼 쿼리가 늘어난다(N+1).
+     */
+    @Query("""
+            select s.article.id as articleId, s.domain as domain
+            from AiNewsArticleSource s
+            where s.article.id in :articleIds
+            order by s.id asc
+            """)
+    List<ArticleSourceDomain> findSourceDomainsByArticleIdIn(@Param("articleIds") Collection<Long> articleIds);
 
-    Optional<AiNewsArticle> findFirstByStatusOrderByRewriteRequestedAtAsc(AiNewsArticleStatus status);
+    interface ArticleSourceDomain {
+        Long getArticleId();
+        String getDomain();
+    }
+
+    boolean existsByTopicId(Long topicId);
 
     @Query("select a.id from AiNewsArticle a where a.status = :status " +
            "and a.scheduledAt is not null and a.scheduledAt <= :now order by a.scheduledAt asc")
@@ -78,13 +90,10 @@ public interface AiNewsArticleRepository extends JpaRepository<AiNewsArticle, Lo
 
     boolean existsByContentContainingAndStatusIn(String value, Collection<AiNewsArticleStatus> statuses);
 
-    @Query("select count(a) from AiNewsArticle a where a.articleType = :type and a.publishedAt >= :from")
-    long countSuccessfulPublicationsSince(@Param("type") AiNewsArticleType type,
-                                          @Param("from") LocalDateTime from);
-
-    @Query("select max(a.publishedAt) from AiNewsArticle a where a.articleType = :type")
-    LocalDateTime findLastSuccessfulPublishedAt(@Param("type") AiNewsArticleType type);
-
-    List<AiNewsArticle> findByArticleTypeAndStatusInOrderByCreatedAtAsc(
-            AiNewsArticleType articleType, Collection<AiNewsArticleStatus> statuses);
+    /**
+     * 오늘 만들어진 원고 수. 일일 한도는 발행이 아니라 <b>생성</b>을 기준으로 센다 —
+     * 발행은 관리자가 며칠 뒤에 할 수도 있어서 발행 기준으로는 수집을 조절할 수 없다.
+     */
+    @Query("select count(a) from AiNewsArticle a where a.articleType = :type and a.createdAt >= :from")
+    long countCreatedSince(@Param("type") AiNewsArticleType type, @Param("from") LocalDateTime from);
 }

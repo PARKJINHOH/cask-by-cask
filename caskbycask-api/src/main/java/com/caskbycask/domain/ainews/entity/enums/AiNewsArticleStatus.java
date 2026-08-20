@@ -8,6 +8,5 @@ public enum AiNewsArticleStatus {
     REJECTED,
     SKIPPED_DUPLICATE,
     FAILED,
-    DELETED,
-    REWRITE_REQUESTED
+    DELETED
 }

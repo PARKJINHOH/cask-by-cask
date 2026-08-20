@@ -8,9 +8,7 @@ import com.caskbycask.domain.ainews.entity.enums.AiNewsArticleType;
 import com.caskbycask.domain.ainews.entity.enums.AiNewsCategory;
 import com.caskbycask.domain.ainews.repository.*;
 import com.caskbycask.domain.community.repository.PostPrefixRepository;
-import com.caskbycask.domain.community.service.PostImageService;
 import com.caskbycask.domain.community.service.PostService;
-import com.caskbycask.domain.producer.repository.ProducerRepository;
 import com.caskbycask.domain.social.service.SocialPublishRequestService;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.config.JpaAuditingConfig;
@@ -54,8 +52,7 @@ class AiNewsArticleHashtagPersistenceTest {
                 mock(AiNewsSettingsRepository.class), articleRepository,
                 mock(AiNewsTopicRepository.class), mock(AiNewsSourceConfigRepository.class),
                 mock(AiNewsRunRepository.class), mock(AiNewsUsageRepository.class),
-                mock(UserRepository.class), mock(ProducerRepository.class),
-                mock(PostService.class), mock(PostImageService.class),
+                mock(UserRepository.class), mock(PostService.class),
                 mock(PostPrefixRepository.class), mock(AdminLogService.class),
                 mock(SocialPublishRequestService.class));
     }
@@ -77,8 +74,7 @@ class AiNewsArticleHashtagPersistenceTest {
 
         service.updateArticle(articleId, new AiNewsDtos.ArticleAdminUpdateRequest(
                 AiNewsCategory.WHISKY, "변경된 제목", "<p>변경된 본문</p>",
-                null, false, BigDecimal.ONE, null,
-                List.of("신제품", "위스키정보"), null), null);
+                null, false, List.of("신제품", "위스키정보"), null), null);
         articleRepository.flush();
         entityManager.clear();
 

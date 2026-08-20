@@ -70,20 +70,16 @@ except ModuleNotFoundError:
 
 from models import PostDetail, RawPost
 from analyzer.gemini_analyzer import GeminiAnalyzer
-from news_models import (DraftArticle, SearchSource, UsageAccumulator, canonicalize_url,
+from news_models import (NewsLead, SearchSource, UsageAccumulator, canonicalize_url,
                          local_datetime_string, truncate_utf16)
-from news_gemini import AI_NEWS_RETRY_MAX_OUTPUT_TOKENS, GeminiNewsWriter
-from news_main import _drop_blocked_sources, _process_draft
-from alerts.ai_news_error_alert import (
-    append_error_detail,
-    append_review_detail,
-    format_error_alert,
-    format_review_alert,
-)
-from news_prompts import AI_NEWS_MIN_TEXT_LENGTH, AI_NEWS_WRITING_PROMPT
+from news_gemini import GeminiLeadFinder
+from news_main import _lead_payload, _process_lead
+from alerts.ai_news_error_alert import append_error_detail, format_error_alert
+from news_prompts import AI_NEWS_LEAD_PROMPT, AI_NEWS_TITLE_MAX_LENGTH
 from news_tavily import TavilyNewsSearch
-from news_source_config import is_blocked_source, matching_source_config
-from news_official import _direct_source, _get_public_url, _targeted_match, collect_registered_sources
+from news_source_config import matching_source_config
+from news_official import (CATEGORY_QUERIES, _direct_source, _get_public_url, _targeted_match,
+                           collect_registered_sources, rotation_category)
 
 
 def config_value(config, name: str):
@@ -199,47 +195,10 @@ class NewsModelTest(unittest.TestCase):
         usage = UsageAccumulator()
 
         usage.add_text("gpt-test", -1, 7)
-        usage.add_image(-2.5)
 
         self.assertEqual(0, usage.input_tokens)
         self.assertEqual(7, usage.output_tokens)
-        self.assertEqual(1, usage.image_count)
-        self.assertEqual(0.0, usage.estimated_cost_usd)
         self.assertEqual({"input": 0, "output": 7}, usage.by_model["gpt-test"])
-
-    def test_tip_draft_requires_its_topic_link_in_payload_model(self) -> None:
-        draft = DraftArticle(
-            article_type="TIP_INFO",
-            category="WHISKY",
-            title="셰리 캐스크란?",
-            content_html="<p>설명</p>",
-            dedupe_key="topic:sherry-cask",
-            semantic_fingerprint="sherry-cask-basics",
-            confidence=0.95,
-            source_indexes=[0],
-            image_prompt="educational cask illustration",
-            topic_id=3,
-        )
-
-        self.assertEqual(3, draft.topic_id)
-        self.assertEqual("TIP_INFO", draft.article_type)
-
-    def test_generated_hashtags_are_cleaned_and_deduplicated(self) -> None:
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.writer_model = "gemini-test"
-        result = writer._draft_from_result(
-            "RELEASE_NEWS", "WHISKY", "release:test", None, [0], {
-                "title": "테스트 위스키 출시",
-                "content_html": f"<p>{'본문' * 700}</p>",
-                "confidence": 0.95,
-                "semantic_fingerprint": "test whisky release",
-                "image_prompt": "editorial whisky illustration",
-                "hashtags": ["#위스키", "위스키", " 신제품 ", "싱글 몰트"],
-            },
-        )
-
-        self.assertEqual(["위스키", "신제품", "싱글몰트"], result.hashtags)
-        self.assertEqual("release:test", result.dedupe_key)
 
     def test_ai_news_error_alert_includes_stage_context_and_exception(self) -> None:
         details: list[dict[str, str]] = []
@@ -264,34 +223,6 @@ class NewsModelTest(unittest.TestCase):
         self.assertIn("출시 소식 후보", body)
         self.assertIn("eventKey=new-release", body)
         self.assertIn("RuntimeError: Gemini 응답 형식 오류", body)
-
-    def test_ai_news_review_alert_includes_length_diagnostics(self) -> None:
-        details: list[dict[str, str]] = []
-        append_review_detail(
-            details,
-            "출시 소식 후보",
-            "1차=812자(finishReason=STOP), 2차=934자(finishReason=STOP); 근거=1건/1,420자",
-            eventKey="short-release",
-            articleId=91,
-        )
-
-        body = format_review_alert(
-            74,
-            "ai-news-20260727T031702Z",
-            {
-                "candidateCount": 1,
-                "publishedCount": 0,
-                "reviewCount": 1,
-                "duplicateCount": 0,
-                "errorCount": 0,
-            },
-            details,
-        )
-
-        self.assertIn("분량 미달 검토 원고", body)
-        self.assertIn("eventKey=short-release", body)
-        self.assertIn("2차=934자", body)
-
 
 class NewsSourceConfigTest(unittest.TestCase):
     @patch("news_official.time.sleep")
@@ -378,45 +309,37 @@ class NewsSourceConfigTest(unittest.TestCase):
 
         self.assertIsNone(matched)
 
-    def test_blocked_domain_scope_covers_every_path(self) -> None:
-        blocked = [{"domain": "spam-news.example", "pathPrefix": ""}]
+    def test_release_search_rotates_one_category_per_run(self) -> None:
+        """실행 순번만으로 집중 주종이 정해지고, 비율대로 순환한다."""
+        ratios = {"WHISKY": 60, "WINE": 20, "COGNAC": 20}
+        picks = [rotation_category(index, ratios) for index in range(10)]
 
-        self.assertTrue(is_blocked_source(
-            "https://spam-news.example/2026/whisky", "spam-news.example", blocked))
-        self.assertTrue(is_blocked_source(
-            "https://www.spam-news.example/", "spam-news.example", blocked))
-        self.assertFalse(is_blocked_source(
-            "https://other.example/whisky", "other.example", blocked))
+        self.assertEqual(6, picks.count("WHISKY"))
+        self.assertEqual(2, picks.count("WINE"))
+        self.assertEqual(2, picks.count("COGNAC"))
+        # 같은 순번이면 항상 같은 주종이어야 별도 상태 저장 없이 순환이 성립한다.
+        self.assertEqual(picks[3], rotation_category(13, ratios))
 
-    def test_blocked_path_scope_leaves_sibling_paths_usable(self) -> None:
-        blocked = [{"domain": "instagram.com", "pathPrefix": "/spam_account"}]
+    def test_rotation_falls_back_to_whisky_when_every_ratio_is_zero(self) -> None:
+        self.assertEqual("WHISKY", rotation_category(0, {"WHISKY": 0, "WINE": 0, "COGNAC": 0}))
 
-        self.assertTrue(is_blocked_source(
-            "https://instagram.com/spam_account/p/123", "instagram.com", blocked))
-        # 접두사가 이름의 일부로만 겹치는 계정은 차단 대상이 아니다.
-        self.assertFalse(is_blocked_source(
-            "https://instagram.com/spam_account_fan", "instagram.com", blocked))
-        self.assertFalse(is_blocked_source(
-            "https://instagram.com/metabevkorea", "instagram.com", blocked))
+    def test_registered_search_is_domain_restricted_and_category_focused(self) -> None:
+        """허용목록 밖 도메인은 검색 대상이 아니다 — 출처 목록이 불어나던 통로를 막은 부분이다."""
+        config = {"sources": [{
+            "id": 1, "sourceName": "공식", "sourceUrl": "https://whiskymag.example/news",
+            "domain": "whiskymag.example", "pathPrefix": "/news",
+            "sourceType": "TRUSTED_MEDIA", "enabled": True,
+        }]}
+        search = Mock()
+        search.search.return_value = []
+        api = Mock()
 
-    def test_drop_blocked_sources_removes_only_blocked_candidates(self) -> None:
-        sources = [
-            SearchSource(title="차단", url="https://spam-news.example/a",
-                         domain="spam-news.example", content=""),
-            SearchSource(title="정상", url="https://whiskymag.example/b",
-                         domain="whiskymag.example", content=""),
-        ]
+        with patch("news_official._direct_source", side_effect=ValueError("skip")):
+            collect_registered_sources(config, search, api, Mock(), 5, category="WINE")
 
-        kept = _drop_blocked_sources(
-            sources, {"blockedSources": [{"domain": "spam-news.example", "pathPrefix": ""}]}, Mock())
-
-        self.assertEqual(["whiskymag.example"], [s.domain for s in kept])
-
-    def test_drop_blocked_sources_is_a_noop_without_a_block_list(self) -> None:
-        sources = [SearchSource(title="정상", url="https://whiskymag.example/b",
-                                domain="whiskymag.example", content="")]
-
-        self.assertEqual(sources, _drop_blocked_sources(sources, {}, Mock()))
+        kwargs = search.search.call_args.kwargs
+        self.assertEqual(["whiskymag.example"], kwargs["include_domains"])
+        self.assertIn(CATEGORY_QUERIES["WINE"], search.search.call_args.args[0])
 
     def test_social_post_can_be_assigned_to_registered_account_by_handle_evidence(self) -> None:
         configs = [{
@@ -540,26 +463,35 @@ class GeminiDealAnalyzerTest(unittest.TestCase):
         self.assertEqual("application/json", config_value(call["config"], "response_mime_type"))
 
 
-class GeminiNewsWriterTest(unittest.TestCase):
-    def test_writer_prompt_contains_editable_seo_and_length_rules(self) -> None:
-        self.assertIn("검색 엔진 최적화 (SEO)", AI_NEWS_WRITING_PROMPT)
-        self.assertIn(f"{AI_NEWS_MIN_TEXT_LENGTH:,}자 이상", AI_NEWS_WRITING_PROMPT)
+class GeminiLeadFinderTest(unittest.TestCase):
+    def test_lead_prompt_keeps_title_accuracy_rules(self) -> None:
+        """본문 규칙은 사라졌지만 제목을 틀리게 만드는 규칙은 남아야 한다."""
+        self.assertIn("발표 · 공개 · 출시 · 판매 시점 구분", AI_NEWS_LEAD_PROMPT)
+        self.assertIn("해외 출시를 국내 출시로 오인하지 않는다", AI_NEWS_LEAD_PROMPT)
+        self.assertIn("고유명사 보존", AI_NEWS_LEAD_PROMPT)
+        self.assertIn("공식 한국어 제품명", AI_NEWS_LEAD_PROMPT)
+        self.assertIn(f"{AI_NEWS_TITLE_MAX_LENGTH}자 이내", AI_NEWS_LEAD_PROMPT)
 
-    def test_writer_prompt_protects_official_names_and_press_release_tone(self) -> None:
-        self.assertIn("Anti-Hallucination for Proper Nouns", AI_NEWS_WRITING_PROMPT)
-        self.assertIn("Official Brand/Product Names", AI_NEWS_WRITING_PROMPT)
-        self.assertIn("Loanword Consistency", AI_NEWS_WRITING_PROMPT)
-        self.assertIn("Tone & Manner", AI_NEWS_WRITING_PROMPT)
-        self.assertIn("한국어 공식 제품명", AI_NEWS_WRITING_PROMPT)
-        self.assertIn("합니다/습니다", AI_NEWS_WRITING_PROMPT)
+    def test_lead_prompt_covers_releases_events_and_awards(self) -> None:
+        for wanted in ("신제품 출시", "국내 수입", "이벤트", "시음회", "어워드 및 수상 결과"):
+            self.assertIn(wanted, AI_NEWS_LEAD_PROMPT)
+        # 제품 변경 소식은 수집 대상이 아니다.
+        self.assertIn("단종", AI_NEWS_LEAD_PROMPT.split("다음은 제외한다.", 1)[1])
 
-    def test_release_classifier_accepts_other_category(self) -> None:
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.classifier_model = "gemini-test-lite"
-        writer._request_json = Mock(return_value={"candidates": [{
+    def test_lead_prompt_does_not_ask_for_a_body(self) -> None:
+        """본문 작성 규칙이 되살아나면 관리자가 버릴 원고를 다시 만들게 된다."""
+        for gone in ("content_html", "HTML 태그", "Tone & Manner", "해시태그"):
+            self.assertNotIn(gone, AI_NEWS_LEAD_PROMPT)
+        self.assertIn("본문은 작성하지 않는다", AI_NEWS_LEAD_PROMPT)
+
+    def test_lead_finder_accepts_other_category_and_builds_dedupe_key(self) -> None:
+        finder = GeminiLeadFinder.__new__(GeminiLeadFinder)
+        finder.classifier_model = "gemini-test-lite"
+        finder._request_json = Mock(return_value={"leads": [{
             "category": "OTHER",
             "event_key": "new-rum-release",
-            "summary": "신규 럼 출시",
+            "title": "신규 럼 출시",
+            "summary": "신규 럼 출시 공식 발표입니다.",
             "source_indexes": [0],
             "confidence": 0.92,
         }]})
@@ -570,112 +502,11 @@ class GeminiNewsWriterTest(unittest.TestCase):
             content="신규 럼 출시 공식 발표",
         )
 
-        result = writer.classify_releases([source], 1)
+        leads = finder.find_leads([source], 1)
 
-        self.assertEqual("OTHER", result[0]["category"])
-
-    def test_short_article_is_rewritten_once_to_meet_minimum_length(self) -> None:
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.writer_model = "gemini-test-lite"
-        short = {"title": "짧은 글", "content_html": "<p>짧은 본문</p>"}
-        long = {"title": "보강한 글", "content_html": f"<p>{'가' * 1000}</p>"}
-        writer._request_json = Mock(side_effect=[short, long])
-
-        result = writer._request_article({"task": "테스트"})
-
-        self.assertEqual(long, result)
-        self.assertEqual(2, writer._request_json.call_count)
-        revision_payload = writer._request_json.call_args_list[1].args[2]
-        self.assertIn("revision_request", revision_payload)
-        self.assertEqual(4, revision_payload["length_validation"]["previous_plain_text_length"])
-        self.assertEqual(996, revision_payload["length_validation"]["shortfall"])
-
-    def test_second_short_article_is_kept_for_review_with_diagnostics(self) -> None:
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.writer_model = "gemini-test-lite"
-        first = {
-            "title": "첫 원고",
-            "content_html": f"<p>{'가' * 700}</p>",
-            "confidence": 0.91,
-            "semantic_fingerprint": "first",
-            "image_prompt": "editorial image",
-            "hashtags": [],
-        }
-        second = {
-            **first,
-            "title": "보강 원고",
-            "content_html": f"<p>{'나' * 900}</p>",
-        }
-        writer._request_json = Mock(side_effect=[first, second])
-
-        result = writer._request_article(
-            {
-                "task": "출시 소식 원고 작성과 최종 사실 검증",
-                "evidence": [{"text": "근거 본문"}],
-            },
-            allow_short_review=True,
-        )
-        draft = writer._draft_from_result(
-            "RELEASE_NEWS",
-            "WHISKY",
-            "release:short",
-            None,
-            [0],
-            result,
-        )
-
-        self.assertEqual("보강 원고", draft.title)
-        self.assertFalse(draft.auto_publish_requested)
-        self.assertIn("1차=700자", draft.generation_warning)
-        self.assertIn("2차=900자", draft.generation_warning)
-        self.assertIn("근거=1건/4자", draft.generation_warning)
-
-    def test_second_short_rewrite_does_not_replace_existing_article(self) -> None:
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.writer_model = "gemini-test-lite"
-        short = {
-            "title": "짧은 원고",
-            "content_html": f"<p>{'가' * 800}</p>",
-        }
-        writer._request_json = Mock(side_effect=[short, short])
-
-        with self.assertRaisesRegex(
-            RuntimeError,
-            r"최소 1,000자보다 짧습니다.*1차=800자.*2차=800자",
-        ):
-            writer._request_article({"task": "기존 AI 소식 원고 재작성"})
-
-    def test_retry_sets_output_limit_only_after_max_tokens_finish_reason(self) -> None:
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.writer_model = "gemini-test-lite"
-        results = [
-            {"title": "첫 원고", "content_html": f"<p>{'가' * 700}</p>"},
-            {"title": "보강 원고", "content_html": f"<p>{'나' * 1000}</p>"},
-        ]
-
-        def request_json(*args, **kwargs):
-            index = request_json.call_count
-            request_json.call_count += 1
-            writer._last_response_metadata = {
-                "finishReason": "MAX_TOKENS" if index == 0 else "STOP",
-                "responseTextLength": 900 if index == 0 else 1300,
-            }
-            return results[index]
-
-        request_json.call_count = 0
-        writer._request_json = Mock(side_effect=request_json)
-
-        result = writer._request_article({"task": "테스트"})
-
-        self.assertEqual("보강 원고", result["title"])
-        self.assertNotIn("max_output_tokens", writer._request_json.call_args_list[0].kwargs)
-        self.assertEqual(
-            AI_NEWS_RETRY_MAX_OUTPUT_TOKENS,
-            writer._request_json.call_args_list[1].kwargs["max_output_tokens"],
-        )
-
-    def test_plain_text_length_excludes_html_and_whitespace(self) -> None:
-        self.assertEqual(5, GeminiNewsWriter._plain_text_length("<h2>가 나</h2><p>다&amp;라</p>"))
+        self.assertEqual("OTHER", leads[0].category)
+        self.assertEqual("신규 럼 출시", leads[0].title)
+        self.assertEqual("release:new-rum-release", leads[0].dedupe_key)
 
     def test_json_response_and_thinking_tokens_are_counted(self) -> None:
         response = types.SimpleNamespace(
@@ -690,55 +521,19 @@ class GeminiNewsWriterTest(unittest.TestCase):
             ),
         )
         generate = Mock(return_value=response)
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.client = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=generate))
-        writer.usage = UsageAccumulator()
+        finder = GeminiLeadFinder.__new__(GeminiLeadFinder)
+        finder.client = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=generate))
+        finder.usage = UsageAccumulator()
 
         schema = {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]}
-        result = writer._request_json("gemini-test-lite", "system", {"value": "테스트"}, schema)
+        result = finder._request_json("gemini-test-lite", "system", {"value": "테스트"}, schema)
 
         self.assertTrue(result["ok"])
-        self.assertEqual(11, writer.usage.input_tokens)
-        self.assertEqual(12, writer.usage.output_tokens)
-        self.assertEqual("STOP", writer._last_response_metadata["finishReason"])
-        self.assertEqual(len(response.text), writer._last_response_metadata["responseTextLength"])
+        self.assertEqual(11, finder.usage.input_tokens)
+        self.assertEqual(12, finder.usage.output_tokens)
         config = generate.call_args.kwargs["config"]
         self.assertEqual("application/json", config_value(config, "response_mime_type"))
         self.assertEqual(schema, config_value(config, "response_json_schema"))
-
-    def test_json_request_applies_explicit_output_limit_when_requested(self) -> None:
-        response = types.SimpleNamespace(
-            text='{"ok": true}',
-            candidates=[types.SimpleNamespace(
-                finish_reason=types.SimpleNamespace(name="STOP"),
-            )],
-            usage_metadata=None,
-        )
-        generate = Mock(return_value=response)
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.client = types.SimpleNamespace(
-            models=types.SimpleNamespace(generate_content=generate)
-        )
-        writer.usage = UsageAccumulator()
-        schema = {
-            "type": "object",
-            "properties": {"ok": {"type": "boolean"}},
-            "required": ["ok"],
-        }
-
-        writer._request_json(
-            "gemini-test-lite",
-            "system",
-            {"value": "테스트"},
-            schema,
-            max_output_tokens=AI_NEWS_RETRY_MAX_OUTPUT_TOKENS,
-        )
-
-        config = generate.call_args.kwargs["config"]
-        self.assertEqual(
-            AI_NEWS_RETRY_MAX_OUTPUT_TOKENS,
-            config_value(config, "max_output_tokens"),
-        )
 
     def test_malformed_json_is_retried_once(self) -> None:
         responses = [
@@ -746,11 +541,11 @@ class GeminiNewsWriterTest(unittest.TestCase):
             types.SimpleNamespace(text='{"title":"완성"}', usage_metadata=None),
         ]
         generate = Mock(side_effect=responses)
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.client = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=generate))
-        writer.usage = UsageAccumulator()
+        finder = GeminiLeadFinder.__new__(GeminiLeadFinder)
+        finder.client = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=generate))
+        finder.usage = UsageAccumulator()
 
-        result = writer._request_json(
+        result = finder._request_json(
             "gemini-test-lite", "system", {"value": "테스트"},
             {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]},
         )
@@ -758,76 +553,16 @@ class GeminiNewsWriterTest(unittest.TestCase):
         self.assertEqual("완성", result["title"])
         self.assertEqual(2, generate.call_count)
 
-    def test_final_semantic_duplicate_judgement_is_normalized(self) -> None:
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.classifier_model = "gemini-test-lite"
-        writer._request_json = Mock(return_value={
-            "duplicate": True,
-            "semantic_similarity": 0.93,
-            "matched_article_id": "41",
-            "reason": "핵심 질문과 결론이 같습니다.",
-        })
-        draft = DraftArticle(
-            "TIP_INFO", "WHISKY", "셰리 캐스크 이해하기", "<h2>핵심</h2><p>설명</p>",
-            "tip:new-sherry", "sherry cask basics", 0.95, [0], "educational image", topic_id=9,
-        )
-
-        result = writer.judge_tip_duplicate(
-            {"title": "셰리 캐스크 안내", "normalizedKey": "new-sherry", "category": "WHISKY"},
-            draft,
-            [{"articleId": 41, "title": "셰리 캐스크란?", "contentOutline": "정의 | 숙성 영향"}],
-        )
-
-        self.assertTrue(result["duplicate"])
-        self.assertEqual(0.93, result["semanticSimilarity"])
-        self.assertEqual(41, result["matchedArticleId"])
-
-    def test_image_response_is_written_and_usage_is_counted(self) -> None:
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.client = types.SimpleNamespace(interactions=types.SimpleNamespace(create=Mock(return_value=
-            types.SimpleNamespace(output_image=types.SimpleNamespace(
-                data=base64.b64encode(b"image").decode()))
-        )))
-        writer.image_model = "gemini-image-test"
-        writer.image_estimated_cost_usd = 0.12
-        writer.image_generation_enabled = True
-        writer.usage = UsageAccumulator()
-
-        with tempfile.TemporaryDirectory() as temp:
-            path = writer.generate_image("unbranded cask diagram", Path(temp), "tip:test")
-            self.assertEqual(b"image", path.read_bytes())
-            self.assertEqual(".jpg", path.suffix)
-            response_format = writer.client.interactions.create.call_args.kwargs["response_format"]
-            self.assertEqual("image/jpeg", response_format["mime_type"])
-
-        self.assertEqual(1, writer.usage.image_count)
-        self.assertEqual(0.12, writer.usage.estimated_cost_usd)
-
-    def test_disabled_image_generation_does_not_call_provider(self) -> None:
-        create = Mock()
-        writer = GeminiNewsWriter.__new__(GeminiNewsWriter)
-        writer.client = types.SimpleNamespace(interactions=types.SimpleNamespace(create=create))
-        writer.image_generation_enabled = False
-
-        with tempfile.TemporaryDirectory() as temp:
-            with self.assertRaisesRegex(RuntimeError, "비활성화"):
-                writer.generate_image("image", Path(temp), "tip:test")
-
-        create.assert_not_called()
-
-    def test_short_new_draft_skips_image_and_is_submitted_for_review(self) -> None:
-        draft = DraftArticle(
-            article_type="RELEASE_NEWS",
+    def test_lead_is_saved_without_a_body(self) -> None:
+        """소재에는 본문이 없다. 관리자가 근거를 보고 직접 쓴다."""
+        lead = NewsLead(
             category="WHISKY",
-            title="검토 원고",
-            content_html="<p>짧은 본문</p>",
-            dedupe_key="release:short-review",
-            semantic_fingerprint="short review",
-            confidence=0.9,
+            title="발베니 14년 캐리비안 캐스크 국내 출시",
+            summary="윌리엄그랜트앤선즈코리아가 9월 정식 수입한다고 발표했습니다.",
+            event_key="balvenie-14-caribbean",
             source_indexes=[0],
-            image_prompt="editorial image",
-            auto_publish_requested=False,
-            generation_warning="1차=700자, 2차=900자",
+            confidence=0.9,
+            model_name="gemini-test-lite",
         )
         source = SearchSource(
             title="Official release",
@@ -837,26 +572,41 @@ class GeminiNewsWriterTest(unittest.TestCase):
         )
         api = Mock()
         api.check_duplicate.return_value = {"duplicate": False}
-        api.submit_article.return_value = {"id": 92, "status": "PENDING_REVIEW"}
-        writer = Mock()
-        writer.image_generation_enabled = True
+        api.submit_lead.return_value = {"id": 92, "status": "PENDING_REVIEW"}
 
-        with tempfile.TemporaryDirectory() as temp:
-            response = _process_draft(
-                api,
-                writer,
-                draft,
-                [source],
-                Path(temp),
-                {},
-                Mock(),
-            )
+        response = _process_lead(api, lead, [source], Mock())
 
         self.assertEqual("PENDING_REVIEW", response["status"])
-        submitted = api.submit_article.call_args.args[0]
-        self.assertFalse(submitted["autoPublishRequested"])
-        writer.generate_image.assert_not_called()
-        api.upload_image.assert_not_called()
+        submitted = api.submit_lead.call_args.args[0]
+        self.assertEqual("release:balvenie-14-caribbean", submitted["dedupeKey"])
+        self.assertIn("9월 정식 수입", submitted["leadSummary"])
+        self.assertEqual(1, len(submitted["sources"]))
+        # 본문·이미지·해시태그는 크롤러가 만들지 않는다.
+        for absent in ("content", "imageUrl", "hashtags", "semanticFingerprint", "autoPublishRequested"):
+            self.assertNotIn(absent, submitted)
+
+    def test_duplicate_lead_is_not_submitted(self) -> None:
+        lead = NewsLead(category="WHISKY", title="중복", summary="요약",
+                        event_key="dup", source_indexes=[0], confidence=0.9)
+        source = SearchSource(title="t", url="https://example.com/a", domain="example.com", content="c")
+        api = Mock()
+        api.check_duplicate.return_value = {"duplicate": True, "articleId": 7}
+
+        self.assertIsNone(_process_lead(api, lead, [source], Mock()))
+        api.submit_lead.assert_not_called()
+
+    def test_lead_payload_uses_the_first_source_for_the_canonical_hash(self) -> None:
+        lead = NewsLead(category="WINE", title="빈티지 공개", summary="요약",
+                        event_key="vintage-reveal", source_indexes=[1], confidence=0.8)
+        sources = [
+            SearchSource(title="a", url="https://a.example/1", domain="a.example", content="a"),
+            SearchSource(title="b", url="https://b.example/2", domain="b.example", content="b"),
+        ]
+
+        payload = _lead_payload(lead, sources)
+
+        self.assertEqual(64, len(payload["canonicalUrlHash"]))
+        self.assertEqual(["b.example"], [s["domain"] for s in payload["sources"]])
 
 
 if __name__ == "__main__":

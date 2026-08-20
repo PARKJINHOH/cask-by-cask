@@ -50,8 +50,9 @@ public class AiNewsArticle extends BaseTimeEntity {
     @Column(nullable = false, length = 255, unique = true)
     private String dedupeKey;
 
+    /** AI 가 물어온 소재의 요약. 본문이 아니다 — 관리자가 기사를 쓸지 판단하고 쓰는 동안 참고한다. */
     @Column(length = 1000)
-    private String semanticFingerprint;
+    private String leadSummary;
 
     private Long postId;
     private Long deletedPostId;
@@ -73,12 +74,6 @@ public class AiNewsArticle extends BaseTimeEntity {
     @Column(length = 1000)
     private String imageUrl;
 
-    @Column(length = 30)
-    private String imageKind;
-
-    @Column(length = 1000)
-    private String imageRightsEvidence;
-
     @Column(length = 100)
     private String modelName;
 
@@ -87,12 +82,6 @@ public class AiNewsArticle extends BaseTimeEntity {
 
     @Column(length = 2000)
     private String failureReason;
-
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String rewritePrompt;
-
-    private LocalDateTime rewriteRequestedAt;
 
     private LocalDateTime scheduledAt;
 
@@ -115,15 +104,12 @@ public class AiNewsArticle extends BaseTimeEntity {
     }
 
     public void updateDraft(String title, String content, AiNewsCategory category,
-                            Long prefixId, boolean pinned, BigDecimal confidenceScore,
-                            String semanticFingerprint, List<String> hashtags) {
+                            Long prefixId, boolean pinned, List<String> hashtags) {
         this.title = title;
         this.content = content;
         this.category = category;
         this.prefixId = prefixId;
         this.pinned = pinned;
-        this.confidenceScore = confidenceScore;
-        this.semanticFingerprint = semanticFingerprint;
         replaceHashtags(hashtags);
     }
 
@@ -164,48 +150,10 @@ public class AiNewsArticle extends BaseTimeEntity {
         this.updateAvailable = true;
     }
 
-    public void applyImageRetry(String title, String content, AiNewsCategory category,
-                                BigDecimal confidenceScore, String semanticFingerprint,
-                                String imageUrl, String imageKind, String imageRightsEvidence,
-                                String modelName, List<String> hashtags) {
-        this.title = title;
-        this.content = content;
-        this.category = category;
-        this.confidenceScore = confidenceScore;
-        this.semanticFingerprint = semanticFingerprint;
-        this.imageUrl = imageUrl;
-        this.imageKind = imageKind;
-        this.imageRightsEvidence = imageRightsEvidence;
-        this.modelName = modelName;
-        replaceHashtags(hashtags);
-    }
-
     public void markSkippedDuplicate(String reason) {
         this.status = AiNewsArticleStatus.SKIPPED_DUPLICATE;
         this.duplicateReason = reason;
         this.failureReason = reason;
-    }
-
-    public void requestRewrite(String prompt, LocalDateTime requestedAt) {
-        this.rewritePrompt = prompt;
-        this.rewriteRequestedAt = requestedAt;
-        this.status = AiNewsArticleStatus.REWRITE_REQUESTED;
-        this.scheduledAt = null;
-        this.failureReason = null;
-    }
-
-    public void completeRewrite(String title, String content, BigDecimal confidenceScore,
-                                String semanticFingerprint, String modelName, List<String> hashtags) {
-        this.title = title;
-        this.content = content;
-        this.confidenceScore = confidenceScore;
-        this.semanticFingerprint = semanticFingerprint;
-        this.modelName = modelName;
-        replaceHashtags(hashtags);
-        this.status = AiNewsArticleStatus.PENDING_REVIEW;
-        this.rewritePrompt = null;
-        this.rewriteRequestedAt = null;
-        this.failureReason = "AI 재작성이 완료되었습니다. 내용을 검토한 후 발행해주세요.";
     }
 
     public void replaceHashtags(List<String> hashtags) {

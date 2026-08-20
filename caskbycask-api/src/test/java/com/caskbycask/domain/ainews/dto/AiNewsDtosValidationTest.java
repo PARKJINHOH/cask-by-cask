@@ -15,8 +15,7 @@ class AiNewsDtosValidationTest {
         List.of(
                 AiNewsDtos.ArticleUpsertRequest.class,
                 AiNewsDtos.ArticleAdminUpdateRequest.class,
-                AiNewsDtos.RewriteResultRequest.class,
-                AiNewsDtos.DuplicateSkipRequest.class
+                AiNewsDtos.LeadIngestRequest.class
         ).forEach(requestType -> {
             RecordComponent title = findTitleComponent(requestType);
 

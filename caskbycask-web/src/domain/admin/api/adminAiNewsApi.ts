@@ -3,10 +3,9 @@ import type { ApiResponse, PageResponse } from '@/shared/types/common.types'
 import type {
   AiNewsArticleCreateRequest, AiNewsArticleDetail, AiNewsArticleStatus,
   AiNewsArticleSummary, AiNewsArticleType, AiNewsArticleUpdateRequest,
-  AiNewsCategory, AiNewsDraftRequest, AiNewsDraftRequestCreateRequest,
-  AiNewsDraftRequestRetryRequest, AiNewsRun, AiNewsSettings, AiNewsSourceConfig,
+  AiNewsCategory, AiNewsRun, AiNewsSettings, AiNewsSourceConfig,
   AiNewsSourceConfigRequest, AiNewsSourceType, AiNewsTopic, AiNewsTopicRequest,
-  AiNewsTopicStatus, AiNewsUsageSummary,
+  AiNewsTopicStatus, AiNewsUsageSummary, AiNewsBulkDeleteResult,
 } from '../types/aiNews.types'
 import type { SocialPublishSelection } from '@/domain/social/types/social.types'
 
@@ -59,45 +58,6 @@ export const adminAiNewsApi = {
   deleteArticle: (id: number, reason?: string) =>
     axiosInstance.delete(`/api/admin/ai-news/articles/${id}`, { data: { reason } }),
   restore: (id: number) => axiosInstance.post(`/api/admin/ai-news/articles/${id}/restore`),
-  requestRewrite: async (id: number, prompt: string) => {
-    const res = await axiosInstance.post<ApiResponse<AiNewsArticleDetail>>(
-      `/api/admin/ai-news/articles/${id}/rewrite`, { prompt },
-    )
-    return res.data.data!
-  },
-
-  draftRequests: async (page = 0, size = 10) => {
-    const res = await axiosInstance.get<ApiResponse<PageResponse<AiNewsDraftRequest>>>(
-      '/api/admin/ai-news/draft-requests', { params: { page, size } },
-    )
-    return res.data.data!
-  },
-  draftRequest: async (id: number) => {
-    const res = await axiosInstance.get<ApiResponse<AiNewsDraftRequest>>(
-      `/api/admin/ai-news/draft-requests/${id}`,
-    )
-    return res.data.data!
-  },
-  createDraftRequest: async (data: AiNewsDraftRequestCreateRequest) => {
-    const res = await axiosInstance.post<ApiResponse<AiNewsDraftRequest>>(
-      '/api/admin/ai-news/draft-requests', data,
-    )
-    return res.data.data!
-  },
-  cancelDraftRequest: async (id: number) => {
-    const res = await axiosInstance.delete<ApiResponse<AiNewsDraftRequest>>(
-      `/api/admin/ai-news/draft-requests/${id}`,
-    )
-    return res.data.data!
-  },
-  retryDraftRequest: async (id: number, data?: AiNewsDraftRequestRetryRequest) => {
-    const res = await axiosInstance.post<ApiResponse<AiNewsDraftRequest>>(
-      `/api/admin/ai-news/draft-requests/${id}/retry`, data,
-    )
-    return res.data.data!
-  },
-  deleteDraftRequestHistory: (id: number) =>
-    axiosInstance.delete(`/api/admin/ai-news/draft-requests/${id}/history`),
 
   topics: async (params?: {
     status?: AiNewsTopicStatus
@@ -112,12 +72,18 @@ export const adminAiNewsApi = {
   createTopic: (data: AiNewsTopicRequest) => axiosInstance.post('/api/admin/ai-news/topics', data),
   updateTopic: (id: number, data: AiNewsTopicRequest) => axiosInstance.put(`/api/admin/ai-news/topics/${id}`, data),
   deleteTopic: (id: number) => axiosInstance.delete(`/api/admin/ai-news/topics/${id}`),
+  /** 예전 AI 자동 제안으로 쌓인 주제 정리. 원고가 붙은 주제는 건너뛰고 skipped 로 알려 준다. */
+  deleteTopics: async (ids: number[]) => {
+    const res = await axiosInstance.post<ApiResponse<AiNewsBulkDeleteResult>>(
+      '/api/admin/ai-news/topics/bulk-delete', { ids },
+    )
+    return res.data.data!
+  },
 
-  /** blocked 를 넘기지 않으면 차단 출처는 목록에서 빠진다. */
   sources: async (params?: {
     sourceType?: AiNewsSourceType
     enabled?: boolean
-    blocked?: boolean
+    autoDiscovered?: boolean
     keyword?: string
     page?: number
     size?: number
@@ -129,9 +95,14 @@ export const adminAiNewsApi = {
   },
   createSource: (data: AiNewsSourceConfigRequest) => axiosInstance.post('/api/admin/ai-news/sources', data),
   updateSource: (id: number, data: AiNewsSourceConfigRequest) => axiosInstance.put(`/api/admin/ai-news/sources/${id}`, data),
-  /** 자동 등록 출처는 삭제 대신 차단으로 남는다(같은 도메인 재등록 방지). */
   deleteSource: (id: number) => axiosInstance.delete(`/api/admin/ai-news/sources/${id}`),
-  unblockSource: (id: number) => axiosInstance.post(`/api/admin/ai-news/sources/${id}/unblock`),
+  /** 자동 등록 시절에 쌓인 출처를 한 번에 정리한다. */
+  deleteSources: async (ids: number[]) => {
+    const res = await axiosInstance.post<ApiResponse<number>>(
+      '/api/admin/ai-news/sources/bulk-delete', { ids },
+    )
+    return res.data.data ?? 0
+  },
 
   settings: async () => {
     const res = await axiosInstance.get<ApiResponse<AiNewsSettings>>('/api/admin/ai-news/settings')

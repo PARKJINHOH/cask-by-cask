@@ -1,41 +1,22 @@
 export type AiNewsArticleType = 'RELEASE_NEWS' | 'TIP_INFO'
 export type AiNewsArticleStatus =
   | 'DRAFT' | 'PENDING_REVIEW' | 'SCHEDULED' | 'PUBLISHED' | 'REJECTED'
-  | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED' | 'REWRITE_REQUESTED'
+  | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED'
 export type AiNewsCategory = 'WHISKY' | 'WINE' | 'COGNAC' | 'OTHER'
 export type AiNewsSourceType = 'OFFICIAL' | 'TRUSTED_MEDIA' | 'COMMUNITY' | 'UNAPPROVED'
-/** 출처 목록 필터의 수집 상태. 차단은 enabled 와 별개 축이라 하나의 select 로 합쳐 다룬다. */
-export type AiNewsSourceState = 'ENABLED' | 'DISABLED' | 'BLOCKED'
 export type AiNewsSourceCrawlStatus = 'NOT_CHECKED' | 'SUCCESS' | 'ERROR'
-export type AiNewsTopicStatus = 'READY' | 'SCHEDULED' | 'HOLD' | 'BLOCKED' | 'COMPLETED'
-export type AiNewsDraftRequestStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
-
-export interface AiNewsDraftRequest {
-  id: number
-  prompt: string
-  referenceUrls: string[]
-  status: AiNewsDraftRequestStatus
-  failureReason: string | null
-  articleId: number | null
-  createdAt: string
-  updatedAt: string
-}
-
-export interface AiNewsDraftRequestCreateRequest {
-  prompt: string
-  referenceUrls: string[]
-}
-
-export interface AiNewsDraftRequestRetryRequest {
-  prompt: string
-}
-
+export type AiNewsTopicStatus = 'PLANNED' | 'DONE'
 export interface AiNewsArticleSummary {
   id: number
   articleType: AiNewsArticleType
   status: AiNewsArticleStatus
   category: AiNewsCategory
   title: string
+  /** AI 가 물어온 소재의 요약. 본문을 쓸지 판단할 때 읽는다. 관리자가 직접 만든 글은 없다. */
+  leadSummary: string | null
+  /** 본문이 아직 비어 있는 소재인지. true 면 발행할 수 없다. */
+  contentEmpty: boolean
+  sourceDomains: string[]
   confidenceScore: number
   postId: number | null
   pinned: boolean
@@ -62,19 +43,14 @@ export interface AiNewsSourceEvidence {
 export interface AiNewsArticleDetail extends AiNewsArticleSummary {
   content: string
   dedupeKey: string
-  semanticFingerprint: string | null
   deletedPostId: number | null
   topicId: number | null
   topicTitle: string | null
   prefixId: number | null
   imageUrl: string | null
-  imageKind: string | null
-  imageRightsEvidence: string | null
   modelName: string | null
   hashtags: string[]
   duplicateReason: string | null
-  rewritePrompt: string | null
-  rewriteRequestedAt: string | null
   updatedAt: string
   sources: AiNewsSourceEvidence[]
 }
@@ -84,18 +60,10 @@ export interface AiNewsArticleCreateRequest {
   category: AiNewsCategory
   title: string
   content: string
-  dedupeKey: string
-  confidenceScore?: number
-  canonicalUrlHash?: string | null
-  semanticFingerprint?: string | null
+  dedupeKey?: string
   topicId?: number | null
   prefixId?: number | null
   pinned?: boolean
-  autoPublishRequested?: boolean
-  imageUrl?: string | null
-  imageKind?: string | null
-  imageRightsEvidence?: string | null
-  modelName?: string | null
   hashtags?: string[]
   sources?: AiNewsSourceEvidence[]
 }
@@ -106,33 +74,26 @@ export interface AiNewsArticleUpdateRequest {
   content: string
   prefixId?: number | null
   pinned?: boolean
-  confidenceScore?: number
-  semanticFingerprint?: string | null
   hashtags?: string[]
   sourceUrls?: string[]
 }
 
+/** 관리자가 직접 쓸 팁·정보 글의 '쓸 거리' 메모. AI 는 이 목록을 쓰지 않는다. */
 export interface AiNewsTopic {
   id: number
   title: string
-  normalizedKey: string
-  aliases: string | null
   category: AiNewsCategory
+  memo: string | null
   status: AiNewsTopicStatus
-  aiSuggested: boolean
-  allowRepublish: boolean
   lastPublishedAt: string | null
   createdAt: string
 }
 
 export interface AiNewsTopicRequest {
   title: string
-  normalizedKey: string
-  aliases?: string | null
   category: AiNewsCategory
+  memo?: string | null
   status?: AiNewsTopicStatus
-  allowRepublish?: boolean
-  aiSuggested?: boolean
 }
 
 export interface AiNewsSourceConfig {
@@ -143,13 +104,8 @@ export interface AiNewsSourceConfig {
   pathPrefix: string
   sourceType: AiNewsSourceType
   enabled: boolean
-  /** 관리자가 차단한 출처. 행이 남아 있어야 수집이 같은 도메인을 다시 등록하지 않는다. */
-  blocked: boolean
-  blockedAt: string | null
-  /** 관리자가 등록한 게 아니라 기사 수집 중 자동 등록된 출처. 삭제하면 차단으로 남는다. */
+  /** 자동 등록 시절에 생긴 옛 출처. 지금은 아무도 true 로 만들지 않고, 정리 필터용으로만 남아 있다. */
   autoDiscovered: boolean
-  autoPublishAllowed: boolean
-  imageUseAllowed: boolean
   crawlStatus: AiNewsSourceCrawlStatus
   lastCrawledAt: string | null
   lastCrawlError: string | null
@@ -160,21 +116,21 @@ export interface AiNewsSourceConfigRequest {
   sourceUrl: string
   sourceType: AiNewsSourceType
   enabled: boolean
-  autoPublishAllowed: boolean
-  imageUseAllowed: boolean
+}
+
+/** 일괄 삭제 결과. 원고가 붙어 지울 수 없던 건수를 skipped 로 알려 준다. */
+export interface AiNewsBulkDeleteResult {
+  deleted: number
+  skipped: number
 }
 
 export interface AiNewsSettings {
   automationEnabled: boolean
-  autoPublishEnabled: boolean
-  dryRun: boolean
+  /** 하루에 모을 소재 수. 발행이 아니라 생성 기준이다. */
   dailyReleaseLimit: number
-  tipIntervalHours: number
-  confidenceThreshold: number
   tavilyMonthlyCreditLimit: number
   openaiMonthlyBudgetUsd: number | null
   openaiMonthlyTokenLimit: number | null
-  openaiMonthlyImageLimit: number | null
   whiskyRatio: number
   wineRatio: number
   cognacRatio: number
@@ -184,12 +140,10 @@ export interface AiNewsUsageSummary {
   tavilyCredits: number
   inputTokens: number
   outputTokens: number
-  imageCount: number
   estimatedCostUsd: number
   tavilyCreditLimit: number
   openaiBudgetUsd: number | null
   openaiTokenLimit: number | null
-  openaiImageLimit: number | null
 }
 
 export interface AiNewsRun {
