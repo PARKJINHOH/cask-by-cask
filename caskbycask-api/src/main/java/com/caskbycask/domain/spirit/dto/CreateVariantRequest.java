@@ -14,6 +14,9 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 public record CreateVariantRequest(
+        @Schema(description = "기존 하위 에디션 ID (수정 시에만 사용, 신규 등록은 null)")
+        Long id,
+
         @Schema(description = "하위 에디션 유형 (BATCH, RELEASE_YEAR, SINGLE_CASK, VINTAGE)")
         @NotNull(message = "에디션 유형은 필수입니다.")
         VariantType variantType,

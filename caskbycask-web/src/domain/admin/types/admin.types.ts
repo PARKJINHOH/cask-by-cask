@@ -43,6 +43,8 @@ export interface WhiskyDetailRequest {
 }
 
 export interface CreateVariantRequest {
+  /** 기존 에디션 수정 시 사용하는 DB ID. 신규 에디션에는 없다. */
+  id?: number | null
   variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE'
   variantValue: string
   variantValueEn?: string | null

@@ -146,6 +146,7 @@ class SpiritServiceRegionCodeTest {
                 null, null, null, null, null,
                 true,
                 List.of(new CreateVariantRequest(
+                        null,
                         VariantType.VINTAGE, "2015", null, "빈티지", "Vintage",
                         null, null, null, 750, null, null, 2015, null, null,
                         new WineDetailRequest(

@@ -37,8 +37,9 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class SocialContentFactory {
 
+    private static final int INSTAGRAM_CAPTION_LIMIT = 1800;
+    private static final int THREADS_CAPTION_LIMIT = 400;
     private static final int REVIEW_AROMA_LIMIT = 80;
-    private static final int REVIEW_OVERALL_LIMIT = 200;
     private static final String NEWS_SITE_NOTICE =
             "자세한 내용은 CaskByCask(캐바캐) 홈페이지를 확인해주세요";
 
@@ -84,37 +85,20 @@ public class SocialContentFactory {
                 + "\n" + linkLine;
         String hashtagBlock = reviewHashtags(
                 spirit, reviewHashtagDisplayName(spirit, english));
-        int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
-        int contentLimit = Math.max(40, limit
-                - linkBlock.codePointCount(0, linkBlock.length())
-                - hashtagBlock.codePointCount(0, hashtagBlock.length())
-                - 4);
+        int limit = captionLimit(platform);
         String title = name + (english ? " Review" : " 후기");
-        String renderedTitle = truncateWithDots(title, contentLimit);
-        StringBuilder content = new StringBuilder(renderedTitle);
-        appendReviewAromaSection(content, english ? "Nose" : "향",
-                review.getNoseAromaWheelNotes(), english, contentLimit);
-        appendReviewAromaSection(content, english ? "Taste" : "맛",
-                review.getTasteAromaWheelNotes(), english, contentLimit);
-        appendReviewAromaSection(content, english ? "Finish" : "피니시",
-                review.getFinishAromaWheelNotes(), english, contentLimit);
-        String overall = review.getComment();
-        if (overall != null && !overall.isBlank()) {
-            String overallPrefix = "\n\n" + (english ? "Overall: " : "총평: ");
-            int remaining = contentLimit
-                    - content.toString().codePointCount(0, content.length())
-                    - overallPrefix.codePointCount(0, overallPrefix.length());
-            if (remaining > 0) {
-                content.append(overallPrefix)
-                        .append(truncateWithDots(overall.trim(),
-                                Math.min(REVIEW_OVERALL_LIMIT, remaining)));
-            }
-        }
-        String contentText = truncateWithDots(content.toString(), contentLimit);
-        String reviewDetails = contentText.substring(
-                Math.min(renderedTitle.length(), contentText.length()));
-        String caption = renderedTitle + "\n\n" + linkBlock + reviewDetails
+        List<ReviewSection> sections = reviewSections(review, english);
+        String detailsSkeleton = reviewDetailsSkeleton(sections, english);
+        String captionSuffix = "\n\n" + linkBlock + detailsSkeleton
                 + "\n\n" + hashtagBlock;
+        int titleLimit = Math.max(0, limit - codePointLength(captionSuffix));
+        String renderedTitle = truncateWithDots(title, titleLimit);
+        int reviewTextLimit = Math.max(0, limit
+                - codePointLength(renderedTitle)
+                - codePointLength(captionSuffix));
+        String reviewDetails = renderReviewDetails(sections, english, reviewTextLimit);
+        String caption = truncate(renderedTitle + "\n\n" + linkBlock + reviewDetails
+                + "\n\n" + hashtagBlock, limit);
         String imageUrl = primaryImageUrl(spirit);
         if (imageUrl == null) throw new IllegalStateException("리뷰에 게시 가능한 대표 이미지가 없습니다.");
         return new SocialPublicationContent(
@@ -140,7 +124,7 @@ public class SocialContentFactory {
                 + post.getHashtags().stream().map(tag -> "#" + tag).reduce((a, b) -> a + " " + b).orElse("");
         String prefix = post.getTitle() + "\n\n";
         String siteNotice = "\n\n[" + NEWS_SITE_NOTICE + "]";
-        int limit = platform == SocialPlatform.INSTAGRAM ? 2200 : 500;
+        int limit = captionLimit(platform);
         int reserve = shortUrl.length() + siteNotice.length() + hashtags.length() + 2;
         String body = prefix + truncate(text, Math.max(0, limit - reserve - prefix.length()))
                 + siteNotice + "\n\n" + shortUrl + hashtags;
@@ -235,19 +219,79 @@ public class SocialContentFactory {
         }
     }
 
-    private static void appendReviewAromaSection(StringBuilder target, String label,
-                                                 String aromaNotes, boolean english,
-                                                 int contentLimit) {
-        String aromas = formatAromaNotes(aromaNotes);
-        if (aromas == null) return;
+    private static List<ReviewSection> reviewSections(Review review, boolean english) {
+        List<ReviewSection> sections = new ArrayList<>(3);
+        addReviewSection(sections, english ? "Nose" : "향",
+                review.getNoseAromaWheelNotes(), review.getNoseNote());
+        addReviewSection(sections, english ? "Taste" : "맛",
+                review.getTasteAromaWheelNotes(), review.getTasteNote());
+        addReviewSection(sections, english ? "Finish" : "피니시",
+                review.getFinishAromaWheelNotes(), review.getFinishNote());
+        return sections;
+    }
 
-        String prefix = "\n\n" + label + "\n";
-        int remaining = contentLimit
-                - target.toString().codePointCount(0, target.length())
-                - prefix.codePointCount(0, prefix.length());
-        if (remaining <= 3) return;
-        target.append(prefix)
-                .append(truncateWithDots(aromas, Math.min(REVIEW_AROMA_LIMIT, remaining)));
+    private static void addReviewSection(List<ReviewSection> sections, String label,
+                                         String aromaNotes, String tastingNote) {
+        String aromas = formatAromaNotes(aromaNotes);
+        String note = tastingNote == null || tastingNote.isBlank() ? null : tastingNote.trim();
+        if (aromas != null || note != null) {
+            sections.add(new ReviewSection(label, aromas, note));
+        }
+    }
+
+    private static String reviewDetailsSkeleton(List<ReviewSection> sections, boolean english) {
+        StringBuilder details = new StringBuilder();
+        for (ReviewSection section : sections) {
+            details.append("\n\n").append(section.label());
+            if (section.aromas() != null) {
+                details.append("\n").append(english ? "Aroma: " : "아로마: ");
+            }
+            if (section.tastingNote() != null) {
+                details.append("\n").append(english ? "Tasting note: " : "테이스팅 노트: ");
+            }
+        }
+        return details.toString();
+    }
+
+    private static String renderReviewDetails(List<ReviewSection> sections, boolean english,
+                                              int textLimit) {
+        List<String> values = new ArrayList<>(sections.size() * 2);
+        for (ReviewSection section : sections) {
+            if (section.aromas() != null) values.add(section.aromas());
+            if (section.tastingNote() != null) values.add(section.tastingNote());
+        }
+        int[] allocations = allocateEvenly(values, textLimit);
+        int valueIndex = 0;
+        StringBuilder details = new StringBuilder();
+        for (ReviewSection section : sections) {
+            details.append("\n\n").append(section.label());
+            if (section.aromas() != null) {
+                details.append("\n").append(english ? "Aroma: " : "아로마: ")
+                        .append(truncateWithDots(section.aromas(), allocations[valueIndex++]));
+            }
+            if (section.tastingNote() != null) {
+                details.append("\n").append(english ? "Tasting note: " : "테이스팅 노트: ")
+                        .append(truncateWithDots(section.tastingNote(), allocations[valueIndex++]));
+            }
+        }
+        return details.toString();
+    }
+
+    /** 긴 한 필드가 뒤의 향·맛·피니시를 밀어내지 않도록 가변 본문 길이를 고르게 배분한다. */
+    private static int[] allocateEvenly(List<String> values, int totalLimit) {
+        int[] allocations = new int[values.size()];
+        int remaining = totalLimit;
+        boolean allocated = true;
+        while (remaining > 0 && allocated) {
+            allocated = false;
+            for (int i = 0; i < values.size() && remaining > 0; i++) {
+                if (allocations[i] >= codePointLength(values.get(i))) continue;
+                allocations[i]++;
+                remaining--;
+                allocated = true;
+            }
+        }
+        return allocations;
     }
 
     private static String formatAromaNotes(String raw) {
@@ -353,6 +397,15 @@ public class SocialContentFactory {
         }
     }
 
+    private static int captionLimit(SocialPlatform platform) {
+        return platform == SocialPlatform.INSTAGRAM
+                ? INSTAGRAM_CAPTION_LIMIT : THREADS_CAPTION_LIMIT;
+    }
+
+    private static int codePointLength(String value) {
+        return value == null ? 0 : value.codePointCount(0, value.length());
+    }
+
     private static String truncate(String value, int maxCodePoints) {
         if (value == null) return "";
         if (maxCodePoints <= 0) return "";
@@ -381,4 +434,6 @@ public class SocialContentFactory {
     private String normalizedSiteUrl() {
         return properties.getSiteUrl().replaceAll("/+$", "");
     }
+
+    private record ReviewSection(String label, String aromas, String tastingNote) {}
 }

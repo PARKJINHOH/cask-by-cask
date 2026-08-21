@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { YoutubeVideo } from '../types/youtube.types'
-import { handleThumbnailError, largeThumbnail } from '../utils/youtubeThumbnail'
+import {
+  handleThumbnailError,
+  handleThumbnailLoad,
+  largeThumbnail,
+} from '../utils/youtubeThumbnail'
 
 interface Props {
   video: YoutubeVideo
@@ -50,6 +54,7 @@ export default function YoutubeEmbed({ video, autoPlay = false, className = '' }
       <img
         src={largeThumbnail(video.videoKey)}
         onError={(event) => handleThumbnailError(event.currentTarget, video.videoKey)}
+        onLoad={(event) => handleThumbnailLoad(event.currentTarget, video.videoKey)}
         alt=""
         loading="lazy"
         decoding="async"

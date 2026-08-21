@@ -6,7 +6,12 @@ import { useTranslation } from 'react-i18next'
 // (순수 함수라 DOM 의존이 없고, photo-gallery 쪽 테스트가 회귀를 막는다).
 import { columnCountFor, columnWidthFor, layoutPhotoColumns } from '@/domain/photo-gallery/utils/columnLayout'
 import type { YoutubeVideo } from '../types/youtube.types'
-import { aspectRatioFor, gridThumbnail, handleThumbnailError } from '../utils/youtubeThumbnail'
+import {
+  aspectRatioFor,
+  gridThumbnail,
+  handleThumbnailError,
+  handleThumbnailLoad,
+} from '../utils/youtubeThumbnail'
 import YoutubeChannelAvatar from './YoutubeChannelAvatar'
 
 interface Props {
@@ -84,6 +89,7 @@ export default function YoutubeGrid({ videos, onSelect }: Props) {
                   <img
                     src={gridThumbnail(video.videoKey)}
                     onError={(event) => handleThumbnailError(event.currentTarget, video.videoKey)}
+                    onLoad={(event) => handleThumbnailLoad(event.currentTarget, video.videoKey)}
                     alt=""
                     loading="lazy"
                     decoding="async"

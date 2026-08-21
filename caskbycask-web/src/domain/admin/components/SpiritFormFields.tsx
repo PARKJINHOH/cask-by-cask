@@ -466,6 +466,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     setIsVariantSplit(inferredVariantType !== 'NONE' || !!(s.variants && s.variants.length > 0))
     setVariants(
       (s.variants ?? []).map((v) => ({
+        id: v.id,
         tempId: v.id ? `db-${v.id}` : Math.random().toString(),
         variantType: (v.variantType && v.variantType !== 'NONE') ? v.variantType : 'BATCH',
         variantValue: v.variantValue ?? '',

@@ -92,13 +92,12 @@ class SocialContentFactoryTest {
         assertThat(content.imageNotice()).isNull();
         assertThat(content.caption()).startsWith("테스트 위스키 후기");
         assertThat(content.caption()).contains(
-                "향\nVanilla · 바닐라");
+                "향\n아로마: Vanilla · 바닐라\n테이스팅 노트: 향향향");
         assertThat(content.caption()).contains(
-                "맛\nOak · 견과류");
+                "맛\n아로마: Oak · 견과류\n테이스팅 노트: 맛맛맛");
         assertThat(content.caption()).contains(
-                "피니시\nSpice · 시나몬");
-        assertThat(content.caption()).doesNotContain("테이스팅 노트", "향향향", "맛맛맛", "피니시피니시");
-        assertThat(content.caption()).contains("총평: ", "...");
+                "피니시\n아로마: Spice · 시나몬\n테이스팅 노트: 피니시");
+        assertThat(content.caption()).doesNotContain("총평", "Overall");
         assertThat(content.caption()).contains(
                 "#위스키 #테스트위스키 #캐바캐 #CaskByCask");
         assertThat(content.caption()).contains("""
@@ -109,7 +108,7 @@ class SocialContentFactoryTest {
                 """);
         assertThat(content.caption()).endsWith(
                 "#위스키 #테스트위스키 #캐바캐 #CaskByCask");
-        assertThat(content.caption().codePointCount(0, content.caption().length())).isLessThanOrEqualTo(500);
+        assertThat(content.caption().codePointCount(0, content.caption().length())).isLessThanOrEqualTo(400);
 
         SocialPublicationContent instagram = factory.create(bundle, SocialPlatform.INSTAGRAM);
 
@@ -123,8 +122,13 @@ class SocialContentFactoryTest {
                 """);
         assertThat(instagram.caption()).endsWith(
                 "#위스키 #테스트위스키 #캐바캐 #CaskByCask");
+        assertThat(instagram.caption()).contains(
+                "향\n아로마: Vanilla · 바닐라\n테이스팅 노트: 향향향",
+                "맛\n아로마: Oak · 견과류\n테이스팅 노트: 맛맛맛",
+                "피니시\n아로마: Spice · 시나몬\n테이스팅 노트: 피니시");
+        assertThat(instagram.caption()).doesNotContain("총평", "Overall");
         assertThat(instagram.caption().codePointCount(0, instagram.caption().length()))
-                .isLessThanOrEqualTo(2200);
+                .isLessThanOrEqualTo(1800);
         assertThat(content.caption()).startsWith("""
                 테스트 위스키 후기
 
@@ -153,6 +157,8 @@ class SocialContentFactoryTest {
                 "#위스키 #TestWhisky #캐바캐 #CaskByCask");
         assertThat(english.caption()).doesNotContain("#테스트위스키");
         assertThat(english.caption()).doesNotContain("Read the full review →");
+        assertThat(english.caption()).contains("Aroma: Vanilla", "Tasting note: ");
+        assertThat(english.caption()).doesNotContain("Overall:");
     }
 
     @Test
@@ -282,7 +288,36 @@ class SocialContentFactoryTest {
         assertThat(regular.caption()).endsWith("#신제품 #위스키");
         assertThat(ai.caption()).endsWith("#신제품 #위스키");
         assertThat(ai.caption().codePointCount(0, ai.caption().length()))
-                .isLessThanOrEqualTo(500);
+                .isLessThanOrEqualTo(400);
+    }
+
+    @Test
+    void newsCaptionUsesConservativeLimitForEachPlatform() {
+        SocialPublishingProperties properties = new SocialPublishingProperties();
+        properties.setSiteUrl("https://www.caskbycask.net");
+        SocialContentFactory factory = new SocialContentFactory(
+                reviewRepository, postRepository, imageRepository, properties);
+        User author = User.builder().email("admin@example.com").nickname("관리자").build();
+        Post post = Post.builder()
+                .boardType(BoardType.NOTICE)
+                .author(author)
+                .title("긴 소식")
+                .content("<p>" + "본문 ".repeat(1000) + "</p>")
+                .contentSanitized("<p>" + "본문 ".repeat(1000) + "</p>")
+                .hashtags(new java.util.ArrayList<>(java.util.List.of("위스키")))
+                .build();
+        ReflectionTestUtils.setField(post, "id", 52L);
+        given(postRepository.findById(52L)).willReturn(Optional.of(post));
+
+        String instagram = factory.create(
+                postBundle(52L, SocialSourceType.POST), SocialPlatform.INSTAGRAM).caption();
+        String threads = factory.create(
+                postBundle(52L, SocialSourceType.POST), SocialPlatform.THREADS).caption();
+
+        assertThat(instagram.codePointCount(0, instagram.length())).isLessThanOrEqualTo(1800);
+        assertThat(threads.codePointCount(0, threads.length())).isLessThanOrEqualTo(400);
+        assertThat(instagram).contains("https://www.caskbycask.net/s/AbCdEf2345").endsWith("#위스키");
+        assertThat(threads).contains("https://www.caskbycask.net/s/AbCdEf2345").endsWith("#위스키");
     }
 
     @Test

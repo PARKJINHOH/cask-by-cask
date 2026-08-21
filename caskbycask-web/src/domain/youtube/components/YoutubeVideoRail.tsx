@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { YoutubeVideo } from '../types/youtube.types'
-import { gridThumbnail, handleThumbnailError } from '../utils/youtubeThumbnail'
+import {
+  gridThumbnail,
+  handleThumbnailError,
+  handleThumbnailLoad,
+} from '../utils/youtubeThumbnail'
 import YoutubeChannelAvatar from './YoutubeChannelAvatar'
 
 interface Props {
@@ -47,6 +51,7 @@ export default function YoutubeVideoRail({ videos, heading, moreTo }: Props) {
                   <img
                     src={gridThumbnail(video.videoKey)}
                     onError={(event) => handleThumbnailError(event.currentTarget, video.videoKey)}
+                    onLoad={(event) => handleThumbnailLoad(event.currentTarget, video.videoKey)}
                     alt=""
                     loading="lazy"
                     decoding="async"

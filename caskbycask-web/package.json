@@ -35,6 +35,7 @@
     "verify:cognac-ui": "node scripts/verify-cognac-detail-ui.mjs",
     "admin:verify-form": "node scripts/verify-admin-form.mjs",
     "test:spirit-limits": "node --import ./scripts/test-alias-register.mjs --test scripts/spirit-limits.test.mjs",
+    "test:variant-identity": "node --test scripts/variant-identity.test.mjs",
     "test:admin-menu": "node --test scripts/admin-menu.test.mjs",
     "test:gnb-menu": "node --import ./scripts/test-alias-register.mjs --test scripts/gnb-menu.test.mjs",
     "test:image-editor": "node --test scripts/image-editor-text.test.mjs",
@@ -45,7 +46,8 @@
     "test:flyway": "node --test scripts/flyway-migrations.test.mjs",
     "test:aroma-profile": "node --import ./scripts/test-alias-register.mjs --test scripts/aroma-profile.test.mjs",
     "test:photo-gallery": "node --import ./scripts/test-alias-register.mjs --test scripts/photo-gallery-layout.test.mjs",
-    "test:photo-variants": "node --import ./scripts/test-alias-register.mjs --test scripts/photo-image-variants.test.mjs"
+    "test:photo-variants": "node --import ./scripts/test-alias-register.mjs --test scripts/photo-image-variants.test.mjs",
+    "test:youtube-thumbnail": "node --import ./scripts/test-alias-register.mjs --test scripts/youtube-thumbnail.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

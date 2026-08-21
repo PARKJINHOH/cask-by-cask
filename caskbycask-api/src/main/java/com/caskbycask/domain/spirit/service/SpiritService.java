@@ -755,10 +755,24 @@ public class SpiritService {
                 List<CreateVariantRequest> variants = request.variants();
                 for (int i = 0; i < variants.size(); i++) {
                     CreateVariantRequest vReq = variants.get(i);
-                    // 식별 값(variantValue) 기준으로 기존 에디션 탐색
-                    Optional<Spirit> matching = existingVariants.stream()
-                            .filter(v -> v.getVariantValue() != null && v.getVariantValue().equals(vReq.variantValue()))
-                            .findFirst();
+                    // 수정 화면은 DB ID 로 기존 에디션을 식별해야 한다. 표시 이름(variantValue)은
+                    // 관리자가 바꿀 수 있으므로 이름으로만 대조하면 기존 행을 숨기고 새 행을 만들게 되고,
+                    // 기존 리뷰가 숨겨진 옛 에디션에 남아 사용자 화면에서 사라진다.
+                    Optional<Spirit> matching;
+                    if (vReq.id() != null) {
+                        matching = existingVariants.stream()
+                                .filter(v -> vReq.id().equals(v.getId()))
+                                .findFirst();
+                        if (matching.isEmpty() || processedIds.contains(vReq.id())) {
+                            // 다른 마스터의 에디션 ID 또는 같은 ID의 중복 전송을 허용하지 않는다.
+                            throw new CustomException(ErrorCode.INVALID_INPUT);
+                        }
+                    } else {
+                        // 구버전 클라이언트와 신규 등록 요청은 ID가 없으므로 기존 이름 대조를 유지한다.
+                        matching = existingVariants.stream()
+                                .filter(v -> v.getVariantValue() != null && v.getVariantValue().equals(vReq.variantValue()))
+                                .findFirst();
+                    }
 
                     if (matching.isPresent()) {
                         Spirit existing = matching.get();
