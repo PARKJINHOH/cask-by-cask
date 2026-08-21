@@ -975,7 +975,13 @@ export default function SpiritDetailPage() {
     if (!spirit) return []
     const byId = new Map<number, SpiritVariant>()
     if (spirit.parentId != null || (spirit.variants && spirit.variants.length > 0)) {
-      byId.set(spirit.id, toVariantOption(spirit))
+      // 마스터 주류 페이지(`parentId == null`)에서는 본인을 목록에 포함하지 않는다.
+      // 마스터는 배치가 아닌 대표 컨테이너이므로 variantValue/bottledDate 가 없어
+      // formatVariantSelectLabel 이 숫자 ID("100")를 라벨로 출력하는 버그가 생긴다.
+      // 하위 에디션 페이지(`parentId != null`)에서만 본인(현재 배치)을 목록에 추가한다.
+      if (spirit.parentId != null) {
+        byId.set(spirit.id, toVariantOption(spirit))
+      }
       ;(spirit.variants ?? []).forEach((variant) => byId.set(variant.id, variant))
     }
     return Array.from(byId.values()).sort(compareVariantDisplayOrder)
@@ -1291,14 +1297,21 @@ export default function SpiritDetailPage() {
                   {t(spirit.category === 'WINE' ? 'spirit.detail.vintagePageSelect' : 'spirit.detail.variantPageSelect')}
                 </span>
                 <select
-                  value={spirit.id}
+                  value={spirit.parentId != null ? spirit.id : ''}
                   onChange={(e) => {
                     const targetId = Number(e.target.value)
+                    if (!targetId) return
                     const targetPath = localizedSeoPath(variantSeoById.get(targetId), isEn)
                     navigate(targetPath ?? `/spirits/${targetId}`)
                   }}
                   className="text-xs font-semibold text-neutral-700 bg-white border border-neutral-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer min-w-[200px] shadow-sm hover:border-neutral-300 transition-colors"
                 >
+                  {/* 마스터 페이지에서는 현재 선택 항목이 없으므로 placeholder 추가 */}
+                  {spirit.parentId == null && (
+                    <option value="" disabled>
+                      {t(spirit.category === 'WINE' ? 'spirit.detail.vintageSelectPlaceholder' : 'spirit.detail.variantSelectPlaceholder')}
+                    </option>
+                  )}
                   {groupOptions.map((opt) => (
                     <option key={opt.id} value={opt.id}>
                       {opt.label}

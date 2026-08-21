@@ -993,9 +993,11 @@
       "variantAll": "All Batches/Bottlings Combined",
       "masterProduct": "Representative Product",
       "variantPageSelect": "Select Batch/Bottling:",
+      "variantSelectPlaceholder": "Select Batch/Bottling",
       "vintageFilter": "Vintage Filter:",
       "vintageAll": "All Vintages Combined",
-      "vintagePageSelect": "Select Vintage:"
+      "vintagePageSelect": "Select Vintage:",
+      "vintageSelectPlaceholder": "Select Vintage"
     },
     "variantType": {
       "BATCH": "Batch",

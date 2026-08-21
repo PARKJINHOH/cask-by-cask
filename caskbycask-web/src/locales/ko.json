@@ -993,9 +993,11 @@
       "variantAll": "전체 배치/병입 통합",
       "masterProduct": "대표 제품",
       "variantPageSelect": "배치/병입 선택:",
+      "variantSelectPlaceholder": "배치/병입 선택",
       "vintageFilter": "빈티지별 필터:",
       "vintageAll": "전체 빈티지 통합",
-      "vintagePageSelect": "빈티지 선택:"
+      "vintagePageSelect": "빈티지 선택:",
+      "vintageSelectPlaceholder": "빈티지 선택"
     },
     "variantType": {
       "BATCH": "배치",
