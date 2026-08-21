@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -30,7 +30,8 @@ const GAP = 16
  * 그래서 같은 메이슨리 계산(가장 짧은 열에 넣기)을 쓴다 — 숏츠가 몰려도 한 열만 길어지지 않는다.
  */
 export default function YoutubeGrid({ videos, onSelect }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isEn = i18n.language === 'en'
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
 
@@ -122,16 +123,22 @@ export default function YoutubeGrid({ videos, onSelect }: Props) {
                   </span>
                 </div>
 
-                {/* 썸네일 아래 정보: 영상 제목(2줄) + 채널 이름 */}
+                {/* 썸네일 아래 정보: 영상 제목(2줄) + 채널 이름 / 업로드 날짜 */}
                 <div className="mt-2.5 flex items-start gap-2.5 px-0.5">
                   <YoutubeChannelAvatar channel={video.channel} size={28} className="mt-0.5 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-900 transition-colors group-hover:text-primary-800">
                       {video.title}
                     </p>
-                    <p className="mt-1 truncate text-xs text-neutral-500">
-                      {video.channel.title}
-                    </p>
+                    <div className="mt-1 flex items-center justify-between gap-2 text-xs text-neutral-500">
+                      <span className="truncate">{video.channel.title}</span>
+                      <time
+                        dateTime={video.publishedAt}
+                        className="shrink-0 text-[11px] text-neutral-400"
+                      >
+                        {new Date(video.publishedAt).toLocaleDateString(isEn ? 'en-US' : 'ko-KR')}
+                      </time>
+                    </div>
                   </div>
                 </div>
               </Link>

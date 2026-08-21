@@ -78,112 +78,128 @@ export default function YoutubeVideoView({ video, onClose, onPrev, onNext, fill 
         </div>
       )}
 
-      {/* 메인 콘텐츠 영역: 모달(fill)일 때 PC 에서는 좌:플레이어 / 우:정보 스크롤 2분할, 모바일에서는 상하 */}
-      <div className={`flex flex-col ${fill ? 'flex-1 min-h-0 lg:flex-row' : ''}`}>
+      {/*
+        메인 콘텐츠 영역:
+        - 숏츠(SHORTS): PC에서 좌측 플레이어 + 우측 본문 2분할
+        - 일반 영상(VIDEO): 상단 플레이어 + 하단 본문
+      */}
+      <div
+        className={`flex flex-col ${
+          fill
+            ? isShorts
+              ? 'flex-1 min-h-0 lg:flex-row'
+              : 'flex-1 min-h-0'
+            : ''
+        }`}
+      >
         {/* 플레이어 */}
         <div
           className={`flex shrink-0 items-center justify-center bg-black ${
-            fill ? 'lg:flex-1 lg:min-w-0 lg:h-full' : ''
+            fill && isShorts ? 'lg:flex-1 lg:min-w-0 lg:h-full' : ''
           }`}
         >
           <div
             className={`w-full ${
               isShorts
                 ? 'max-w-[min(420px,52vh)] lg:max-w-[min(420px,100%)] lg:h-full lg:flex lg:items-center lg:justify-center'
-                : 'max-w-full'
+                : 'max-h-[58vh] aspect-video'
             }`}
-            style={{ aspectRatio: isShorts ? '9 / 16' : '16 / 9' }}
+            style={{ aspectRatio: isShorts ? '9 / 16' : undefined }}
           >
             <YoutubeEmbed video={video} autoPlay={Boolean(onClose)} />
           </div>
         </div>
 
-        {/* 정보 영역 (스크롤 가능) */}
+        {/* 정보 및 본문 영역 (본문이 많을 경우 독립 스크롤) */}
         <div
           className={`flex-1 min-h-0 space-y-4 p-4 sm:p-5 ${
-            fill ? 'overflow-y-auto lg:w-[380px] lg:shrink-0 lg:border-l lg:border-neutral-100 xl:w-[420px]' : ''
+            fill
+              ? isShorts
+                ? 'overflow-y-auto lg:w-[380px] lg:shrink-0 lg:border-l lg:border-neutral-100 xl:w-[420px]'
+                : 'overflow-y-auto'
+              : ''
           }`}
         >
-          <div>
-            <div className="flex items-start gap-2">
-              {isShorts && (
-                <span className="shrink-0 rounded-md bg-neutral-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
-                  {t('youtube.shortsBadge')}
+        <div>
+          <div className="flex items-start gap-2">
+            {isShorts && (
+              <span className="shrink-0 rounded-md bg-neutral-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                {t('youtube.shortsBadge')}
+              </span>
+            )}
+            <h1 className="text-base font-bold leading-snug text-neutral-900 sm:text-lg">{video.title}</h1>
+          </div>
+          <p className="mt-1 text-xs text-neutral-500">{publishedLabel}</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-y border-neutral-100 py-3">
+          {/* 우리 채널 페이지로 — 그 채널의 다른 영상으로 이어지는 갤러리 내부 링크다. */}
+          <Link
+            to={`/youtube/channels/${video.channel.handle ?? video.channel.channelKey}`}
+            className="flex min-w-0 flex-1 items-center gap-3"
+          >
+            <YoutubeChannelAvatar channel={video.channel} size={40} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold text-neutral-900 hover:underline">
+                {video.channel.title}
+              </span>
+              {video.channel.handle && (
+                <span className="block truncate text-xs text-neutral-500">
+                  @{video.channel.handle}
                 </span>
               )}
-              <h1 className="text-base font-bold leading-snug text-neutral-900 sm:text-lg">{video.title}</h1>
-            </div>
-            <p className="mt-1 text-xs text-neutral-500">{publishedLabel}</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 border-y border-neutral-100 py-3">
-            {/* 우리 채널 페이지로 — 그 채널의 다른 영상으로 이어지는 갤러리 내부 링크다. */}
-            <Link
-              to={`/youtube/channels/${video.channel.handle ?? video.channel.channelKey}`}
-              className="flex min-w-0 flex-1 items-center gap-3"
+            </span>
+          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 채널 홈으로 — 창작자에게 트래픽을 돌려주는 자리라 눈에 띄게 둔다. */}
+            <a
+              href={video.channel.channelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center rounded-lg bg-neutral-900 px-3.5 text-xs font-bold text-white hover:bg-neutral-700"
             >
-              <YoutubeChannelAvatar channel={video.channel} size={40} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-neutral-900 hover:underline">
-                  {video.channel.title}
-                </span>
-                {video.channel.handle && (
-                  <span className="block truncate text-xs text-neutral-500">
-                    @{video.channel.handle}
-                  </span>
-                )}
-              </span>
-            </Link>
-            <div className="flex flex-wrap items-center gap-2">
-              {/* 채널 홈으로 — 창작자에게 트래픽을 돌려주는 자리라 눈에 띄게 둔다. */}
-              <a
-                href={video.channel.channelUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 items-center rounded-lg bg-neutral-900 px-3.5 text-xs font-bold text-white hover:bg-neutral-700"
-              >
-                {t('youtube.openChannel')}
-              </a>
-              <a
-                href={video.watchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 items-center rounded-lg border border-neutral-300 px-3.5 text-xs font-bold text-neutral-700 hover:border-red-400 hover:text-red-600"
-              >
-                {t('youtube.openOnYoutube')}
-              </a>
-              <ShareUrlButton
-                url={buildCanonical(`/youtube/${video.videoKey}`)}
-                className="h-9 w-9"
-              />
+              {t('youtube.openChannel')}
+            </a>
+            <a
+              href={video.watchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center rounded-lg border border-neutral-300 px-3.5 text-xs font-bold text-neutral-700 hover:border-red-400 hover:text-red-600"
+            >
+              {t('youtube.openOnYoutube')}
+            </a>
+            <ShareUrlButton
+              url={buildCanonical(`/youtube/${video.videoKey}`)}
+              className="h-9 w-9"
+            />
+          </div>
+        </div>
+
+        {video.spiritTags.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-bold text-neutral-500">{t('youtube.relatedSpirits')}</p>
+            <div className="flex flex-wrap gap-2">
+              {video.spiritTags.map((tag) => (
+                <Link
+                  key={tag.spiritId}
+                  to={`/spirits/${tag.spiritId}`}
+                  className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-800 hover:border-primary-400"
+                >
+                  {isEn ? tag.nameEn || tag.nameKo : tag.nameKo}
+                </Link>
+              ))}
             </div>
           </div>
+        )}
 
-          {video.spiritTags.length > 0 && (
-            <div>
-              <p className="mb-2 text-xs font-bold text-neutral-500">{t('youtube.relatedSpirits')}</p>
-              <div className="flex flex-wrap gap-2">
-                {video.spiritTags.map((tag) => (
-                  <Link
-                    key={tag.spiritId}
-                    to={`/spirits/${tag.spiritId}`}
-                    className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-800 hover:border-primary-400"
-                  >
-                    {isEn ? tag.nameEn || tag.nameKo : tag.nameKo}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {video.description && (
-            <div>
-              <p className="mb-1 text-xs font-bold text-neutral-500">{t('youtube.description')}</p>
-              <p className="whitespace-pre-line text-sm leading-6 text-neutral-600">{video.description}</p>
-            </div>
-          )}
-        </div>
+        {video.description && (
+          <div>
+            <p className="mb-1 text-xs font-bold text-neutral-500">{t('youtube.description')}</p>
+            <p className="whitespace-pre-line text-sm leading-6 text-neutral-600">{video.description}</p>
+          </div>
+        )}
       </div>
     </div>
+  </div>
   )
 }
