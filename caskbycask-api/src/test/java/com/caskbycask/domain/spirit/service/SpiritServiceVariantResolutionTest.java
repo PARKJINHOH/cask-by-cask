@@ -24,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -86,6 +87,8 @@ class SpiritServiceVariantResolutionTest {
         ReflectionTestUtils.setField(variant, "seriesIdentifier", "캐스크 스트렝스");
         ReflectionTestUtils.setField(variant, "variantType", VariantType.BATCH);
         ReflectionTestUtils.setField(variant, "variantValue", "Batch 1");
+        LocalDateTime registeredAt = LocalDateTime.of(2026, 8, 21, 10, 30);
+        ReflectionTestUtils.setField(variant, "createdAt", registeredAt);
 
         given(spiritRepository.findByIdAndStatus(1L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(master));
@@ -97,6 +100,7 @@ class SpiritServiceVariantResolutionTest {
 
         assertThat(variants).extracting(SpiritVariantResponse::id).containsExactly(2L);
         assertThat(variants.get(0).seriesIdentifier()).isEqualTo("캐스크 스트렝스");
+        assertThat(variants.get(0).createdAt()).isEqualTo(registeredAt);
         verify(variantLinkRepository, never()).findAllInvolving(anyLong());
         verify(spiritRepository, never()).findActiveVariantsByName(anyLong(), anyString(), anyString());
     }

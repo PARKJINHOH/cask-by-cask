@@ -62,12 +62,12 @@ function formatEditionDisplayName(
     .join(' ')
 }
 
-export function useSpiritDetail(id: number) {
+export function useSpiritDetail(id: number, preservePrevious = true) {
   return useQuery({
     queryKey: ['spirit', id],
     queryFn: () => spiritApi.getDetail(id).then((res) => formatSpiritName(res.data.data!)),
     enabled: !!id,
-    placeholderData: keepPreviousData,
+    placeholderData: preservePrevious ? keepPreviousData : undefined,
   })
 }
 

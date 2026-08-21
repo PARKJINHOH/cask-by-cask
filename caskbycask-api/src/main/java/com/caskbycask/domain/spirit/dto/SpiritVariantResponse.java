@@ -8,6 +8,7 @@ import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 같은 이름의 다른 배치·병입(바코드) 제품 목록 항목.
@@ -52,6 +53,8 @@ public record SpiritVariantResponse(
         String seriesIdentifierEn,
         @Schema(description = "하위 에디션 표시 순서")
         Integer displayOrder,
+        @Schema(description = "에디션 등록 일시")
+        LocalDateTime createdAt,
         @Schema(description = "공통 상세 정보 (관리자 수정 폼 프리필용)")
         SpiritCommonDetailResponse commonDetail,
         @Schema(description = "위스키 상세 (관리자 수정 폼 프리필용, category=WHISKY 전용)")
@@ -94,6 +97,7 @@ public record SpiritVariantResponse(
                 spirit.getSeriesIdentifier(),
                 spirit.getSeriesIdentifierEn(),
                 spirit.getDisplayOrder(),
+                spirit.getCreatedAt(),
                 commonDetail,
                 whiskyDetail,
                 wineDetail

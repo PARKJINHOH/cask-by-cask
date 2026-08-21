@@ -36,6 +36,7 @@
     "admin:verify-form": "node scripts/verify-admin-form.mjs",
     "test:spirit-limits": "node --import ./scripts/test-alias-register.mjs --test scripts/spirit-limits.test.mjs",
     "test:variant-identity": "node --test scripts/variant-identity.test.mjs",
+    "test:latest-spirit-variant": "node --import ./scripts/test-alias-register.mjs --test scripts/latest-spirit-variant.test.mjs",
     "test:admin-menu": "node --test scripts/admin-menu.test.mjs",
     "test:gnb-menu": "node --import ./scripts/test-alias-register.mjs --test scripts/gnb-menu.test.mjs",
     "test:image-editor": "node --test scripts/image-editor-text.test.mjs",

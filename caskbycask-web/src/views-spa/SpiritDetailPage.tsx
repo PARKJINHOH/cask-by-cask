@@ -35,6 +35,7 @@ import { useState as useStateForPrice } from 'react'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
+import { findLatestRegisteredVariant } from '@/domain/spirit/utils/latestSpiritVariant'
 import SpiritYoutubeSection from '@/domain/youtube/components/SpiritYoutubeSection'
 
 // 가격 차트는 recharts(약 313KB)를 끌어오지만 기본 탭이 '리뷰'라 첫 화면에서는 쓰이지 않는다.
@@ -700,6 +701,7 @@ function toVariantOption(spirit: SpiritDetail): SpiritVariant {
     seriesIdentifier: spirit.seriesIdentifier,
     seriesIdentifierEn: spirit.seriesIdentifierEn,
     displayOrder: spirit.displayOrder,
+    createdAt: spirit.createdAt,
   }
 }
 
@@ -951,6 +953,19 @@ export default function SpiritDetailPage() {
   const [priceVariantId, setPriceVariantId] = useState<number | null>(null)
 
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
+  // 마스터 상세는 관리자가 가장 나중에 등록한 활성 에디션의 제품 정보를 기본으로 보여 준다.
+  // 리뷰·댓글·가격 등 탭의 조회 ID는 아래에서 기존처럼 마스터 ID를 계속 사용한다.
+  const latestRegisteredVariant = useMemo(
+    () => spirit?.parentId == null
+      ? findLatestRegisteredVariant(spirit?.variants ?? [])
+      : null,
+    [spirit],
+  )
+  const {
+    data: latestVariantSpirit,
+    isLoading: isLatestVariantLoading,
+    isPlaceholderData: isLatestVariantPlaceholder,
+  } = useSpiritDetail(latestRegisteredVariant?.id ?? 0, false)
   // 릴리즈에 누락된 공통 위스키 스타일은 상위 원본 주류에서만 보완한다.
   // React Query 캐시를 공유하므로 상위 주류를 이미 본 경우 추가 요청은 발생하지 않는다.
   const { data: parentSpirit } = useSpiritDetail(spirit?.parentId ?? 0)
@@ -1044,7 +1059,7 @@ export default function SpiritDetailPage() {
     scrollToPageTop(null)
   }, [spiritId])
 
-  if (isLoading) return <Spinner fullscreen />
+  if (isLoading || isLatestVariantLoading || isLatestVariantPlaceholder) return <Spinner fullscreen />
 
   if (!spirit) {
     return (
@@ -1054,31 +1069,32 @@ export default function SpiritDetailPage() {
     )
   }
 
-  const { primaryName, secondaryName } = getLocalizedNames(spirit.nameKo, spirit.nameEn, i18n.language)
-  const primaryProducer   = isEn ? (spirit.producerNameEn || spirit.producerNameKo) : spirit.producerNameKo
-  const secondaryProducer = isEn ? spirit.producerNameKo : spirit.producerNameEn
-  const brandName = spirit.whiskyDetail?.brandName || null
-  const countryLabel = localizeCountry(spirit.country, i18n.language)
+  const displaySpirit = latestVariantSpirit ?? spirit
+  const { primaryName, secondaryName } = getLocalizedNames(displaySpirit.nameKo, displaySpirit.nameEn, i18n.language)
+  const primaryProducer   = isEn ? (displaySpirit.producerNameEn || displaySpirit.producerNameKo) : displaySpirit.producerNameKo
+  const secondaryProducer = isEn ? displaySpirit.producerNameKo : displaySpirit.producerNameEn
+  const brandName = displaySpirit.whiskyDetail?.brandName || null
+  const countryLabel = localizeCountry(displaySpirit.country, i18n.language)
   // 카테고리별 서술형 추가 정보 — 상세 카드 대신 이미지 오른쪽 상단 정보 영역에 표시한다.
   const headerAdditionalInfo = (
-    spirit.whiskyDetail?.notes
-    ?? spirit.wineDetail?.notes
-    ?? spirit.cognacDetail?.notes
-    ?? spirit.otherDetail?.notes
+    displaySpirit.whiskyDetail?.notes
+    ?? displaySpirit.wineDetail?.notes
+    ?? displaySpirit.cognacDetail?.notes
+    ?? displaySpirit.otherDetail?.notes
   )?.trim()
 
   // 에디션(자식 variant)은 자체 이미지가 없고 이미지는 마스터(부모)에만 저장된다.
   // 표시용 갤러리 이미지는 본인 것을 우선하되, 없으면 마스터 이미지로 폴백한다.
-  const galleryImages = (spirit.images && spirit.images.length > 0)
-    ? spirit.images
-    : spirit.sourceImageUrl
-      ? [{ id: -1, imageUrl: spirit.sourceImageUrl, isPrimary: true, sortOrder: 0 }]
+  const galleryImages = (displaySpirit.images && displaySpirit.images.length > 0)
+    ? displaySpirit.images
+    : displaySpirit.sourceImageUrl
+      ? [{ id: -1, imageUrl: displaySpirit.sourceImageUrl, isPrimary: true, sortOrder: 0 }]
       : []
 
   const canonicalUrl = isEn
     ? (spiritSeo?.canonicalUrlEn ?? buildCanonical(`/en/spirits/${spirit.id}`))
     : (spiritSeo?.canonicalUrlKo ?? buildCanonical(`/ko/spirits/${spirit.id}`))
-  const rawImage = spiritSeo?.primaryImageUrl || spirit.primaryImageUrl || galleryImages[0]?.imageUrl
+  const rawImage = galleryImages[0]?.imageUrl || displaySpirit.primaryImageUrl || spiritSeo?.primaryImageUrl
   const heroImage = rawImage
     ? (rawImage.startsWith('http') ? rawImage : `${SITE_URL}${rawImage}`)
     : DEFAULT_OG_IMAGE
@@ -1128,7 +1144,7 @@ export default function SpiritDetailPage() {
       } : undefined,
     } : undefined,
     countryOfOrigin: countryLabel || undefined,
-    category: spirit.category,
+    category: displaySpirit.category,
     aggregateRating: (scoreSource?.avgScore != null && ratedReviewCount > 0) ? {
       '@type': 'AggregateRating',
       ratingValue: scoreSource.avgScore,
@@ -1150,7 +1166,7 @@ export default function SpiritDetailPage() {
       '@type': 'Thing',
       name: primaryName,
       alternateName: secondaryName || undefined,
-      additionalType: spirit.category || undefined,
+      additionalType: displaySpirit.category || undefined,
     },
   }
 
@@ -1158,7 +1174,7 @@ export default function SpiritDetailPage() {
   const breadcrumbJsonLd = buildBreadcrumbSchema([
     { name: isEn ? 'Home' : '홈', path: langPrefix },
     { name: isEn ? 'Spirits' : '주류 카탈로그', path: `${langPrefix}/spirits` },
-    { name: t(`spirit.category.${spirit.category}`), path: `${langPrefix}/spirits?category=${spirit.category}` },
+    { name: t(`spirit.category.${displaySpirit.category}`), path: `${langPrefix}/spirits?category=${displaySpirit.category}` },
     { name: primaryName ?? '', path: canonicalUrl },
   ])
   const seoTitle = isEn ? spiritSeo?.titleEn : spiritSeo?.titleKo
@@ -1197,25 +1213,25 @@ export default function SpiritDetailPage() {
               onSelect={setSelectedImg}
               onImageClick={setLightboxIdx}
             />
-            {spirit.sourceProvider === 'VIVINO' && spirit.sourceRating != null && (
+            {displaySpirit.sourceProvider === 'VIVINO' && displaySpirit.sourceRating != null && (
               <a
-                href={spirit.sourceUrl || undefined}
-                target={spirit.sourceUrl ? '_blank' : undefined}
-                rel={spirit.sourceUrl ? 'noopener noreferrer nofollow' : undefined}
+                href={displaySpirit.sourceUrl || undefined}
+                target={displaySpirit.sourceUrl ? '_blank' : undefined}
+                rel={displaySpirit.sourceUrl ? 'noopener noreferrer nofollow' : undefined}
                 onClick={(event) => {
-                  if (!spirit.sourceUrl) event.preventDefault()
+                  if (!displaySpirit.sourceUrl) event.preventDefault()
                   event.stopPropagation()
                 }}
                 className="absolute bottom-7 right-7 rounded-xl bg-[#8b1d41]/95 px-3 py-2 text-white shadow-lg ring-1 ring-white/40"
-                aria-label={`VIVINO ${spirit.sourceRating.toFixed(1)}`}
+                aria-label={`VIVINO ${displaySpirit.sourceRating.toFixed(1)}`}
               >
                 <span className="block text-[10px] font-black tracking-[0.14em] leading-none">
-                  VIVINO{spirit.sourceUrl?.includes('/fixture-') ? ' · SAMPLE' : ''}
+                  VIVINO{displaySpirit.sourceUrl?.includes('/fixture-') ? ' · SAMPLE' : ''}
                 </span>
                 <span className="mt-1 block text-lg font-black leading-none">
-                  {spirit.sourceRating.toFixed(1)}
-                  {spirit.sourceRatingCount != null && (
-                    <span className="ml-1 text-[10px] font-medium opacity-80">({spirit.sourceRatingCount.toLocaleString()})</span>
+                  {displaySpirit.sourceRating.toFixed(1)}
+                  {displaySpirit.sourceRatingCount != null && (
+                    <span className="ml-1 text-[10px] font-medium opacity-80">({displaySpirit.sourceRatingCount.toLocaleString()})</span>
                   )}
                 </span>
               </a>
@@ -1237,8 +1253,8 @@ export default function SpiritDetailPage() {
             </div>
 
             <div className="md:pr-24">
-              <Badge variant={spirit.category} size="sm" className="mb-2">
-                {t(`spirit.category.${spirit.category}`)}
+              <Badge variant={displaySpirit.category} size="sm" className="mb-2">
+                {t(`spirit.category.${displaySpirit.category}`)}
               </Badge>
               <h1 className="text-[26px] md:text-[30px] font-bold text-neutral-900 leading-tight tracking-tight">
                 {primaryName}
@@ -1252,8 +1268,8 @@ export default function SpiritDetailPage() {
                     fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M2 20h20M4 20V8l6 4V8l6 4V8l4 3v9" />
                   </svg>
-                  {spirit.producerId ? (
-                    <Link to={`/producers/${spirit.producerId}`}
+                  {displaySpirit.producerId ? (
+                    <Link to={`/producers/${displaySpirit.producerId}`}
                       className="text-neutral-500 hover:text-primary-800 hover:underline transition-colors">
                       {brandName
                         ? (primaryProducer
@@ -1274,8 +1290,8 @@ export default function SpiritDetailPage() {
                     <span className="inline-flex items-center text-[11px] font-medium text-amber-700
                       bg-amber-50 border border-amber-100 rounded-full px-1.5 py-0.5">
                       {isEn
-                        ? PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[spirit.category]].en
-                        : PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[spirit.category]].ko}
+                        ? PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[displaySpirit.category]].en
+                        : PRODUCER_TYPE_LABEL[CATEGORY_TO_PRODUCER_TYPE[displaySpirit.category]].ko}
                     </span>
                   )}
                 </p>
@@ -1294,10 +1310,10 @@ export default function SpiritDetailPage() {
                   <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
-                  {t(spirit.category === 'WINE' ? 'spirit.detail.vintagePageSelect' : 'spirit.detail.variantPageSelect')}
+                  {t(displaySpirit.category === 'WINE' ? 'spirit.detail.vintagePageSelect' : 'spirit.detail.variantPageSelect')}
                 </span>
                 <select
-                  value={spirit.parentId != null ? spirit.id : ''}
+                  value={displaySpirit.parentId != null ? displaySpirit.id : ''}
                   onChange={(e) => {
                     const targetId = Number(e.target.value)
                     if (!targetId) return
@@ -1309,7 +1325,7 @@ export default function SpiritDetailPage() {
                   {/* 마스터 페이지에서는 현재 선택 항목이 없으므로 placeholder 추가 */}
                   {spirit.parentId == null && (
                     <option value="" disabled>
-                      {t(spirit.category === 'WINE' ? 'spirit.detail.vintageSelectPlaceholder' : 'spirit.detail.variantSelectPlaceholder')}
+                      {t(displaySpirit.category === 'WINE' ? 'spirit.detail.vintageSelectPlaceholder' : 'spirit.detail.variantSelectPlaceholder')}
                     </option>
                   )}
                   {groupOptions.map((opt) => (
@@ -1337,9 +1353,9 @@ export default function SpiritDetailPage() {
       {/* 카테고리 상세 정보 + Tabs */}
       <div className="space-y-6">
         <SpiritDetailSections
-          spirit={spirit}
+          spirit={displaySpirit}
           isEn={isEn}
-          parentWhiskyDetail={parentSpirit?.whiskyDetail}
+          parentWhiskyDetail={parentSpirit?.whiskyDetail ?? (displaySpirit.parentId != null ? spirit.whiskyDetail : undefined)}
         />
 
         {/* Tabs */}

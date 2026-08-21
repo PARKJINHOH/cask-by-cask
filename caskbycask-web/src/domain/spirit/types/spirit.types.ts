@@ -156,6 +156,7 @@ export interface SpiritVariant {
   seriesIdentifier?: string | null
   seriesIdentifierEn?: string | null
   displayOrder?: number | null
+  createdAt: string
   commonDetail?: SpiritCommonDetailResponse | null
   whiskyDetail?: WhiskyDetailResponse | null
   wineDetail?: WineDetailResponse | null
