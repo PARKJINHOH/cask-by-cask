@@ -118,9 +118,10 @@ exchange-rate:
   retry-max-attempts: ${EXCHANGE_RATE_RETRY_MAX_ATTEMPTS:3}
   retry-initial-backoff-ms: ${EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS:1000}
 
-# 유튜브 갤러리 — 승인한 채널의 새 영상을 공개 RSS 피드에서 따라잡는다.
-# Data API 키를 쓰지 않으므로 할당량이 없고, 조회수·재생시간도 수집하지 않는다.
+# 유튜브 갤러리 — 승인한 채널의 새 영상을 공식 Data API v3 또는 공개 RSS 피드로 따라잡는다.
+# API 키가 있으면 공식 Data API v3를 우선 사용(클라우드 IP 차단 방지)하며, 미설정 시 RSS 피드로 fallback 합니다.
 youtube:
+  api-key: ${YOUTUBE_API_KEY:}
   sync-cron: ${YOUTUBE_SYNC_CRON:0 25 */3 * * *}
   feed:
     connect-timeout-ms: ${YOUTUBE_FEED_CONNECT_TIMEOUT_MS:3000}

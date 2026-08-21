@@ -62,6 +62,11 @@ public class YoutubeSyncService {
         List<FeedVideo> feedVideos;
         try {
             feedVideos = feedClient.fetchLatestVideos(channelKey);
+        } catch (YoutubeFeedClient.YoutubeFetchException e) {
+            log.warn("유튜브 피드 수집 실패: channelKey={}", channelKey, e);
+            String reason = e.getMessage();
+            syncWriter.recordFailure(channelId, reason);
+            return new SyncResult(channelId, channelTitle, 0, 0, reason);
         } catch (RuntimeException e) {
             log.warn("유튜브 피드 수집 실패: channelKey={}", channelKey, e);
             String reason = "피드를 읽지 못했습니다: " + e.getClass().getSimpleName();
@@ -70,7 +75,7 @@ public class YoutubeSyncService {
         }
 
         if (feedVideos.isEmpty()) {
-            String reason = "피드에서 영상을 찾지 못했습니다. 채널 ID 를 확인해주세요.";
+            String reason = "피드에서 영상을 찾지 못했습니다. 채널에 공개 영상이 있는지 확인해주세요.";
             syncWriter.recordFailure(channelId, reason);
             return new SyncResult(channelId, channelTitle, 0, 0, reason);
         }

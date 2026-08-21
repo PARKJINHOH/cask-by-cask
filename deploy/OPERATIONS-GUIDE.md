@@ -539,6 +539,7 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `INDEXNOW_KEY` | 공개 소유 확인 키(8~128자의 a-f/A-F/0-9/-). 활성화 시 `/indexnow-key.txt`에 노출되는 것이 정상 |
 | `INDEXNOW_ENDPOINTS` | 쉼표로 구분한 통지 대상. 기본값 `https://www.bing.com/indexnow,https://searchadvisor.naver.com/indexnow`. 장애 대응 외에는 변경하지 않음 |
 | `INDEXNOW_ENDPOINT` | (구버전 호환) 단일 대상. 값이 있으면 위 목록에 더해 함께 보내며 중복 주소는 한 번만 통지한다. 기존 서버 값을 지우지 않아도 무방 |
+| `YOUTUBE_API_KEY` | (선택·권장) Google Cloud YouTube Data API v3 키. 클라우드 IP 차단 방지용. 미설정 시 공개 RSS/스크래핑으로 동작 |
 | `YOUTUBE_SYNC_CRON` | 유튜브 갤러리 정기 수집 주기. **Spring 6필드 cron**(맨 앞이 초), 기본값 `0 25 */3 * * *`(3시간마다) |
 | `YOUTUBE_FEED_CONNECT_TIMEOUT_MS` / `YOUTUBE_FEED_READ_TIMEOUT_MS` | 유튜브 RSS·oEmbed 연결/응답 제한 시간. 기본값 3000ms/10000ms |
 | `YOUTUBE_AVAILABILITY_CRON` | 삭제·비공개 영상 자동 숨김 점검 주기. **Spring 6필드 cron**, 기본값 `0 40 4 * * *`(매일 04:40) |
@@ -580,12 +581,12 @@ sudo journalctl -u caskbycask-api --since '12 hours ago' | grep -E 'Exchange rat
 
 ### 유튜브 갤러리 수집·가용성 점검
 
-관리자가 **허락을 받고 등록한** 채널의 최신 영상을 공개 RSS로 따라잡아 `/youtube` 갤러리에 노출한다.
+관리자가 **허락을 받고 등록한** 채널의 최신 영상을 공식 Data API v3 또는 공개 RSS로 따라잡아 `/youtube` 갤러리에 노출한다.
 운영 배포는 Flyway `V88`~`V89` 적용이 전제다.
 
-- **Data API 키가 없다.** 공개 RSS(`youtube.com/feeds/videos.xml`)와 oEmbed만 쓰므로 할당량·키 관리가 없다.
-  대신 조회수·재생시간은 수집하지 않으며, 피드는 **채널당 최신 15편**만 담는다.
-  옛 영상은 관리자가 영상 URL로 직접 등록한다.
+- **Data API v3 우선 지원 (선택/권장)**: Google Cloud Console에서 발급한 `YOUTUBE_API_KEY`가 설정되어 있으면 공식 Data API v3를 사용하므로 OCI/AWS 등 클라우드 환경에서도 IP 차단(403/429) 없이 100% 안정적으로 수집한다.
+  (무료 일일 할당량 10,000 unit 중 채널 10개 기준 1회 10 unit 소모로 극히 미미함)
+- **RSS fallback**: API 키가 없거나 초과 시 공개 RSS(`youtube.com/feeds/videos.xml`)와 oEmbed로 자동 폴백한다. 피드는 **채널당 최신 15편**만 담으며, 옛 영상은 관리자가 영상 URL로 직접 등록한다.
 - **정기 수집**: 기본 3시간마다(`0 25 */3 * * *`, Asia/Seoul). 급할 때는 관리자 화면의 `지금 수집`을 쓴다.
   수집은 넣거나 갱신만 하고 지우지 않으므로, RSS 창 밖으로 밀려난 영상도 DB에는 남는다.
 - **가용성 점검**: 기본 매일 `04:40`. oEmbed 응답 코드로 판정해 404(삭제)·401/403(비공개)만 자동 숨김하고,
@@ -593,15 +594,16 @@ sudo journalctl -u caskbycask-api --since '12 hours ago' | grep -E 'Exchange rat
   관리자가 직접 숨긴 영상은 점검이 건드리지 않는다.
 - 두 작업은 `youtube-sync-scheduling-` **단일 스레드 스케줄러를 공유**하므로 서로 겹쳐 돌지 않는다.
   환율 갱신 등 다른 배치와도 스레드를 나눠 쓰지 않아 서로 밀지 않는다.
-- **아웃바운드 허용 대상**: `www.youtube.com`, `youtube.com`(RSS·채널 페이지·oEmbed).
+- **아웃바운드 허용 대상**: `www.googleapis.com`(Data API), `www.youtube.com`, `youtube.com`(RSS·채널 페이지·oEmbed).
   재생 임베드는 브라우저가 `www.youtube-nocookie.com`으로 직접 요청하므로 서버 방화벽과 무관하다.
 - 노출 조건은 **채널 노출 + 채널 허락 확인 + 영상 노출** 셋이 모두 참일 때다.
   창작자가 동의를 철회하면 관리자 화면에서 그 채널 하나만 내리면 소속 영상이 전부 사라진다.
 
 기존 운영 서버의 `/app/env/api.env`는 배포 시 자동 교체되지 않는다. 아래는 전부 애플리케이션
-기본값과 같으므로 **생략해도 동작한다.** 주기를 조정할 때만 추가한 뒤 API를 재시작한다.
+기본값과 같으므로 **생략해도 동작한다.** YouTube API 키를 등록하거나 주기를 조정할 때 추가한 뒤 API를 재시작한다.
 
 ```dotenv
+YOUTUBE_API_KEY=AIzaSy...
 YOUTUBE_SYNC_CRON=0 25 */3 * * *
 YOUTUBE_FEED_CONNECT_TIMEOUT_MS=3000
 YOUTUBE_FEED_READ_TIMEOUT_MS=10000
