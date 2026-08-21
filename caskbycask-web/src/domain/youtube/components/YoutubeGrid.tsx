@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -20,8 +20,8 @@ interface Props {
   onSelect?: (video: YoutubeVideo) => void
 }
 
-/** 타일 사이 간격(px) — 이미지 갤러리와 같은 값 */
-const GAP = 8
+/** 타일 사이 간격(px) */
+const GAP = 16
 
 /**
  * 영상 타일 목록.
@@ -83,53 +83,57 @@ export default function YoutubeGrid({ videos, onSelect }: Props) {
                 key={video.videoKey}
                 to={`/youtube/${video.videoKey}`}
                 onClick={(event) => handleClick(event, video)}
-                className="group relative block w-full overflow-hidden rounded-xl bg-neutral-900"
+                className="group block w-full"
               >
-                <div style={{ aspectRatio }} className="w-full">
-                  <img
-                    src={gridThumbnail(video.videoKey)}
-                    onError={(event) => handleThumbnailError(event.currentTarget, video.videoKey)}
-                    onLoad={(event) => handleThumbnailLoad(event.currentTarget, video.videoKey)}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                  />
-                </div>
+                {/* 썸네일 */}
+                <div className="relative overflow-hidden rounded-xl bg-neutral-900">
+                  <div style={{ aspectRatio }} className="w-full">
+                    <img
+                      src={gridThumbnail(video.videoKey)}
+                      onError={(event) => handleThumbnailError(event.currentTarget, video.videoKey)}
+                      onLoad={(event) => handleThumbnailLoad(event.currentTarget, video.videoKey)}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    />
+                  </div>
 
-                {video.videoType === 'SHORTS' && (
-                  <span className="absolute left-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-bold text-white">
-                    {t('youtube.shortsBadge')}
-                  </span>
-                )}
-                {video.pinned && (
-                  <span className="absolute right-2 top-2 rounded-md bg-primary-600 px-1.5 py-0.5 text-[11px] font-bold text-white">
-                    {t('youtube.pinnedBadge')}
-                  </span>
-                )}
+                  {video.videoType === 'SHORTS' && (
+                    <span className="absolute left-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                      {t('youtube.shortsBadge')}
+                    </span>
+                  )}
+                  {video.pinned && (
+                    <span className="absolute right-2 top-2 rounded-md bg-primary-600 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                      {t('youtube.pinnedBadge')}
+                    </span>
+                  )}
 
-                {/* 제목과 채널은 항상 보인다 — 이미지와 달리 영상은 제목이 곧 내용이라
-                    hover 로 감추면 무엇에 관한 영상인지 알 수 없다. */}
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end gap-2 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-3 pt-10 text-white">
-                  <YoutubeChannelAvatar channel={video.channel} size={28} />
-                  <span className="min-w-0 flex-1">
-                    <span className="line-clamp-2 text-sm font-bold leading-snug">{video.title}</span>
-                    <span className="mt-0.5 block truncate text-xs opacity-80">
-                      {video.channel.title}
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                  >
+                    <span className="flex h-11 w-16 items-center justify-center rounded-xl bg-red-600 shadow-lg">
+                      <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
                     </span>
                   </span>
-                </span>
+                </div>
 
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-                >
-                  <span className="flex h-11 w-16 items-center justify-center rounded-xl bg-red-600 shadow-lg">
-                    <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </span>
-                </span>
+                {/* 썸네일 아래 정보: 영상 제목(2줄) + 채널 이름 */}
+                <div className="mt-2.5 flex items-start gap-2.5 px-0.5">
+                  <YoutubeChannelAvatar channel={video.channel} size={28} className="mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-900 transition-colors group-hover:text-primary-800">
+                      {video.title}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-neutral-500">
+                      {video.channel.title}
+                    </p>
+                  </div>
+                </div>
               </Link>
             )
           })}

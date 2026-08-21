@@ -61,7 +61,7 @@ export default function YoutubeVideoModal({ videoKey, fallback, onClose, onPrev,
         <div className="flex min-h-full items-center justify-center">
           {/* 폭을 넉넉히 잡는 이유 — 유튜브가 플레이어의 실제 크기로 재생 화질을 고른다.
               좁게 두면 1080p 소스도 720p 이하로 재생된다. */}
-          <DialogPanel className="w-full max-w-[1280px] overflow-hidden bg-white shadow-2xl sm:rounded-2xl lg:max-h-[94vh]">
+          <DialogPanel className="flex w-full max-w-[1280px] flex-col overflow-hidden bg-white shadow-2xl sm:rounded-2xl max-h-[92vh] h-[92vh] sm:h-[88vh]">
             {video ? (
               <YoutubeVideoView
                 key={video.videoKey}

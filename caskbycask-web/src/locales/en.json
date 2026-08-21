@@ -2813,7 +2813,11 @@
     "channelNotFound": "This channel could not be found.",
     "channelVideos": "Videos from this channel",
     "channelEmpty": "No videos from this channel have been collected yet.",
-    "channelOtherChannels": "Browse other channels"
+    "channelOtherChannels": "Browse other channels",
+    "description": "Description",
+    "showChannels": "Show channels",
+    "hideChannels": "Hide channels",
+    "channelsCount": "{{count}} channels"
   },
   "photoGallery": {
     "title": "Image gallery",

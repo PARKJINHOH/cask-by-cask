@@ -25,8 +25,8 @@ class YoutubeFeedClientTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    @DisplayName("YouTube Data API 키가 설정되어 있을 때 playlistItems 로 최신 영상을 정상 수집한다")
-    void fetchLatestVideosViaApi() throws Exception {
+    @DisplayName("YouTube Data API 키가 설정되어 있을 때 UULF 와 UUSH 플레이리스트로 일반 영상과 숏츠를 구분 수집한다")
+    void fetchLatestVideosViaApi_withShortsAndVideo() throws Exception {
         String apiKey = "AIzaSyTestKey";
         YoutubeFeedClient client = new YoutubeFeedClient(apiKey, 3000, 5000, objectMapper);
 
@@ -35,23 +35,25 @@ class YoutubeFeedClientTest {
         setField(client, "restClient", builder.build());
 
         String channelKey = "UC1234567890123456789012";
-        String uploadsPlaylistId = "UU1234567890123456789012";
-        String expectedUrl = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId="
-                + uploadsPlaylistId + "&maxResults=15&key=" + apiKey;
+        String suffix = "1234567890123456789012";
+        String longformUrl = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=UULF"
+                + suffix + "&maxResults=15&key=" + apiKey;
+        String shortsUrl = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=UUSH"
+                + suffix + "&maxResults=15&key=" + apiKey;
 
-        String mockResponse = """
+        String longformResponse = """
                 {
                   "items": [
                     {
                       "snippet": {
                         "publishedAt": "2026-08-20T10:00:00Z",
-                        "title": "테스트 위스키 리뷰",
-                        "description": "위스키 설명입니다.",
+                        "title": "테스트 일반 영상 리뷰",
+                        "description": "롱폼 위스키 설명입니다.",
                         "thumbnails": {
-                          "high": { "url": "https://i.ytimg.com/vi/testVid1234/hqdefault.jpg" }
+                          "high": { "url": "https://i.ytimg.com/vi/videoKey001/hqdefault.jpg" }
                         },
                         "resourceId": {
-                          "videoId": "testVid1234"
+                          "videoId": "videoKey001"
                         }
                       }
                     }
@@ -59,21 +61,57 @@ class YoutubeFeedClientTest {
                 }
                 """;
 
-        server.expect(requestTo(expectedUrl))
+        String shortsResponse = """
+                {
+                  "items": [
+                    {
+                      "snippet": {
+                        "publishedAt": "2026-08-21T10:00:00Z",
+                        "title": "1분 위스키 꿀팁 #shorts",
+                        "description": "숏츠 영상입니다.",
+                        "thumbnails": {
+                          "high": { "url": "https://i.ytimg.com/vi/shortsKey001/hqdefault.jpg" }
+                        },
+                        "resourceId": {
+                          "videoId": "shortsKey001"
+                        }
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        server.expect(requestTo(longformUrl))
                 .andExpect(method(HttpMethod.GET))
-                .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(longformResponse, MediaType.APPLICATION_JSON));
+
+        server.expect(requestTo(shortsUrl))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(shortsResponse, MediaType.APPLICATION_JSON));
 
         List<FeedVideo> videos = client.fetchLatestVideos(channelKey);
 
-        assertThat(videos).hasSize(1);
-        FeedVideo video = videos.get(0);
-        assertThat(video.videoKey()).isEqualTo("testVid1234");
-        assertThat(video.title()).isEqualTo("테스트 위스키 리뷰");
-        assertThat(video.description()).isEqualTo("위스키 설명입니다.");
-        assertThat(video.thumbnailUrl()).isEqualTo("https://i.ytimg.com/vi/testVid1234/hqdefault.jpg");
-        assertThat(video.videoType()).isEqualTo(YoutubeVideoType.VIDEO);
+        assertThat(videos).hasSize(2);
+
+        FeedVideo video1 = videos.get(0);
+        assertThat(video1.videoKey()).isEqualTo("videoKey001");
+        assertThat(video1.videoType()).isEqualTo(YoutubeVideoType.VIDEO);
+
+        FeedVideo video2 = videos.get(1);
+        assertThat(video2.videoKey()).isEqualTo("shortsKey001");
+        assertThat(video2.videoType()).isEqualTo(YoutubeVideoType.SHORTS);
 
         server.verify();
+    }
+
+    @Test
+    @DisplayName("#shorts 태그나 제목으로 숏츠 여부를 정확히 판별한다")
+    void testIsShortsText() {
+        assertThat(YoutubeFeedClient.isShortsText("가성비 위스키 추천 #shorts", null)).isTrue();
+        assertThat(YoutubeFeedClient.isShortsText("가성비 위스키 추천 #Shorts", null)).isTrue();
+        assertThat(YoutubeFeedClient.isShortsText("가성비 위스키 추천 #쇼츠", null)).isTrue();
+        assertThat(YoutubeFeedClient.isShortsText("가성비 위스키 추천", "설명란에 #shorts 포함")).isTrue();
+        assertThat(YoutubeFeedClient.isShortsText("일반 위스키 리뷰 영상", "평범한 본문입니다.")).isFalse();
     }
 
     @Test

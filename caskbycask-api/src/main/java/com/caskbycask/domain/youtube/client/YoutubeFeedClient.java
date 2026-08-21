@@ -325,6 +325,44 @@ public class YoutubeFeedClient {
         return json == null ? null : extractJsonString(json, "author_url");
     }
 
+    private static final Pattern SHORTS_PATTERN = Pattern.compile("(?i)#(shorts?|쇼츠)($|[\\s.,!?:;/\\[\\]()#])");
+
+    /**
+     * 영상의 숏츠 여부를 판별한다.
+     * <p>1차: 제목 또는 설명의 #shorts 태그 검사<br>
+     * 2차: /shorts/{videoKey} probe 검사
+     */
+    public YoutubeVideoType resolveVideoType(String videoKey, String title, String description) {
+        if (isShortsText(title, description)) {
+            return YoutubeVideoType.SHORTS;
+        }
+        if (probeIsShorts(videoKey)) {
+            return YoutubeVideoType.SHORTS;
+        }
+        return YoutubeVideoType.VIDEO;
+    }
+
+    public static boolean isShortsText(String title, String description) {
+        if (title != null && SHORTS_PATTERN.matcher(title).find()) return true;
+        if (description != null && SHORTS_PATTERN.matcher(description).find()) return true;
+        return false;
+    }
+
+    public boolean probeIsShorts(String videoKey) {
+        if (videoKey == null || videoKey.isBlank()) return false;
+        String url = FEED_HOST + "/shorts/" + videoKey;
+        try {
+            return Boolean.TRUE.equals(restClient.get()
+                    .uri(url)
+                    .exchange((request, response) -> {
+                        int status = response.getStatusCode().value();
+                        return status == 200;
+                    }));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ─── Data API v3 내부 ─────────────────────────────────────
 
     private boolean hasApiKey() {
@@ -332,14 +370,36 @@ public class YoutubeFeedClient {
     }
 
     private List<FeedVideo> fetchLatestVideosViaApi(String channelKey) {
-        String uploadsPlaylistId = channelKey.startsWith("UC") && channelKey.length() == 24
-                ? "UU" + channelKey.substring(2)
-                : channelKey;
+        String suffix = channelKey.startsWith("UC") && channelKey.length() == 24
+                ? channelKey.substring(2)
+                : null;
 
+        Map<String, FeedVideo> merged = new LinkedHashMap<>();
+
+        if (suffix != null) {
+            for (FeedVideo video : fetchPlaylistViaApi("UULF" + suffix, YoutubeVideoType.VIDEO)) {
+                merged.putIfAbsent(video.videoKey(), video);
+            }
+            for (FeedVideo video : fetchPlaylistViaApi("UUSH" + suffix, YoutubeVideoType.SHORTS)) {
+                merged.putIfAbsent(video.videoKey(), video);
+            }
+        }
+
+        if (merged.isEmpty()) {
+            String uploadsPlaylistId = suffix != null ? "UU" + suffix : channelKey;
+            for (FeedVideo video : fetchPlaylistViaApi(uploadsPlaylistId, null)) {
+                merged.putIfAbsent(video.videoKey(), video);
+            }
+        }
+
+        return new ArrayList<>(merged.values());
+    }
+
+    private List<FeedVideo> fetchPlaylistViaApi(String playlistId, YoutubeVideoType videoType) {
         String url = UriComponentsBuilder.fromUriString(API_HOST)
                 .path("/playlistItems")
                 .queryParam("part", "snippet")
-                .queryParam("playlistId", uploadsPlaylistId)
+                .queryParam("playlistId", playlistId)
                 .queryParam("maxResults", 15)
                 .queryParam("key", apiKey)
                 .build()
@@ -372,6 +432,9 @@ public class YoutubeFeedClient {
                 }
 
                 String thumbnailUrl = extractThumbnail(snippet.path("thumbnails"), videoKey);
+                YoutubeVideoType finalType = videoType != null
+                        ? videoType
+                        : resolveVideoType(videoKey, title, description);
 
                 videos.add(new FeedVideo(
                         videoKey,
@@ -379,11 +442,11 @@ public class YoutubeFeedClient {
                         truncate(description, 1000),
                         thumbnailUrl,
                         publishedAt,
-                        YoutubeVideoType.VIDEO));
+                        finalType));
             }
             return videos;
         } catch (Exception e) {
-            log.warn("유튜브 Data API playlistItems JSON 파싱 실패: error={}", e.getMessage());
+            log.warn("유튜브 Data API playlistItems JSON 파싱 실패: playlistId={}, error={}", playlistId, e.getMessage());
             return List.of();
         }
     }

@@ -55,8 +55,11 @@ public class YoutubeSyncWriter {
             YoutubeVideo video = existing.get(feed.videoKey());
             if (video != null) {
                 // 제목·설명·썸네일은 업로더가 나중에 고치기도 한다.
-                // 유형(videoType)과 노출 설정은 관리자가 손댔을 수 있어 덮어쓰지 않는다.
                 video.applyFeedUpdate(feed.title(), feed.description(), feed.thumbnailUrl(), feed.publishedAt());
+                // 자동 수집분(CHANNEL_FEED)이고 피드에서 유형이 새로 감지되었으면 동기화한다.
+                if (video.getSource() == YoutubeVideoSource.CHANNEL_FEED && video.getVideoType() != feed.videoType()) {
+                    video.updateVideoType(feed.videoType());
+                }
                 updated++;
                 continue;
             }
