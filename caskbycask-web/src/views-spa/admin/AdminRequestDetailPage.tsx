@@ -11,9 +11,12 @@ import {
   useUploadRequestImage,
   useRemoveRequestImage,
   useApproveRequestWithDetail,
+  useApproveRequestAsVariant,
   useRejectRequest,
 } from '@/domain/admin/hooks/useAdminSpirits'
 import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
+import SpiritMasterPicker, { type PickedSpiritMaster } from '@/domain/spirit/components/SpiritMasterPicker'
+import { extractApiErrorMessage } from '@/shared/utils/apiError'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 // ── 상수 ────────────────────────────────────────────────────────
@@ -149,7 +152,12 @@ export default function AdminRequestDetailPage() {
 
   const { data: req, isLoading } = useAdminRequestDetail(requestId)
   const approve = useApproveRequestWithDetail()
+  const approveAsVariant = useApproveRequestAsVariant()
   const reject = useRejectRequest()
+
+  // 신청자가 고른 대상이 있으면 그대로 이어받고, 없으면 관리자가 직접 찾는다.
+  const [targetSpirit, setTargetSpirit] = useState<PickedSpiritMaster | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const form = useSpiritForm({ requireProductionInfo: true })
 
@@ -161,17 +169,36 @@ export default function AdminRequestDetailPage() {
   // 신청 데이터 → 폼 프리필 (한 번만)
   if (req && !initialized) {
     form.prefillFromRequest(req)
+    if (req.targetSpirit) {
+      setTargetSpirit({
+        id: req.targetSpirit.id,
+        nameKo: req.targetSpirit.nameKo,
+        nameEn: req.targetSpirit.nameEn,
+        category: req.category,
+      })
+    }
     setInitialized(true)
   }
 
   const handleApprove = async () => {
     if (!form.validate()) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    // 기존 주류에 붙이려면 붙일 에디션이 있어야 한다.
+    // 서버도 막지만 메시지가 일반적이라, 무엇을 고쳐야 하는지 여기서 알려준다.
+    if (targetSpirit && (!form.isVariantSplit || form.variants.length === 0)) {
+      setActionError('에디션 유형을 고르고 에디션을 1건 추가해야 기존 주류에 붙일 수 있습니다.')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     setActionError('')
     try {
-      const res = await approve.mutateAsync({ id: requestId, data: form.buildPayload() })
+      const data = form.buildPayload()
+      const res = targetSpirit
+        ? await approveAsVariant.mutateAsync({ id: requestId, targetSpiritId: targetSpirit.id, data })
+        : await approve.mutateAsync({ id: requestId, data })
       navigate(`/admin/spirits/${res.data.data?.id ?? ''}`)
-    } catch {
-      setActionError('승인 처리 중 오류가 발생했습니다.')
+    } catch (e) {
+      // 중복 에디션·카테고리 불일치처럼 서버만 아는 이유가 있다 — 그대로 보여 준다.
+      setActionError(extractApiErrorMessage(e, '승인 처리 중 오류가 발생했습니다.'))
     }
   }
 
@@ -224,6 +251,48 @@ export default function AdminRequestDetailPage() {
       </div>
 
       {/* 공유 폼 (좌측 하단에 이미지 카드 주입) */}
+      {/* 기존 주류의 에디션으로 등록 — 신청자가 새 주류로 올렸지만 실은 이미 있는 술의
+          새 배치·빈티지인 경우가 잦다. 그대로 승인하면 같은 술의 마스터가 둘이 된다. */}
+      <div className={CARD}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-700">기존 주류의 에디션으로 등록</h3>
+            <p className="mt-0.5 text-xs text-neutral-400">
+              대상 주류를 지정하면 새 주류를 만들지 않고 그 주류의 하위 에디션으로 등록됩니다.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => setPickerOpen(true)}>
+            {targetSpirit ? '주류 변경' : '주류 검색'}
+          </Button>
+        </div>
+
+        {targetSpirit ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+            <p className="text-[11px] font-semibold text-amber-700">
+              {req.targetSpirit && req.targetSpirit.id === targetSpirit.id
+                ? '신청자가 지정한 주류입니다'
+                : '관리자가 지정한 주류입니다'}
+            </p>
+            <p className="mt-1 text-sm font-bold text-neutral-900">{targetSpirit.nameKo}</p>
+            <p className="text-xs text-neutral-500">{targetSpirit.nameEn}</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
+              이름·생산자·국가·산지는 이 주류에서 복사되고, 아래 에디션 1건이 하위로 등록됩니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => setTargetSpirit(null)}
+              className="mt-2 text-xs font-semibold text-neutral-500 hover:text-neutral-700 hover:underline"
+            >
+              해제하고 새 주류로 등록
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-neutral-400">
+            지정하지 않으면 기존과 동일하게 새 주류로 등록됩니다.
+          </p>
+        )}
+      </div>
+
       <RequiredFieldsNotice admin />
       <SpiritFormFields
         form={form}
@@ -254,10 +323,20 @@ export default function AdminRequestDetailPage() {
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-t border-neutral-200 pb-[env(safe-area-inset-bottom)]">
           <div className="px-6 py-3 flex justify-end gap-2">
             <Button variant="danger" onClick={() => setRejectMode(true)}>반려</Button>
-            <Button onClick={handleApprove} isLoading={approve.isPending}>승인 및 등록</Button>
+            <Button onClick={handleApprove} isLoading={approve.isPending || approveAsVariant.isPending}>
+              {targetSpirit ? '승인 및 에디션 추가' : '승인 및 등록'}
+            </Button>
           </div>
         </div>
       )}
+
+      <SpiritMasterPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={setTargetSpirit}
+        category={req.category}
+        admin
+      />
     </div>
   )
 }

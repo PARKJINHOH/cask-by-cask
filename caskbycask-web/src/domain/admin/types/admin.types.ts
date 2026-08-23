@@ -545,7 +545,8 @@ export interface SpiritRegisterRequestDetail {
   otherDetail: OtherDetailRequest | null
   imageUrls: string[]
   note: string | null
-  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'NONE' | null
+  // 와인 빈티지도 등록 요청으로 들어온다 — VINTAGE 가 빠지면 프리필이 빈티지를 버린다
+  variantType: 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE' | null
   variantValue: string | null
   variantValueEn: string | null
   seriesIdentifier: string | null
@@ -554,6 +555,8 @@ export interface SpiritRegisterRequestDetail {
   rejectReason: string | null
   createdAt: string
   reviewedAt: string | null
+  /** 신청자가 고른 기존 주류 — 있으면 새 마스터 대신 이 주류의 에디션으로 승인한다 */
+  targetSpirit?: { id: number; nameKo: string; nameEn: string } | null
 }
 
 export interface UpdateRequestBody {

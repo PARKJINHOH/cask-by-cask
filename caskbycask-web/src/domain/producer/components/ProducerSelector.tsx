@@ -14,7 +14,10 @@ export default function ProducerSelector({ value, defaultName, onChange, placeho
   const searchRef = useRef<HTMLInputElement>(null)
 
   // ── 신규 생산자 직접 등록 (기타 카테고리) ─────────────────────
-  const allowCreate = !!onCreateNew && type === 'OTHER'
+  // 열지 말지는 **호출부가** `onCreateNew` 을 주느냐로 결정한다.
+  // 예전에는 기타 카테고리만 열려 있어, 목록에 없는 양조장·증류소를 고르려는 사용자는
+  // 선택할 것도 만들 것도 없었다 — 생산자가 필수가 된 뒤에는 그대로 막힌 길이 된다.
+  const allowCreate = !!onCreateNew
   const [creating, setCreating] = useState(false)
   const [newKo, setNewKo] = useState('')
   const [newEn, setNewEn] = useState('')

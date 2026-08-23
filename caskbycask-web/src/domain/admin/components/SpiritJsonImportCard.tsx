@@ -6,7 +6,6 @@ import {
   type ImportPlan, type ImportWarning,
 } from '@/domain/admin/utils/spiritResearchJson'
 import type { SpiritFormApi } from '@/domain/admin/components/SpiritFormFields'
-import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
 /**
  * 조사 프롬프트(docs/*-research-prompt.md)가 만든 JSON 을 붙여넣어 폼을 채우는 카드.
@@ -140,14 +139,16 @@ export default function SpiritJsonImportCard({ form, confirmMessage }: Props) {
             <b className="text-amber-700">기존 입력값은 모두 지워지고 새로 채워집니다.</b> 내용을 확인한 뒤 직접 등록하세요.
           </p>
 
-          <AutoGrowTextarea
+          {/* 붙여넣는 JSON 은 수백 줄에 달하는 경우가 많다 — 상자 높이를 고정하고 안에서 스크롤한다.
+              붙여넣은 만큼 상자가 늘어나면 아래 '데이터 입력' 버튼이 화면 밖으로 밀려 보이지 않는다. */}
+          <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={10}
             spellCheck={false}
             placeholder={'{\n  "category": "COGNAC",\n  "nameKo": "헤네시 XO",\n  ...\n}'}
-            className="w-full rounded-lg border border-neutral-200 px-3 py-2 font-mono text-xs
-              focus:outline-none focus:ring-2 focus:ring-primary-400"
+            className="w-full resize-y overflow-y-auto rounded-lg border border-neutral-200 px-3 py-2
+              font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary-400"
           />
 
           <div className="flex items-center gap-2">

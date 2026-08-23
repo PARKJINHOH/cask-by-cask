@@ -225,20 +225,59 @@ function migrateLegacyCasks(
   }
 }
 
+/**
+ * 숙성 연수·NAS 택1 검증.
+ *
+ * <p>위스키는 둘 중 하나로 반드시 나이를 밝혀야 한다 — 둘 다 비면 나이를 알 수 없는 술로 등록되고,
+ * 둘 다 채우면 서버가 NAS 를 우선해 숙성 연수를 버리므로 입력한 값이 조용히 사라진다.
+ *
+ * @returns 오류 메시지. 문제가 없으면 null.
+ */
+function validateAgeChoice(
+  isNas: boolean,
+  ageStatement: number | null,
+  ageStatementMonths: number | null,
+): string | null {
+  const hasAge = ageStatement != null || ageStatementMonths != null
+  if (isNas && hasAge) return '숙성 연수와 NAS 는 함께 쓸 수 없습니다. 하나만 선택해주세요.'
+  if (!isNas && !hasAge) return '숙성 연수를 입력하거나 NAS 를 선택해주세요.'
+  return null
+}
+
 // ── 폼 상태 훅 (상태 · 검증 · 페이로드 · 프리필 단일 정의) ───────────
 /**
  * 주류 등록/수정 폼 상태.
  *
  * @param options.requireProductionInfo
- *   생산자·국가를 필수로 검증한다. 관리자 등록/수정 화면에서만 true 로 준다 —
- *   사용자 술 등록 요청 화면은 일반 이용자가 쓰므로 기존처럼 선택으로 둔다.
+ *   생산자·국가·숙성연수(NAS 택1)를 필수로 검증하고, 와인은 빈티지 목록 구조로 연다.
+ *   관리자 3화면과 사용자 등록 요청 화면이 **모두** true 로 준다 —
+ *   요청 시점에 비어 오면 결국 관리자가 승인 화면에서 같은 칸을 다시 메워야 하기 때문이다.
+ *
+ * @param options.allowPendingProducer
+ *   생산자 id 대신 입력한 이름만 있어도 생산 정보를 충족한 것으로 본다.
+ *   사용자 등록 요청 전용 — 그 화면은 생산자를 승인 대기로만 등록할 수 있어 id 가 바로 안 나온다.
  */
-export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
+export function useSpiritForm(options?: {
+  requireProductionInfo?: boolean
+  allowPendingProducer?: boolean
+}) {
   const adminRequired = options?.requireProductionInfo ?? false
+  // 사용자 등록 요청은 생산자를 즉석에서 만들 수 없고 '승인 대기' 로만 넣는다 —
+  // 그때는 id 가 없으므로 입력한 이름을 생산 정보로 인정한다.
+  // 관리자는 즉석 생성이 되므로 이 예외를 주지 않는다(목록에서 골라야 한다).
+  const allowPendingProducer = options?.allowPendingProducer ?? false
   const [category, setCategory] = useState<SpiritCategory | null>(null)
   const [nameKo, setNameKo] = useState('')
   const [nameEn, setNameEn] = useState('')
   const [producerId, setProducerId] = useState<number | null>(null)
+  /**
+   * 이름·생산 정보를 기존 마스터에서 물려받는 상태(기존 주류에 에디션 추가).
+   *
+   * <p>이때 생산자·국가 칸은 화면에서 숨긴다 — 서버가 마스터에서 복사하기 때문이다.
+   * 그런데도 필수로 검증하면 **보이지도 않는 칸** 때문에 제출이 막힌다
+   * (마스터에 생산자가 없거나 국가가 비어 있을 수 있다).
+   */
+  const [identityInherited, setIdentityInherited] = useState(false)
   const [producerName, setProducerName] = useState('')
   const [countryCode, setCountryCode] = useState<string | null>(null)
   const [country, setCountry] = useState('')
@@ -380,6 +419,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     setNameKo('')
     setNameEn('')
     setProducerId(null)
+    setIdentityInherited(false)
     setProducerName('')
     setCountryCode(null)
     setCountry('')
@@ -726,7 +766,11 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     setVariantType(splitType ?? 'NONE')
     setSeriesIdentifier(r.seriesIdentifier ?? '')
     setSeriesIdentifierEn(r.seriesIdentifierEn ?? '')
-    if (r.category === 'WHISKY' && splitType && r.variantValue) {
+    // 와인은 관리자·사용자 모두 빈티지 목록 구조를 쓴다 — 여기서 복원하지 않으면
+    // 사용자가 적은 빈티지와 와인 상세가 수정·검토 화면에서 통째로 사라진다.
+    const seedableCategory = r.category === 'WHISKY'
+      || (r.category === 'WINE' && splitType === 'VINTAGE')
+    if (splitType && r.variantValue && seedableCategory) {
       const seed: CreateVariantRequest = {
         variantType: splitType,
         variantValue: r.variantValue,
@@ -755,6 +799,8 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
           phenolPpm: r.phenolPpm ?? null, phenolPpmMin: r.phenolPpmMin ?? null, phenolPpmMax: r.phenolPpmMax ?? null,
           notes: r.whiskyNotes ?? '',
         },
+        vintageYear: r.category === 'WINE' ? (r.vintageYear ?? null) : null,
+        wineDetail: r.category === 'WINE' ? (r.wineDetail ?? undefined) : undefined,
       }
       // tempId 는 런타임 식별자 — 타입에는 없고 (v as any).tempId 로 읽음(기존 컨벤션)
       ;(seed as any).tempId = Math.random().toString()
@@ -817,6 +863,16 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
       if (!whiskyDetail.style) errs.style = '스타일을 선택해주세요.'
       else if (whiskyDetail.style === 'OTHER' && !whiskyDetail.styleOther.trim())
         errs.styleOther = '스타일을 직접 입력해주세요.'
+
+      // 숙성 연수·NAS 택1 필수 — 관리자 등록/수정에만 적용한다(사용자 등록 요청은 기존대로 선택).
+      // 에디션으로 나누면 마스터의 '위스키 상세' 카드 자체가 숨겨 입력칸이 없으므로
+      // 그때는 아래 에디션 검증이 각각 받는다. 없는 칸을 필수로 막으면 등록이 아예 불가능해진다.
+      if (adminRequired && !isVariantSplit) {
+        const ageError = validateAgeChoice(
+          commonDetail.isNas, commonDetail.ageStatement, commonDetail.ageStatementMonths,
+        )
+        if (ageError) errs.ageStatement = ageError
+      }
     }
     if (category === 'WINE' && !isVariantSplit) {
       if (!wineDetail.wineType) errs.wineType = '와인 종류를 선택해주세요.'
@@ -844,11 +900,11 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     // 목록에 없는 생산자는 선택기 안에서 직접 등록할 수 있으므로 필수로 둬도 막히지 않는다.
     // 위스키는 증류소·브랜드명 택1 — 발렌타인 같은 블렌디드 위스키는 특정 증류소가 없고
     // 브랜드명으로만 식별되므로 증류소를 강제하면 등록 자체가 막힌다.
-    if (adminRequired && category) {
+    if (adminRequired && category && !identityInherited) {
       if (category === 'WHISKY') {
         if (!producerId && !whiskyDetail.brandName.trim())
           errs.producerId = '증류소 또는 브랜드명 중 하나는 반드시 입력해주세요.'
-      } else if (!producerId) {
+      } else if (!producerId && !(allowPendingProducer && producerName.trim())) {
         errs.producerId = `${PRODUCER_LABEL[category]}을(를) 선택하거나 직접 등록해주세요.`
       }
       if (!countryCode) errs.country = '국가는 필수입니다.'
@@ -871,6 +927,15 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
         }
         if (v.volumeMl != null && (Number(v.volumeMl) < VOLUME_ML_MIN || Number(v.volumeMl) > VOLUME_ML_MAX)) {
           errs[`variantVolumeMl_${idx}`] = LIMIT_MESSAGE.volumeMl
+        }
+        // 에디션별 숙성 연수·NAS 택1 — 에디션마다 실제 병입 나이가 다르므로 각각 받는다.
+        if (category === 'WHISKY' && adminRequired) {
+          const ageError = validateAgeChoice(
+            !!v.commonDetail?.isNas,
+            v.commonDetail?.ageStatement ?? null,
+            v.commonDetail?.ageStatementMonths ?? null,
+          )
+          if (ageError) errs[`variantAgeStatement_${idx}`] = ageError
         }
         if (category === 'WINE') {
           const status = v.wineDetail?.vintageStatus
@@ -1154,6 +1219,7 @@ export function useSpiritForm(options?: { requireProductionInfo?: boolean }) {
     nameKo, setNameKo, nameEn, setNameEn,
     // setProducerName 은 JSON 붙여넣기 입력이 이름만 아는 생산자를 선택기에 보여주기 위해 쓴다
     producerId, setProducerId, producerName, setProducerName,
+    identityInherited, setIdentityInherited,
     countryCode, country, region, setCountryValue, setRegion,
     regionCode, setRegionCode,
     isVariantSplit, setIsVariantSplit, variantType, setVariantType,
@@ -1319,6 +1385,13 @@ interface SpiritFormFieldsProps {
   form: SpiritFormApi
   /** true면 카테고리 변경 불가 (값만 수정) — 주류 상세 화면용 */
   categoryLocked?: boolean
+  /**
+   * 이름·생산 정보를 마스터에서 물려받는 모드(기존 주류에 에디션 추가).
+   *
+   * <p>이름은 읽기 전용이 되고 생산 정보 카드는 숨긴다 — 승인 시 서버가 그 값들을
+   * 마스터에서 복사하므로, 고칠 수 있게 두면 고쳐도 아무 일도 일어나지 않는다.
+   */
+  identityLocked?: boolean
   /** 카테고리 클릭 가로채기 (수정 모드 경고 모달 등). 미지정 시 form.selectCategory */
   onCategorySelect?: (cat: SpiritCategory) => void
   /** 좌측 컬럼 하단에 끼워 넣을 슬롯 (이미지 관리 카드 등) */
@@ -1338,7 +1411,7 @@ interface SpiritFormFieldsProps {
 }
 
 export default function SpiritFormFields({
-  form, categoryLocked, onCategorySelect, imageSlot,
+  form, categoryLocked, identityLocked = false, onCategorySelect, imageSlot,
   allowMultipleVariants = true, activeVariantIndex, producerSelector, onCreateProducer, bottomSlot,
   admin = true,
 }: SpiritFormFieldsProps) {
@@ -1359,6 +1432,25 @@ export default function SpiritFormFields({
       setActiveVariantIdx(Math.max(0, form.variants.length - 1))
     }
   }, [form.variants.length, activeVariantIdx])
+
+  /**
+   * 에디션 1건 고정 화면(`allowMultipleVariants=false`, 사용자 등록 요청)의 에디션을 자동으로 맞춘다.
+   *
+   * <p>이 화면은 탭 바를 숨기는데, 유일한 '에디션 추가' 버튼이 그 탭 바 안에 있다.
+   * 자동 시딩이 없으면 사용자가 배치·싱글캐스크·출시연도(또는 와인)를 고르는 순간
+   * `variants` 가 빈 채로 검증에만 막혀 **입력할 칸도, 빠져나올 버튼도 없는** 상태가 된다.
+   * 이 effect 를 지우면 그 막힌 길이 그대로 되살아난다.
+   *
+   * <p>2건 이상이 들어온 경우(옵션이 바뀌기 전에 저장된 요청 등)에는 첫 건만 남긴다 —
+   * 이 화면의 계약이 1건이고, 화면에 보이지도 않는 에디션이 조용히 제출되는 편보다 낫다.
+   */
+  useEffect(() => {
+    if (allowMultipleVariants) return
+    if (!form.isVariantSplit) return
+    if (form.variants.length === 0) { form.addVariant(); return }
+    if (form.variants.length > 1) form.setVariants((prev) => prev.slice(0, 1))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowMultipleVariants, form.isVariantSplit, form.variants.length])
 
   // 에디션 탭 드래그 정렬·캐스크 3열 배치는 PC 전용이다 (모바일에서는 탭 클릭으로만 전환)
   const isDesktop = useIsDesktop()
@@ -1538,18 +1630,26 @@ export default function SpiritFormFields({
           {/* 이름 */}
           <div className="space-y-4">
             <div>
-              <label className={LABEL}>한국어 이름 <RequiredMark /></label>
+              <label className={LABEL}>
+                한국어 이름 <RequiredMark />
+                {identityLocked && <span className="ml-1.5 text-[11px] font-normal text-neutral-400">(선택한 주류에서 가져옴)</span>}
+              </label>
               <AutoResizeTextarea value={form.nameKo} onChange={form.setNameKo} maxLength={200}
                 required aria-required="true"
+                readOnly={identityLocked}
                 data-field="nameKo"
                 placeholder={ph.nameKo}
                 className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
               {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
             </div>
             <div>
-              <label className={LABEL}>영어 이름 <RequiredMark /></label>
+              <label className={LABEL}>
+                영어 이름 <RequiredMark />
+                {identityLocked && <span className="ml-1.5 text-[11px] font-normal text-neutral-400">(선택한 주류에서 가져옴)</span>}
+              </label>
               <AutoResizeTextarea value={form.nameEn} onChange={form.setNameEn} maxLength={200}
                 required aria-required="true"
+                readOnly={identityLocked}
                 data-field="nameEn"
                 placeholder={ph.nameEn}
                 className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
@@ -1789,8 +1889,10 @@ export default function SpiritFormFields({
         </div>
         </div>
 
-        {/* ② 생산 정보 */}
-        {category && (
+        {/* ② 생산 정보 — 마스터에서 물려받는 모드에서는 숨긴다.
+            서버가 승인 시 생산자·국가·산지를 마스터에서 복사하므로, 고칠 수 있게 두면
+            고쳐도 반영되지 않는 칸이 된다. */}
+        {category && !identityLocked && (
           <div className={CARD}>
             <SectionTitle title="생산 정보" hint={requireProduction ? undefined : '선택'} />
             <div data-field="producerId">
@@ -1964,6 +2066,7 @@ export default function SpiritFormFields({
                     onUpdateCommon={(updates) => form.updateVariantCommon(activeVariantIdx, updates)}
                     onUpdateWhisky={(updates) => form.updateVariantWhisky(activeVariantIdx, updates)}
                     onUpdateWine={(updates) => form.updateVariantWine(activeVariantIdx, updates)}
+                    requireAge={requireProduction}
                   />
                 ) : (
                   <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/50 py-8 text-center text-neutral-400 text-sm">
@@ -1987,6 +2090,8 @@ export default function SpiritFormFields({
                       dateErrors={{ distilledDate: errors.distilledDate, bottledDate: errors.bottledDate }}
                       category={category}
                       admin={admin}
+                      requireAge={requireProduction}
+                      ageError={errors.ageStatement}
                     />
                     <div className="pt-5 border-t border-neutral-200">
                       <WhiskyDetailSection value={form.whiskyDetail} onChange={form.updateWhisky} />
@@ -2279,6 +2384,8 @@ interface VariantItemCardProps {
   onUpdateCommon: (updates: Partial<SpiritCommonDetailRequest>) => void
   onUpdateWhisky: (updates: Partial<WhiskyDetailRequest>) => void
   onUpdateWine: (updates: Partial<WineDetailRequest>) => void
+  /** 숙성 연수·NAS 택1 을 필수로 받는지 (관리자 등록/수정). */
+  requireAge?: boolean
 }
 
 function VariantItemCard({
@@ -2290,6 +2397,7 @@ function VariantItemCard({
   onUpdateCommon,
   onUpdateWhisky,
   onUpdateWine,
+  requireAge = false,
 }: VariantItemCardProps) {
   const whiskyFormValue = toWhiskyDetailForm(variant.whiskyDetail)
 
@@ -2448,6 +2556,9 @@ function VariantItemCard({
                 bottledDate: errors[`variantBottledDate_${index}`]
               }}
               category={category}
+              requireAge={requireAge}
+              ageError={errors[`variantAgeStatement_${index}`]}
+              ageFieldName={`variantAgeStatement_${index}`}
             />
           </div>
           <div className="pt-5 border-t border-neutral-200">

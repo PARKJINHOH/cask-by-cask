@@ -608,6 +608,23 @@
         "label": "Photos",
         "hint": "Up to 3 photos. Attached photos become the spirit's images upon approval.",
         "add": "Add Photo"
+      },
+      "existingSpirit": {
+        "modeTitle": "What would you like to request?",
+        "modeNew": "Register a new spirit",
+        "modeNewHint": "Ask us to add a spirit that is not listed yet.",
+        "modeVariant": "Add an edition to an existing spirit",
+        "modeVariantHint": "Tell us about a new batch or vintage of a spirit we already list.",
+        "searchTitle": "Search spirits",
+        "searchPlaceholder": "Type a spirit name",
+        "searchHint": "Enter at least two characters to search.",
+        "pick": "Find a spirit",
+        "change": "Pick another spirit",
+        "selected": "Adding an edition to this spirit",
+        "notPicked": "Please find the spirit you want to add an edition to first.",
+        "inheritedHint": "Name, category, producer and country are inherited from the selected spirit. Fill in the edition details below.",
+        "unsupportedCategory": "Editions can only be added to whisky and wine (vintage).",
+        "editionRequired": "Choose an edition type and fill in the edition details. Exactly one edition is added to the existing spirit."
       }
     },
     "myRequests": {

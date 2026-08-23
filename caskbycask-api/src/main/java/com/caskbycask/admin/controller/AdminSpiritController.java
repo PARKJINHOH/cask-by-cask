@@ -331,6 +331,24 @@ public class AdminSpiritController {
         ));
     }
 
+    /**
+     * 등록 요청을 기존 주류의 하위 에디션으로 승인한다.
+     *
+     * <p>본문은 위 승인과 동일한 폼 페이로드다 — 다른 것은 "새 마스터를 만드느냐,
+     * {@code targetSpiritId} 주류에 에디션을 붙이느냐" 뿐이다.
+     */
+    @PostMapping("/requests/{id}/approve-as-variant/{targetSpiritId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<SpiritDetailResponse>> approveRequestAsVariant(
+            @PathVariable Long id,
+            @PathVariable Long targetSpiritId,
+            @Valid @RequestBody CreateSpiritRequest detail,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.approveRegisterRequestAsVariant(id, targetSpiritId, detail, userDetails.getUserId())
+        ));
+    }
+
     @PatchMapping("/requests/{id}/reject")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
     public ResponseEntity<ApiResponse<Void>> rejectRequest(

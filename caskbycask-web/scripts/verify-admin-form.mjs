@@ -54,6 +54,27 @@ const detailBody = caskSectionSrc.slice(caskSectionSrc.indexOf('export default f
 expect(!detailBody.includes('BROAD_CASK_CATEGORIES'),
   '위스키 상세에 캐스크 입력이 남아 있다(3열 컬럼과 중복)')
 
+// ── 사용자 등록 요청 ↔ 관리자 등록의 계약 ────────────────────
+// 이 세 가지는 눈으로 보면 멀쩡한데 특정 조합에서만 터져 회귀를 알아채기 어렵다.
+const requestPageSrc = readFileSync(
+  join(WEB_ROOT, 'src', 'views-spa', 'SpiritRequestPage.tsx'), 'utf8')
+const adaptersSrc = readFileSync(
+  join(WEB_ROOT, 'src', 'domain', 'admin', 'components', 'spiritFormAdapters.ts'), 'utf8')
+
+// ① 에디션 1건 자동 시딩 — 이게 없으면 사용자가 배치/빈티지를 고르는 순간
+//    '에디션을 1건 이상 추가해주세요' 로 막히는데 추가할 버튼이 화면에 없다(탭 바 안에 있음).
+expect(/if \(allowMultipleVariants\) return[\s\S]{0,400}form\.addVariant\(\)/.test(src),
+  'allowMultipleVariants=false 화면의 에디션 1건 자동 시딩이 사라졌다 — 사용자가 에디션을 만들 수 없게 된다')
+// ② 검증 기준은 관리자와 동일해야 한다. 빠지면 생산자·국가·숙성연수가 빈 요청이 다시 들어온다.
+expect(/useSpiritForm\(\{ requireProductionInfo: true, allowPendingProducer: true \}\)/.test(requestPageSrc),
+  '사용자 등록 요청이 관리자와 다른 검증 기준으로 되돌아갔다')
+// ③ 와인 빈티지 상세는 마스터가 아니라 에디션에 있다. 마스터 것을 보내면 상세가 통째로 사라진다.
+expect(/const wine = variant\?\.wineDetail \?\? payload\.wineDetail/.test(adaptersSrc),
+  '어댑터가 와인 빈티지의 wineDetail 대신 마스터 값을 보내고 있다')
+// ④ 기존 주류에 붙이는 요청은 대상 id 가 제출·프리필 양쪽에 실려야 한다.
+expect(/targetSpiritId: targetSpirit\?\.id \?\? null/.test(requestPageSrc),
+  '사용자 등록 요청이 targetSpiritId 를 제출하지 않는다 — 기존 주류 에디션 추가가 새 주류로 등록된다')
+
 // ── 컬럼 골격 렌더 ──────────────────────────────────────────────
 const CSS = `
   body { margin:0; background:#f8fafc; font-family:'Malgun Gothic',sans-serif; padding:16px; }

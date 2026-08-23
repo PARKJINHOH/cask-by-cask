@@ -28,6 +28,12 @@ interface Props {
   /** 카테고리별로 부적합 필드를 숨김 (와인=빈티지 중심, 꼬냑=등급 중심). 미지정 시 전체 표시. */
   category?: SpiritCategory | null
   admin?: boolean
+  /** 숙성 연수·NAS 택1 을 필수로 받는지 (관리자 위스키 등록/수정 전용). */
+  requireAge?: boolean
+  /** 숙성 연수·NAS 검증 실패 메시지 */
+  ageError?: string
+  /** 오류 포커스 앵커 이름 — 마스터와 에디션을 구분한다. */
+  ageFieldName?: string
 }
 
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
@@ -44,7 +50,9 @@ export function hasCommonDetailFields(category: SpiritCategory | '' | null | und
   return !!category && category !== 'WHISKY' && category !== 'WINE'
 }
 
-export default function SpiritCommonDetailSection({ value, onChange, dateErrors, category }: Props) {
+export default function SpiritCommonDetailSection({
+  value, onChange, dateErrors, category, requireAge = false, ageError, ageFieldName,
+}: Props) {
   // 카테고리별 표시 규칙
   //  - 와인 : NAS·숙성년수·증류연월·병입연월·병번호/총병수 숨김 (빈티지로 대체)
   //  - 꼬냑 : NAS·숙성년수·증류연월 숨김 (VS·VSOP·XO 등급으로 식별)
@@ -66,6 +74,9 @@ export default function SpiritCommonDetailSection({ value, onChange, dateErrors,
           onNasChange={(v) => onChange({ isNas: v })}
           onAgeChange={(v) => onChange({ ageStatement: v })}
           onMonthsChange={(v) => onChange({ ageStatementMonths: v })}
+          required={requireAge}
+          error={ageError}
+          fieldName={ageFieldName}
         />
       )}
 

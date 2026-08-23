@@ -908,6 +908,11 @@ public class SpiritService {
 
         // 카테고리 핵심값 필수 (신청자 제출 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        // 생산 정보·숙성 연수 — 관리자 등록과 같은 기준으로 받는다.
+        // 빈 칸으로 들어오면 결국 관리자가 승인 화면에서 다시 메워야 한다.
+        if (!body.hasProductionInfo()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        if (!body.hasAgeChoice()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        if (!body.hasVariantForTarget()) throw new CustomException(ErrorCode.INVALID_INPUT);
         validateEditionValues(body);
         validateWineVintage(body.category(), body.vintageYear(), body.wineDetail());
 
@@ -956,7 +961,8 @@ public class SpiritService {
         SpiritRegisterRequest req = getRegisterRequest(requestId);
         verifyRequestOwner(req, userId);
         SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
-        return SpiritRegisterRequestDetailResponse.of(req, body, resolveProducerName(body.producerId()));
+        return SpiritRegisterRequestDetailResponse.of(
+                req, body, resolveProducerName(body.producerId()), resolveTargetSpirit(body.targetSpiritId()));
     }
 
     /** 본인 요청 수정 — 검토 중(PENDING)·반려(REJECTED)만 가능. 반려 건은 재검토(PENDING) 전환. */
@@ -971,6 +977,11 @@ public class SpiritService {
 
         // 카테고리 핵심값 필수 (신청자 수정 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        // 생산 정보·숙성 연수 — 관리자 등록과 같은 기준으로 받는다.
+        // 빈 칸으로 들어오면 결국 관리자가 승인 화면에서 다시 메워야 한다.
+        if (!body.hasProductionInfo()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        if (!body.hasAgeChoice()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        if (!body.hasVariantForTarget()) throw new CustomException(ErrorCode.INVALID_INPUT);
         validateEditionValues(body);
         validateWineVintage(body.category(), body.vintageYear(), body.wineDetail());
 
@@ -1031,7 +1042,8 @@ public class SpiritService {
     public SpiritRegisterRequestDetailResponse getRegisterRequestDetail(Long requestId) {
         SpiritRegisterRequest req = getRegisterRequest(requestId);
         SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
-        return SpiritRegisterRequestDetailResponse.of(req, body, resolveProducerName(body.producerId()));
+        return SpiritRegisterRequestDetailResponse.of(
+                req, body, resolveProducerName(body.producerId()), resolveTargetSpirit(body.targetSpiritId()));
     }
 
     @Transactional
@@ -1058,7 +1070,9 @@ public class SpiritService {
         }
 
         req.updateSpiritData(serialize(mergedBody));
-        return SpiritRegisterRequestDetailResponse.of(req, mergedBody, resolveProducerName(mergedBody.producerId()));
+        return SpiritRegisterRequestDetailResponse.of(
+                req, mergedBody, resolveProducerName(mergedBody.producerId()),
+                resolveTargetSpirit(mergedBody.targetSpiritId()));
     }
 
     @Transactional
@@ -1075,7 +1089,9 @@ public class SpiritService {
 
         SpiritRegisterRequestBody updated = withImageUrls(body, imageUrls);
         req.updateSpiritData(serialize(updated));
-        return SpiritRegisterRequestDetailResponse.of(req, updated, resolveProducerName(updated.producerId()));
+        return SpiritRegisterRequestDetailResponse.of(
+                req, updated, resolveProducerName(updated.producerId()),
+                resolveTargetSpirit(updated.targetSpiritId()));
     }
 
     @Transactional
@@ -1088,7 +1104,9 @@ public class SpiritService {
 
         SpiritRegisterRequestBody updated = withImageUrls(body, imageUrls);
         req.updateSpiritData(serialize(updated));
-        return SpiritRegisterRequestDetailResponse.of(req, updated, resolveProducerName(updated.producerId()));
+        return SpiritRegisterRequestDetailResponse.of(
+                req, updated, resolveProducerName(updated.producerId()),
+                resolveTargetSpirit(updated.targetSpiritId()));
     }
 
     /**
@@ -1212,6 +1230,143 @@ public class SpiritService {
         );
 
         notifyIndexing(indexingTargets);
+
+        return SpiritDetailResponse.of(saved,
+                images.stream().map(SpiritImageResponse::from).toList());
+    }
+
+
+    /**
+     * 관리자가 등록 요청을 **기존 주류의 하위 에디션**으로 승인한다.
+     *
+     * <p>신청자가 이미 있는 주류의 새 배치·빈티지를 모르고 새 주류로 올렸을 때, 그대로 승인하면
+     * 같은 술의 마스터가 둘이 된다. 관리자가 검토 화면에서 대상 주류를 찾아 이 경로로 승인하면
+     * 새 마스터 대신 그 주류의 에디션 1건이 생긴다.
+     *
+     * <p>{@link #approveRegisterRequestWithDetail} 과 갈라지는 지점은 "무엇을 만드느냐" 뿐이다 —
+     * 요청 상태 전이·점수·알림·색인은 같다.
+     */
+    @Transactional
+    public SpiritDetailResponse approveRegisterRequestAsVariant(
+            Long requestId, Long targetSpiritId, CreateSpiritRequest detail, Long adminId) {
+        SpiritRegisterRequest req = getRegisterRequest(requestId);
+        if (req.getStatus() == RequestStatus.APPROVED) {
+            throw new CustomException(ErrorCode.SPIRIT_REQUEST_NOT_EDITABLE);
+        }
+        User admin = getUser(adminId);
+
+        // 관리자가 하위 에디션을 골랐어도 그 부모에 붙인다 — 에디션의 에디션은 없다.
+        Spirit selected = spiritRepository.findByIdAndStatus(targetSpiritId, SpiritStatus.ACTIVE)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
+        Spirit master = selected.getParent() != null
+                ? spiritRepository.findByIdAndStatus(selected.getParent().getId(), SpiritStatus.ACTIVE)
+                    .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND))
+                : selected;
+        if (master.getCategory() != detail.category()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        // 붙일 에디션은 1건이다. 요청 폼이 1건 고정이고, 관리자가 늘렸더라도 대상은 하나다.
+        CreateVariantRequest vReq = (detail.variants() == null || detail.variants().isEmpty())
+                ? null
+                : detail.variants().get(0);
+        if (vReq == null || !StringUtils.hasText(vReq.variantValue())) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        // 마스터가 아직 에디션 분리 전이면 이 요청의 값으로 승격한다.
+        // createUserVariant 는 여기서 막지만(사용자는 판단 근거가 없다), 관리자는 전체 폼을 보고 확정할 수 있다.
+        VariantType variantType = resolveVariantTypeForUserCreate(master);
+        if (variantType == null || variantType == VariantType.NONE) variantType = vReq.variantType();
+        String seriesIdentifier = resolveSeriesIdentifierForUserCreate(master);
+        if (!StringUtils.hasText(seriesIdentifier)) {
+            seriesIdentifier = normalizeSeriesIdentifier(detail.seriesIdentifier());
+        }
+        String seriesIdentifierEn = resolveSeriesIdentifierEnForUserCreate(master, seriesIdentifier);
+        if (variantType == null || variantType == VariantType.NONE || !StringUtils.hasText(seriesIdentifier)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        if (master.getVariantType() == null || master.getVariantType() == VariantType.NONE
+                || !StringUtils.hasText(master.getSeriesIdentifier())) {
+            master.promoteToVariantMaster(variantType, seriesIdentifier, seriesIdentifierEn);
+        }
+
+        // 와인 빈티지는 연도/NV 와 상세가 맞아야 한다 — 기존 검증을 그대로 태운다.
+        validateWineVariants(master.getCategory(), Boolean.TRUE, List.of(vReq));
+
+        String variantValue = vReq.variantValue().trim();
+        boolean duplicated = !spiritRepository
+                .findByParentIdAndVariantValueIgnoreCaseAndStatusIn(
+                        master.getId(), variantValue, List.of(SpiritStatus.ACTIVE, SpiritStatus.PENDING))
+                .isEmpty();
+        if (duplicated) {
+            throw new CustomException(ErrorCode.SPIRIT_VARIANT_ALREADY_EXISTS);
+        }
+
+        List<Spirit> siblings = spiritRepository.findByParentId(master.getId());
+        Integer nextDisplayOrder = siblings.stream()
+                .map(Spirit::getDisplayOrder)
+                .filter(order -> order != null)
+                .max(Integer::compareTo)
+                .map(order -> order + 1)
+                .orElse(siblings.size());
+
+        Spirit variant = Spirit.builder()
+                .nameKo(master.getNameKo())
+                .nameEn(master.getNameEn())
+                .category(master.getCategory())
+                .producer(master.getProducer())
+                .vintageYear(resolveVariantVintageYear(master, vReq))
+                .abv(vReq.abv())
+                .volumeMl(vReq.volumeMl())
+                .country(master.getCountry())
+                .region(master.getRegion())
+                .regionCode(master.getRegionCode())
+                .status(SpiritStatus.ACTIVE)
+                .registeredBy(req.getUser())
+                .parent(master)
+                .variantType(variantType)
+                .variantValue(variantValue)
+                .variantValueEn(normalizeSeriesIdentifier(vReq.variantValueEn()))
+                .seriesIdentifier(seriesIdentifier)
+                .seriesIdentifierEn(seriesIdentifierEn)
+                .abvMin(vReq.abvMin())
+                .abvMax(vReq.abvMax())
+                .volumeMlMin(vReq.volumeMlMin())
+                .volumeMlMax(vReq.volumeMlMax())
+                .displayOrder(nextDisplayOrder)
+                .build();
+
+        Spirit saved = spiritRepository.save(variant);
+        spiritDetailService.saveCommonDetail(saved, vReq.commonDetail());
+        saveVariantCategoryDetail(saved, vReq);
+
+        // 신청 이미지는 에디션에 붙인다 — 마스터에는 이미 자기 이미지가 있다.
+        SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
+        List<SpiritImage> images = List.of();
+        if (body.imageUrls() != null && !body.imageUrls().isEmpty()) {
+            images = body.imageUrls().stream()
+                    .map(url -> SpiritImage.builder()
+                            .spirit(saved).imageUrl(url).isPrimary(false).sortOrder(0).build())
+                    .toList();
+            images.get(0).markAsPrimary();
+            spiritImageRepository.saveAll(images);
+        }
+
+        req.approve(admin);
+
+        // [레벨] 술 등록 요청 승인 — 요청자에게 지급 (새 마스터 승인과 같은 대우)
+        scoreService.award(req.getUser().getId(), ScoreActions.SPIRIT_REQUEST_APPROVED, "SPIRIT_REQUEST", requestId);
+
+        notificationService.send(
+                req.getUser(),
+                NotificationType.REQUEST_APPROVED,
+                "술 등록 요청 '" + master.getNameKo() + " " + variantValue + "'이(가) 승인되었습니다.",
+                "SPIRIT",
+                saved.getId()
+        );
+
+        notifyIndexing(List.of(master, saved));
 
         return SpiritDetailResponse.of(saved,
                 images.stream().map(SpiritImageResponse::from).toList());
@@ -1618,6 +1773,15 @@ public class SpiritService {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
         return requestedYear;
+    }
+
+    /** 요청이 붙길 기존 주류 요약 — 지워졌거나 숨겨졌으면 null 로 내려 화면이 조용히 새 마스터로 되돌아가게 한다. */
+    private SpiritRegisterRequestDetailResponse.TargetSpirit resolveTargetSpirit(Long targetSpiritId) {
+        if (targetSpiritId == null) return null;
+        return spiritRepository.findByIdAndStatus(targetSpiritId, SpiritStatus.ACTIVE)
+                .map(spirit -> new SpiritRegisterRequestDetailResponse.TargetSpirit(
+                        spirit.getId(), spirit.getNameKo(), spirit.getNameEn()))
+                .orElse(null);
     }
 
     private String resolveProducerName(Long producerId) {

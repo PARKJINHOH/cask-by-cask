@@ -164,6 +164,11 @@ export const adminSpiritApi = {
   approveRequestWithDetail: (id: number, data: CreateSpiritPayload) =>
     axiosInstance.post<ApiResponse<AdminSpiritDetail>>(`/api/admin/spirits/requests/${id}/approve`, data),
 
+  // 새 마스터 대신 기존 주류의 하위 에디션으로 승인 (본문은 위와 동일한 폼 페이로드)
+  approveRequestAsVariant: (id: number, targetSpiritId: number, data: CreateSpiritPayload) =>
+    axiosInstance.post<ApiResponse<AdminSpiritDetail>>(
+      `/api/admin/spirits/requests/${id}/approve-as-variant/${targetSpiritId}`, data),
+
   rejectRequest: (id: number, rejectReason: string) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/spirits/requests/${id}/reject`, {
       rejectReason,

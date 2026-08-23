@@ -322,6 +322,22 @@ export function useApproveRequestWithDetail() {
   })
 }
 
+/** 기존 주류의 하위 에디션으로 승인 — 마스터 목록과 그 주류 상세까지 같이 무효화한다 */
+export function useApproveRequestAsVariant() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, targetSpiritId, data }: { id: number; targetSpiritId: number; data: CreateSpiritPayload }) =>
+      adminSpiritApi.approveRequestAsVariant(id, targetSpiritId, data),
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-request-detail'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-spirits'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-spirit', variables.targetSpiritId] })
+      queryClient.invalidateQueries({ queryKey: ['spirit', variables.targetSpiritId] })
+    },
+  })
+}
+
 export function useRejectRequest() {
   const queryClient = useQueryClient()
   return useMutation({

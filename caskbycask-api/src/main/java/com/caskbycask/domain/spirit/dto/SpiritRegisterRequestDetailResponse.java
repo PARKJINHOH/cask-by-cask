@@ -75,12 +75,22 @@ public record SpiritRegisterRequestDetailResponse(
         RequestStatus status,
         String rejectReason,
         LocalDateTime createdAt,
-        LocalDateTime reviewedAt
+        LocalDateTime reviewedAt,
+        TargetSpirit targetSpirit
 ) {
+    /**
+     * 이 요청을 붙일 기존 주류 — 없으면 null(새 마스터를 만드는 보통의 요청).
+     *
+     * <p>이름을 같이 내려주는 이유는 관리자 검토 화면이 id 만 보고는 무엇에 붙는 요청인지
+     * 알 수 없기 때문이다(생산자 이름을 풀어주는 것과 같은 이유).
+     */
+    public record TargetSpirit(Long id, String nameKo, String nameEn) {}
+
     public static SpiritRegisterRequestDetailResponse of(
             SpiritRegisterRequest req,
             SpiritRegisterRequestBody body,
-            String producerNameKo) {
+            String producerNameKo,
+            TargetSpirit targetSpirit) {
         return new SpiritRegisterRequestDetailResponse(
                 req.getId(),
                 req.getUser().getId(),
@@ -141,7 +151,8 @@ public record SpiritRegisterRequestDetailResponse(
                 req.getStatus(),
                 req.getRejectReason(),
                 req.getCreatedAt(),
-                req.getReviewedAt()
+                req.getReviewedAt(),
+                targetSpirit
         );
     }
 }

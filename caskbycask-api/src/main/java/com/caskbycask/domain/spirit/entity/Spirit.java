@@ -337,6 +337,18 @@ public class Spirit extends BaseTimeEntity {
         this.volumeMlMax = volumeMlMax;
     }
 
+    /**
+     * 에디션이 없던 주류를 에디션 마스터로 승격시킨다.
+     *
+     * <p>기존 주류에 첫 에디션을 붙일 때만 쓴다. 이름·규격 같은 나머지는 건들지 않는다 —
+     * {@code update(...)} 를 쓰면 전달하지 않은 필드까지 함께 덮어쓴다.
+     */
+    public void promoteToVariantMaster(VariantType variantType, String seriesIdentifier, String seriesIdentifierEn) {
+        this.variantType = variantType;
+        this.seriesIdentifier = seriesIdentifier;
+        this.seriesIdentifierEn = seriesIdentifierEn;
+    }
+
     /** 하위 에디션 표시 순서 지정 (마스터 화면에서의 목록 순서 보존용) */
     public void assignDisplayOrder(Integer order) {
         this.displayOrder = order;

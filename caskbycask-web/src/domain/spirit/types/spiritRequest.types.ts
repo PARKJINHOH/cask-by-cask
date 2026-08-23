@@ -8,7 +8,8 @@ import type {
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 // 에디션 유형 (위스키 — 관리자 폼과 동일). NONE = 정규(에디션 없음)
-export type RequestVariantType = 'NONE' | 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK'
+// 와인은 빈티지(VINTAGE)가 에디션 역할을 한다 — 관리자와 같은 구조로 받는다
+export type RequestVariantType = 'NONE' | 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE'
 
 export interface SpiritRegisterRequestForm {
   nameKo: string
@@ -70,6 +71,18 @@ export interface SpiritRegisterRequestForm {
   imageUrls?: string[]
   // 관리자에게 전달할 기타 문구 (선택)
   note?: string
+  /**
+   * 이미 등록된 주류의 에디션으로 등록해 달라는 요청일 때 그 마스터 주류 ID.
+   * 비워 보내면 새 주류를 만드는 보통의 요청이다.
+   */
+  targetSpiritId?: number | null
+}
+
+/** 요청이 붙을 기존 주류 — 서버가 이름까지 풀어서 내려준다 */
+export interface RequestTargetSpirit {
+  id: number
+  nameKo: string
+  nameEn: string
 }
 
 // 내 요청 수정 폼 프리필용 상세 (GET /requests/me/{id})
@@ -78,6 +91,7 @@ export interface MySpiritRequestDetail extends SpiritRegisterRequestForm {
   status: RequestStatus
   imageUrls: string[]
   producerNameKo?: string | null
+  targetSpirit?: RequestTargetSpirit | null
 }
 
 export interface MySpiritRequest {

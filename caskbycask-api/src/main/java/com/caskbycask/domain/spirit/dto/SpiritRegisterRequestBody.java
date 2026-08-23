@@ -9,6 +9,7 @@ import com.caskbycask.domain.spirit.entity.enums.OtherSpiritType;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -169,7 +170,14 @@ public record SpiritRegisterRequestBody(
 
         @Schema(description = "에디션 목록 표시용 시리즈 식별자(영문)")
         @Size(max = 100, message = "시리즈 식별자(영문)는 100자 이하여야 합니다.")
-        String seriesIdentifierEn
+        String seriesIdentifierEn,
+
+        @Schema(description = """
+                이미 등록된 주류의 에디션으로 등록해 달라는 요청일 때 그 마스터 주류 ID (선택).
+                비어 보내면 지금처럼 새 마스터 주류를 만든다.
+                채워 보내면 승인 시 새 주류 대신 **그 주류의 하위 에디션**이 생긴다.
+                관리자가 검토 화면에서 직접 고르거나 바꿀 수도 있다.""")
+        Long targetSpiritId
 ) {
         /**
          * 카테고리별 핵심값(스타일/종류/등급/주종) 필수 여부.
@@ -185,5 +193,57 @@ public record SpiritRegisterRequestBody(
                         case COGNAC -> cognacGrade != null;
                         case OTHER  -> otherType != null;
                 };
+        }
+
+        /**
+         * NAS 와 숙성 연수를 함께 보낼 수 없다.
+         *
+         * <p>관리자 등록은 {@code SpiritCommonDetailRequest} 가 같은 규칙을 가지고 있었지만
+         * 이 요청 본문은 평탄화된 개별 필드라 그 검증을 타지 않았다.
+         * 둘 다 담기면 서버가 NAS 를 우선해 숙성 연수를 버리므로 입력값이 조용히 사라진다.
+         */
+        @AssertTrue(message = "NAS 체크 시 숙성 연수를 입력할 수 없습니다.")
+        public boolean isAgeStatementValidForNas() {
+                return !Boolean.TRUE.equals(isNas)
+                        || (ageStatement == null && ageStatementMonths == null);
+        }
+
+        /**
+         * 위스키는 숙성 연수와 NAS 중 하나를 반드시 밝혀야 한다.
+         *
+         * <p>둘 다 비면 나이를 알 수 없는 술로 등록되고, 결국 관리자가 승인 화면에서 다시 메우게 된다.
+         * 사용자 폼과 같은 기준(관리자 등록과 동일)이다.
+         */
+        public boolean hasAgeChoice() {
+                if (category != SpiritCategory.WHISKY) return true;
+                boolean hasAge = ageStatement != null || ageStatementMonths != null;
+                return Boolean.TRUE.equals(isNas) != hasAge;
+        }
+
+        /**
+         * 생산 정보(생산자·국가) 필수.
+         *
+         * <p>위스키는 증류소·브랜드명 택1 — 발란타인 같은 블렌디드는 특정 증류소가 없다.
+         * 사용자는 생산자를 승인 대기로만 등록할 수 있어 id 가 없을 수 있으므로,
+         * 그때는 프론트가 이름을 보내지 않는다 — 국가만 확실히 받고 생산자는 강제하지 않는다.
+         */
+        public boolean hasProductionInfo() {
+                // 기존 주류에 붙이는 요청은 생산 정보를 마스터에서 복사한다 —
+                // 화면에서도 그 칸을 숨기므로 여기서 요구하면 고칠 수 없는 이유로 막힌다.
+                if (targetSpiritId != null) return true;
+                return country != null && !country.isBlank();
+        }
+
+        /**
+         * 기존 주류에 붙이는 요청이면 붙일 에디션이 있어야 한다.
+         *
+         * <p>에디션 없이 {@code targetSpiritId} 만 오면 관리자가 승인하려는 순간에야 막힐테니,
+         * 제출 시점에 걸러 신청자가 바로 고칠 수 있게 한다.
+         */
+        public boolean hasVariantForTarget() {
+                if (targetSpiritId == null) return true;
+                return variantType != null
+                        && variantType != VariantType.NONE
+                        && variantValue != null && !variantValue.isBlank();
         }
 }

@@ -608,6 +608,23 @@
         "label": "사진 첨부",
         "hint": "최대 3장까지 첨부할 수 있어요. 첨부한 사진은 승인 시 주류 이미지로 등록됩니다.",
         "add": "사진 추가"
+      },
+      "existingSpirit": {
+        "modeTitle": "어떤 요청인가요?",
+        "modeNew": "새 주류 등록 요청",
+        "modeNewHint": "목록에 없는 술을 새로 등록해 달라고 요청합니다.",
+        "modeVariant": "기존 주류에 에디션 추가",
+        "modeVariantHint": "이미 등록된 주류의 새 배치·빈티지를 알려줍니다.",
+        "searchTitle": "주류 검색",
+        "searchPlaceholder": "주류 이름을 입력하세요",
+        "searchHint": "두 글자 이상 입력하면 검색됩니다.",
+        "pick": "주류 찾기",
+        "change": "다른 주류 선택",
+        "selected": "이 주류의 에디션을 추가합니다",
+        "notPicked": "먼저 에디션을 추가할 주류를 찾아주세요.",
+        "inheritedHint": "이름·카테고리·생산자·국가는 선택한 주류에서 가져옵니다. 아래에는 에디션 정보만 적어주세요.",
+        "unsupportedCategory": "에디션 추가는 위스키와 와인(빈티지)만 가능합니다.",
+        "editionRequired": "에디션 유형을 고르고 에디션 정보를 채워주세요. 기존 주류에는 에디션 1건을 추가합니다."
       }
     },
     "myRequests": {

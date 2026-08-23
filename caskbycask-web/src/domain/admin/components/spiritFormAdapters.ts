@@ -36,12 +36,18 @@ export function toSpiritRequestForm(payload: CreateSpiritPayload): SpiritRegiste
   const abvMax = variant?.abvMax ?? payload.abvMax
   const volumeMl = variant?.volumeMl ?? payload.volumeMl
 
+  // 와인은 빈티지로 나누는 순간 buildPayload 가 마스터 wineDetail 을
+  // { vintageStatus: 'UNKNOWN' } 으로 낮춘다(실제 값은 빈티지 카드에 있다).
+  // 마스터 것을 그대로 보내면 사용자가 적은 와인 상세가 통째로 사라진다.
+  const wine = variant?.wineDetail ?? payload.wineDetail
+  const vintageYear = variant?.vintageYear ?? payload.vintageYear
+
   return {
     nameKo: payload.nameKo,
     nameEn: payload.nameEn,
     category: payload.category,
     producerId: payload.producerId ?? null,
-    vintageYear: payload.vintageYear ?? null,
+    vintageYear: vintageYear ?? null,
     abv: abv ?? null,
     abvMin: abvMin ?? null,
     abvMax: abvMax ?? null,
@@ -78,11 +84,11 @@ export function toSpiritRequestForm(payload: CreateSpiritPayload): SpiritRegiste
     phenolPpmMin: whisky?.phenolPpmMin ?? null,
     phenolPpmMax: whisky?.phenolPpmMax ?? null,
 
-    wineType: (payload.wineDetail?.wineType as SpiritRegisterRequestForm['wineType']) ?? undefined,
+    wineType: (wine?.wineType as SpiritRegisterRequestForm['wineType']) ?? undefined,
     cognacGrade: (payload.cognacDetail?.grade as SpiritRegisterRequestForm['cognacGrade']) ?? undefined,
     otherType: (payload.otherDetail?.otherType as SpiritRegisterRequestForm['otherType']) ?? undefined,
     // 핵심값 외 나머지 상세 전체 보존 (와인 포도품종·산도, 꼬냑 크뤼·숙성연수, 기타 주원료 등)
-    wineDetail: payload.wineDetail ?? null,
+    wineDetail: wine ?? null,
     cognacDetail: payload.cognacDetail ?? null,
     otherDetail: payload.otherDetail ?? null,
 

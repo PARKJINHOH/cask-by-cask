@@ -66,6 +66,7 @@ public enum ErrorCode {
     INVALID_DATE_FORMAT(HttpStatus.BAD_REQUEST, "SPIRIT_011", "날짜 형식이 올바르지 않습니다 (YYYY 또는 YYYY-MM)."),
     INVALID_CRU_PERCENTAGE(HttpStatus.BAD_REQUEST, "SPIRIT_013", "크뤼 구성 비율 합계는 100%를 초과할 수 없습니다."),
     DUPLICATE_CRU_COMPOSITION(HttpStatus.BAD_REQUEST, "SPIRIT_014", "같은 크뤼를 중복해서 입력할 수 없습니다."),
+    SPIRIT_VARIANT_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "SPIRIT_015", "그 주류에 같은 에디션이 이미 있습니다."),
 
     // Producer
     DISTILLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "DISTILLERY_001", "증류소 정보를 찾을 수 없습니다."),

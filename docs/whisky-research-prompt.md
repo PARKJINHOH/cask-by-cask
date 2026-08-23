@@ -294,10 +294,14 @@ OTHER          기타 캐스크        details 예) Umeshu Cask, Peated Quarter 
 
 ## 숙성·병입
 
+> **`isNas` 와 `ageStatement` 는 택1 필수입니다.** 등록 폼이 둘 중 하나를 반드시 받고,
+> 둘 다 비거나 둘 다 채우면 저장이 막힙니다. 나이를 모르겠으면 짐작하지 말고
+> `_uncertain` 에 적으세요. 에디션도 각각 둘 중 하나가 있어야 합니다.
+
 | 필드 | 규칙 |
 |---|---|
-| `isNas` | 숙성 연수 미표기(No Age Statement)면 `true`. 이때 `ageStatement`는 `null` |
-| `ageStatement` | 라벨의 숙성 연수(년). 12년이면 `12`. 0~100 |
+| `isNas` | 숙성 연수 미표기(No Age Statement)면 `true`. 이때 `ageStatement`는 `null` (**택1 필수**) |
+| `ageStatement` | 라벨의 숙성 연수(년). 12년이면 `12`. 0~100. 적었으면 `isNas` 는 `false` (**택1 필수**) |
 | `ageStatementMonths` | 년 단위로 안 떨어질 때만. **0~11**만 허용 (예: 12년 6개월 → `ageStatement: 12`, `ageStatementMonths: 6`). 12 이상이면 년으로 환산해 `ageStatement`에 넣으세요 |
 | `distilledDate` | `YYYY` 또는 `YYYY-MM` |
 | `bottledDate` | `YYYY` 또는 `YYYY-MM`. 출시일 칸이 없어 출시 시점도 여기로 갈음합니다 |
