@@ -390,7 +390,11 @@ async function verifyRenderedHtml(categoryStates = []) {
       } catch (error) {
         throw new Error(`${path}: rendered navigation failed: ${error.message}`)
       }
-      invariant(response?.status() === 200, `${path}: rendered request must return 200`)
+      // 304 는 실패가 아니다. HTML 이 `max-age=0` 으로 바뀌면서 같은 세션에서 같은 URL 을
+      // 두 번 방문하면 브라우저가 재검증하고 엣지가 304 를 준다(본문은 캐시본으로 정상 렌더된다).
+      // 예전에는 SSR 이 no-store 라 항상 200 이었을 뿐이고, 재검증 자체는 의도한 동작이다.
+      invariant(response?.status() === 200 || response?.status() === 304,
+        `${path}: rendered request must return 200 or 304 (got ${response?.status()})`)
       try {
         await page.waitForFunction(
           () => !document.querySelector('[data-seo-fallback]') && document.querySelectorAll('h1').length > 0,

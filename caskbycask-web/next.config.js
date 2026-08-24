@@ -22,6 +22,28 @@ const nextConfig = {
         ],
       },
       {
+        // public/ 에서 그대로 나가는 이미지·텍스트 자산.
+        //
+        // Next 는 public/ 파일에 `public, max-age=0` 을 붙인다. 예전에는 Cloudflare 의 기본
+        // Browser Cache TTL(4시간)이 이 값을 덮어써서 문제가 드러나지 않았는데, HTML 엣지 캐시용
+        // Cache Rule 을 'Respect origin TTL' 로 두면서 원래 값이 그대로 나가게 됐다.
+        // 그 결과 재방문자가 홈 카테고리 타일 이미지를 매번 재검증한다.
+        //
+        // 파일명에 버전이 없어 immutable 은 쓰지 않는다 — 이미지를 교체하면 하루 안에 전파되어야 한다.
+        source: '/images/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
+      },
+      {
+        // robots.txt / llms.txt — 크롤러가 자체 주기로 다시 읽지만, 원본이 max-age=0 이면
+        // 엣지도 매번 오리진까지 되묻는다. 내용 변경이 즉시 반영될 만큼 짧게만 준다.
+        source: '/:file(robots.txt|llms.txt)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
+        ],
+      },
+      {
         // self-host Pretendard 조각. public/ 정적 파일은 기본적으로 캐시되지 않으므로
         // 명시적으로 장기 캐시를 준다. 경로에 버전이 포함되어(`/fonts/pretendard/v1.3.9/...`)
         // 버전 교체 = URL 교체이므로 immutable 이 안전하다.
