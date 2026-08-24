@@ -43,6 +43,8 @@ class SitemapServiceTest {
     @DisplayName("루트 사이트맵은 정적·콘텐츠·언어별 주류 shard를 가리키는 sitemap index다")
     void sitemap_index_contains_stable_shards() {
         mockQueries(jpql -> {
+            // 생산자 JPQL 은 EXISTS 절 안에 'FROM Spirit' 을 품으므로 Spirit 분기보다 먼저 본다.
+            if (jpql.contains("FROM Producer")) return Long.valueOf(640L);
             if (jpql.contains("FROM Spirit")) return Long.valueOf(10_001L);
             if (jpql.contains("FROM Notice")) return Long.valueOf(12L);
             return null;
@@ -53,6 +55,7 @@ class SitemapServiceTest {
         assertThat(xml).contains("<sitemapindex");
         assertThat(xml).contains("https://www.caskbycask.net/sitemaps/static.xml");
         assertThat(xml).contains("https://www.caskbycask.net/sitemaps/content-0.xml");
+        assertThat(xml).contains("https://www.caskbycask.net/sitemaps/producers-0.xml");
         assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-ko-0.xml");
         assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-ko-1.xml");
         assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-en-0.xml");
@@ -135,6 +138,36 @@ class SitemapServiceTest {
 
         assertThat(xml).contains("/ko/community/free&amp;news/7");
         assertThat(xml).contains("2026-01-02T03:04:00+09:00");
+    }
+
+    @Test
+    @DisplayName("생산자 shard 는 KO/EN 경로를 한 파일에 담고 KST lastmod 를 출력한다")
+    void producer_sitemap_contains_both_languages() {
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 8, 25, 9, 0);
+        mockQueries(jpql -> null, jpql -> jpql.contains("FROM Producer")
+                ? List.of(new Object[]{174L, updatedAt}, new Object[]{1L, null})
+                : List.of());
+
+        String xml = sitemapService.generateProducerSitemap(0L);
+
+        assertThat(xml).contains("https://www.caskbycask.net/ko/producers/174</loc>");
+        assertThat(xml).contains("https://www.caskbycask.net/en/producers/174</loc>");
+        assertThat(xml).contains("https://www.caskbycask.net/ko/producers/1</loc>");
+        assertThat(xml).contains("<lastmod>2026-08-25T09:00:00+09:00</lastmod>");
+    }
+
+    @Test
+    @DisplayName("활성 주류가 없는 생산자는 shard 와 bucket 계산 모두에서 같은 조건으로 빠진다")
+    void producer_sitemap_requires_an_active_spirit() {
+        mockQueries(jpql -> null, jpql -> List.of());
+
+        sitemapService.generateProducerSitemap(0L);
+        sitemapService.producerBuckets();
+
+        org.mockito.ArgumentCaptor<String> jpql = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(em, org.mockito.Mockito.atLeastOnce()).createQuery(jpql.capture());
+        assertThat(jpql.getAllValues())
+                .allMatch(q -> q.contains("EXISTS (SELECT 1 FROM Spirit s WHERE s.producer = p AND s.status = :status)"));
     }
 
     private void mockQueries(Function<String, Object> singleResult,

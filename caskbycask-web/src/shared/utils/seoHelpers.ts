@@ -3316,6 +3316,12 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: labels.spirits, href: `/${resolvedLang}/spirits` },
       { label: categoryLabel(spirit.category, resolvedLang), href: `/${resolvedLang}/spirits?category=${spirit.category || ''}` },
       { label: title, href: canonicalPath },
+      // 생산자 상세로 내려가는 유일한 크롤 경로. 이 링크가 없으면 생산자 페이지는
+      // sitemap 외에 유입 경로가 없는 고아가 된다(주류→생산자 링크는 SPA 안에만 있었다).
+      ...(spirit.producerId && primaryProducer ? [{
+        label: primaryProducer,
+        href: `/${resolvedLang}/producers/${spirit.producerId}`,
+      }] : []),
       ...(recentPrice ? [{
         label: isEn ? 'View price reports' : '가격 제보 확인',
         href: `/${resolvedLang}/price-tracker/spirits/${numericId}`,

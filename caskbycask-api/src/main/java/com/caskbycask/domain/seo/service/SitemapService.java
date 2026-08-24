@@ -29,6 +29,17 @@ import java.util.Map;
 public class SitemapService {
 
     public static final long BUCKET_SIZE = 10_000L;
+
+    /** 활성 주류를 하나라도 가진 생산자만 — sitemap 과 bucket 계산이 같은 조건을 써야 어긋나지 않는다. */
+    private static final String PRODUCER_HAS_ACTIVE_SPIRIT =
+            "EXISTS (SELECT 1 FROM Spirit s WHERE s.producer = p AND s.status = :status)";
+    private static final String PRODUCER_MAX_ID_JPQL =
+            "SELECT MAX(p.id) FROM Producer p WHERE " + PRODUCER_HAS_ACTIVE_SPIRIT;
+    private static final String PRODUCER_ROWS_JPQL =
+            "SELECT p.id, p.updatedAt FROM Producer p"
+                    + " WHERE " + PRODUCER_HAS_ACTIVE_SPIRIT
+                    + " AND p.id >= :minId AND p.id < :maxId"
+                    + " ORDER BY p.id";
     private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter W3C = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -48,6 +59,9 @@ public class SitemapService {
             appendSitemap(sb, "/sitemaps/content-" + bucket + ".xml");
         }
         appendSitemap(sb, "/sitemaps/youtube.xml");
+        for (long bucket : producerBuckets()) {
+            appendSitemap(sb, "/sitemaps/producers-" + bucket + ".xml");
+        }
         List<Long> spiritBuckets = spiritBuckets();
         for (String lang : List.of("ko", "en")) {
             for (long bucket : spiritBuckets) {
@@ -137,6 +151,35 @@ public class SitemapService {
                     : SpiritSlugUtils.canonicalPathKo(id, nameKo, seriesIdentifier, variantType, variantValue,
                     category, vintageYear, vintageStatus);
             appendUrl(sb, normalizedSiteUrl() + path, updatedAt);
+        }
+        return finishUrlSet(sb);
+    }
+
+    /**
+     * 생산자 상세 shard.
+     *
+     * <p>주류 shard 와 달리 KO/EN 경로가 언어 접두사만 다르고 slug 가 없어(`/{lang}/producers/{id}`)
+     * 언어별로 파일을 나누지 않고 한 shard 에 두 언어를 함께 싣는다.
+     *
+     * <p>활성 주류가 하나도 없는 생산자는 제외한다 — 목록이 비어 있는 페이지를 sitemap 에 올리면
+     * 빈약한 콘텐츠를 색인 대상으로 제출하는 셈이다. 빈 카테고리를 static shard 에서 빼는 것과 같은 기준이다.
+     */
+    @Transactional(readOnly = true)
+    public String generateProducerSitemap(long bucket) {
+        if (bucket < 0) throw new IllegalArgumentException("Unsupported sitemap shard");
+        long minId = Math.multiplyExact(bucket, BUCKET_SIZE);
+        long maxId = Math.addExact(minId, BUCKET_SIZE);
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createQuery(PRODUCER_ROWS_JPQL)
+                .setParameter("status", SpiritStatus.ACTIVE)
+                .setParameter("minId", minId)
+                .setParameter("maxId", maxId)
+                .getResultList();
+
+        StringBuilder sb = startUrlSet();
+        for (Object[] row : rows) {
+            appendMultilingualUrl(sb, "/producers/" + row[0], (LocalDateTime) row[1]);
         }
         return finishUrlSet(sb);
     }
@@ -235,6 +278,10 @@ public class SitemapService {
             appendMultilingualUrl(sb, "/youtube/" + row[0], (LocalDateTime) row[1]);
         }
         return finishUrlSet(sb);
+    }
+
+    public List<Long> producerBuckets() {
+        return bucketsThrough(maxId(PRODUCER_MAX_ID_JPQL, "status", SpiritStatus.ACTIVE));
     }
 
     public List<Long> spiritBuckets() {
