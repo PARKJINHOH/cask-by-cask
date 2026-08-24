@@ -6,6 +6,7 @@ import com.caskbycask.domain.deal.dto.DealPostSummaryResponse;
 import com.caskbycask.domain.deal.dto.UpdateDealRequest;
 import com.caskbycask.domain.deal.entity.enums.DealStatus;
 import com.caskbycask.domain.deal.service.DealAdminService;
+import com.caskbycask.domain.deal.service.DealKrwBackfillService;
 import com.caskbycask.global.response.ApiResponse;
 import com.caskbycask.global.response.PageResponse;
 import jakarta.validation.Valid;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class DealAdminController {
 
     private final DealAdminService dealAdminService;
+    private final DealKrwBackfillService dealKrwBackfillService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<DealPostSummaryResponse>>> list(
@@ -35,6 +37,15 @@ public class DealAdminController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 PageResponse.from(dealAdminService.list(status, drinkName, page, size))));
+    }
+
+    /**
+     * V96 이전 외화 딜의 원화 환산 일괄 백필. 운영 반영 직후 1회 호출용이며 재실행해도 안전하다.
+     * 환산되지 않은 딜은 가격 차트에서 제외된 상태라 서비스에는 영향이 없다.
+     */
+    @PostMapping("/backfill-krw")
+    public ResponseEntity<ApiResponse<DealKrwBackfillService.BackfillResult>> backfillKrw() {
+        return ResponseEntity.ok(ApiResponse.success(dealKrwBackfillService.backfill()));
     }
 
     @GetMapping("/{id}")

@@ -37,7 +37,9 @@ class PostDetail:
 
 
 _CATEGORIES = {"WHISKY", "COGNAC", "WINE", "TEQUILA", "RUM", "BEER", "SOJU", "OTHER"}
-_CURRENCIES = {"KRW", "USD", "EUR"}
+# 백엔드 PriceCurrency enum 과 1:1 로 맞춘다. 여기 없는 통화는 KRW 로 강등되어
+# 차트에 "NT$1,200 → 1,200원" 으로 찍히므로 반드시 동기화한다.
+_CURRENCIES = {"KRW", "USD", "EUR", "TWD", "JPY", "CNY"}
 
 
 @dataclass
@@ -50,7 +52,7 @@ class AnalysisResult:
     original_price: Optional[int]
     deal_price: Optional[int]
     discount_rate: Optional[float]    # 0.0 ~ 1.0
-    currency: str                     # KRW|USD|EUR
+    currency: str                     # KRW|USD|EUR|TWD|JPY|CNY
     seller: Optional[str]             # 판매처명
     deal_condition: Optional[str]     # 조건 설명
     expiry_info: Optional[str]        # 기간 정보

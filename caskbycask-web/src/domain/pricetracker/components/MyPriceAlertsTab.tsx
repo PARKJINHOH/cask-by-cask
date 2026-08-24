@@ -34,6 +34,8 @@ export default function MyPriceAlertsTab() {
             </Link>
             <p className="text-xs text-neutral-500 mt-0.5">
               <span className="font-medium">
+                {t(`price.chart.${a.storeType.toLowerCase()}`)}
+                {' · '}
                 {a.volumeMl == null ? t('price.volume.legacyAll') : `${a.volumeMl.toLocaleString()}ml`}
                 {' · '}
               </span>
@@ -48,7 +50,13 @@ export default function MyPriceAlertsTab() {
             >
               {a.isActive ? t('price.alert.on') : t('price.alert.off')}
             </button>
-            <button onClick={() => del.mutate(a.id)} className="text-xs text-neutral-400 hover:text-red-500">
+            <button
+              onClick={() => {
+                // 되돌릴 수 없는 삭제라 한 번 확인한다(해제만 원하면 위 토글을 쓰면 된다).
+                if (window.confirm(t('price.alert.deleteConfirm'))) del.mutate(a.id)
+              }}
+              className="text-xs text-neutral-400 hover:text-red-500"
+            >
               {t('common.delete', '삭제')}
             </button>
           </div>

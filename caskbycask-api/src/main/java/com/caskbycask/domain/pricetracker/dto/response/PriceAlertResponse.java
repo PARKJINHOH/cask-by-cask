@@ -1,6 +1,7 @@
 package com.caskbycask.domain.pricetracker.dto.response;
 
 import com.caskbycask.domain.pricetracker.entity.PriceAlert;
+import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ public record PriceAlertResponse(
         String spiritNameKo,
         String spiritNameEn,
         Integer volumeMl,
+        StoreType storeType,
         BigDecimal targetPriceKrw,
         Boolean isActive,
         LocalDateTime lastNotifiedAt,
@@ -23,6 +25,7 @@ public record PriceAlertResponse(
                 alert.getSpirit().getNameKo(),
                 alert.getSpirit().getNameEn(),
                 alert.getVolumeMl(),
+                alert.getStoreType(),
                 alert.getTargetPriceKrw(),
                 alert.getIsActive(),
                 alert.getLastNotifiedAt(),

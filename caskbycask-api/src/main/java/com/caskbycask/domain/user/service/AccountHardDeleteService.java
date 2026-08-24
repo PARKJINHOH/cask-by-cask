@@ -75,6 +75,8 @@ public class AccountHardDeleteService {
         reassign("UPDATE community_comment SET user_id = :s WHERE user_id = :uid", userId, sentinelId);
         reassign("UPDATE series SET author_id = :s WHERE author_id = :uid", userId, sentinelId);
         reassign("UPDATE post_images SET uploaded_by_id = :s WHERE uploaded_by_id = :uid", userId, sentinelId);
+        // 가격 제보 이미지는 시세 근거라 보존한다(uploaded_by_id 는 NOT NULL 이라 센티넬로 재귀속).
+        reassign("UPDATE price_report_images SET uploaded_by_id = :s WHERE uploaded_by_id = :uid", userId, sentinelId);
         // 관리자/파트너 콘텐츠(있을 경우 보존)
         reassign("UPDATE banners SET created_by_id = :s WHERE created_by_id = :uid", userId, sentinelId);
         reassign("UPDATE banner_images SET uploaded_by_id = :s WHERE uploaded_by_id = :uid", userId, sentinelId);
@@ -120,6 +122,13 @@ public class AccountHardDeleteService {
         exec("DELETE FROM attendance_logs WHERE user_id = :uid", userId);
         exec("DELETE FROM score_history WHERE user_id = :uid", userId);
         exec("DELETE FROM wishlist WHERE user_id = :uid", userId);
+        // 목표가 알림 — price_alerts.user_id 는 NOT NULL + FK 라 남겨 두면 users 삭제가 실패한다.
+        exec("DELETE FROM price_alerts WHERE user_id = :uid", userId);
+        // 가격 제보는 시세 데이터라 삭제하지 않고 작성자만 끊는다(reporter_id 는 nullable).
+        exec("UPDATE price_reports SET reporter_id = NULL WHERE reporter_id = :uid", userId);
+        exec("UPDATE price_reports SET approved_by_id = NULL WHERE approved_by_id = :uid", userId);
+        exec("DELETE FROM price_report_reports WHERE reporter_id = :uid", userId);
+        exec("UPDATE price_report_reports SET resolved_by_id = NULL WHERE resolved_by_id = :uid", userId);
         exec("DELETE FROM content_draft WHERE user_id = :uid", userId);
         exec("DELETE FROM user_blocks WHERE blocker_id = :uid OR blocked_id = :uid", userId);
         // 본인이 신청한 등록 요청

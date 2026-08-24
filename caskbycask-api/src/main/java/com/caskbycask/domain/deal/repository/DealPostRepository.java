@@ -28,6 +28,16 @@ public interface DealPostRepository extends JpaRepository<DealPost, Long> {
 
     List<DealPost> findAllBySpiritIdInAndStatusAndIsVisibleTrue(Collection<Long> spiritIds, DealStatus status);
 
+    /** 원화 환산이 비어 있는 외화 딜 — 백필 대상. 오래된 것부터 처리해 날짜별 환율 조회를 뭉친다. */
+    @Query("""
+            SELECT d FROM DealPost d
+             WHERE d.currency IS NOT NULL
+               AND UPPER(d.currency) <> 'KRW'
+               AND d.dealPriceKrw IS NULL
+             ORDER BY d.crawledAt ASC, d.id ASC
+            """)
+    List<DealPost> findForeignDealsMissingKrw();
+
     /** SEO 본문용 최근 승인·공개 핫딜 1건 조회. 호출 측에서 Pageable(0, 1)을 전달한다. */
     @Query("""
             SELECT d FROM DealPost d

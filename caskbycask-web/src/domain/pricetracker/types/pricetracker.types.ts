@@ -1,4 +1,6 @@
 export type StoreType = 'DOMESTIC' | 'OVERSEAS' | 'DUTYFREE'
+/** 국내/해외/면세 탭 순서. 차트·목록·등록·관리자 화면이 모두 이 배열을 공유한다. */
+export const STORE_TYPES = ['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const
 export type PriceCurrency = 'KRW' | 'TWD' | 'USD' | 'JPY' | 'CNY' | 'EUR'
 export type ForeignPriceCurrency = Exclude<PriceCurrency, 'KRW'>
 export type PriceInputMode = 'AUTO_CONVERTED' | 'KRW_DIRECT'
@@ -33,6 +35,8 @@ export interface ChartResponse {
   currency: PriceCurrency
   points: ChartPoint[]
   series: ChartSeries[]
+  /** 국내/해외/면세 각각의 등록 건수. 기간·용량 필터는 적용된 값이다. */
+  storeTypeCounts?: Partial<Record<StoreType, number>>
 }
 
 export interface ExchangeRateQuote {
@@ -71,6 +75,12 @@ export interface PriceReportChartDetail {
   variantLabel?: string | null
   sourceSite?: string | null
   sourceUrl?: string | null
+  /** 원 통화. finalPrice/salePrice/regularPrice 는 이와 무관하게 항상 원화다. */
+  currency?: PriceCurrency | null
+  originalFinalPrice?: number | null
+  originalRegularPrice?: number | null
+  exchangeRateSnapshot?: number | null
+  exchangeRateDate?: string | null
 }
 
 export interface PriceReportSummary {
@@ -145,6 +155,7 @@ export interface PriceAlertResponse {
   spiritNameKo: string
   spiritNameEn: string
   volumeMl: number | null
+  storeType: StoreType
   targetPriceKrw: number
   isActive: boolean
   lastNotifiedAt: string | null

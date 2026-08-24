@@ -815,7 +815,7 @@ function PriceTabContent({
       />
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-[240px]">
-          <PriceAlertInline spiritId={actionSpiritId} volumeMl={selectedKnownVolume} />
+          <PriceAlertInline spiritId={actionSpiritId} volumeMl={selectedKnownVolume} storeType={storeType} />
         </div>
         <Link
           to={registerHref}

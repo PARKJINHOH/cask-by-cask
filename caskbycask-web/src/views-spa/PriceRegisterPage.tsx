@@ -14,6 +14,7 @@ import type {
   PriceInputMode,
   PriceReportImageUpload,
 } from '@/domain/pricetracker/types/pricetracker.types'
+import { STORE_TYPES } from '@/domain/pricetracker/types/pricetracker.types'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { formatOptionalPriceInput, parsePriceInput } from '@/shared/utils/moneyInput'
@@ -359,7 +360,7 @@ export default function PriceRegisterPage() {
         {/* 3. 매장 */}
         <Section label={t('price.register.store')}>
           <div className="flex gap-2 mb-2">
-            {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((tp) => (
+            {STORE_TYPES.map((tp) => (
               <button
                 key={tp}
                 type="button"

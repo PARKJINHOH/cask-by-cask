@@ -3,6 +3,7 @@ package com.caskbycask.domain.deal.controller;
 import com.caskbycask.domain.deal.dto.CreateDealRequest;
 import com.caskbycask.domain.deal.dto.DealPostDetailResponse;
 import com.caskbycask.domain.deal.service.DealAdminService;
+import com.caskbycask.domain.deal.service.DealKrwBackfillService;
 import com.caskbycask.domain.pricetracker.entity.enums.StoreType;
 import com.caskbycask.global.auth.jwt.JwtProvider;
 import com.caskbycask.global.auth.security.CustomUserDetailsService;
@@ -36,6 +37,7 @@ class DealAdminControllerCreateTest {
     @Autowired ObjectMapper objectMapper;
 
     @MockitoBean DealAdminService dealAdminService;
+    @MockitoBean DealKrwBackfillService dealKrwBackfillService;
     @MockitoBean JwtProvider jwtProvider;
     @MockitoBean CustomUserDetailsService customUserDetailsService;
 

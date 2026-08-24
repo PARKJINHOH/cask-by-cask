@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -35,6 +36,7 @@ public class DealAdminService {
 
     private final DealPostRepository dealPostRepository;
     private final SpiritRepository spiritRepository;
+    private final DealExchangeRateApplier exchangeRateApplier;
 
     @Transactional(readOnly = true)
     public Page<DealPostSummaryResponse> list(DealStatus status, String drinkName, int page, int size) {
@@ -99,13 +101,10 @@ public class DealAdminService {
             throw new CustomException(ErrorCode.DEAL_ALREADY_EXISTS);
         }
 
-        // [가격 정확도] 가격 차트는 deal 금액을 원화로 그대로 집계한다(PriceChartService.buildTempPrices —
-        //   BigDecimal.valueOf(dealPrice)). PriceReport 처럼 환율 스냅샷으로 환산하지 않으므로
-        //   외화를 그대로 넣으면 "$120 → 120원" 으로 찍힌다. 관리자 직접 등록은 KRW 만 허용한다.
+        // [가격 정확도] 가격 차트는 deal 금액을 원화 축 하나로 집계한다. 외화는 저장 시점에
+        //   exchangeRateApplier 가 원화로 환산해 박제하므로(V96) 이제 외화 등록도 허용한다.
+        //   지원하지 않는 통화는 resolveCurrency 가 DEAL_CURRENCY_NOT_SUPPORTED 로 막는다.
         String currency = DealPriceNormalizer.normalizeCurrency(req.currency());
-        if (!"KRW".equals(currency)) {
-            throw new CustomException(ErrorCode.DEAL_CURRENCY_NOT_SUPPORTED);
-        }
 
         DealPost deal = DealPost.builder()
                 .sourceUrl(sourceUrl)
@@ -131,6 +130,9 @@ public class DealAdminService {
                 .isVisible(true)
                 .status(DealStatus.APPROVED)
                 .build();
+
+        // 관리자가 지정한 관측일(observedAt) 환율로 환산한다. 미지정이면 최신 환율.
+        exchangeRateApplier.applyForDate(deal, req.observedAt());
 
         try {
             // saveAndFlush: 동시 등록 레이스로 인한 unique 위반을 이 시점에 잡는다.
@@ -160,6 +162,10 @@ public class DealAdminService {
         requirePending(deal);
         if (req != null) {
             applyUpdate(deal, req);
+        } else if (deal.resolveDealPriceKrw() == null) {
+            // 수집 시점에 환율을 못 구했던 딜은 승인이 자연스러운 재시도 지점이다.
+            // 여기서도 실패하면 환산값 없이 남아 차트에서 제외된다(백필로 나중에 채운다).
+            exchangeRateApplier.applyForDate(deal, resolveRateDate(deal));
         }
         deal.approve();
         return DealPostDetailResponse.from(deal);
@@ -213,6 +219,14 @@ public class DealAdminService {
                 req.dealCondition(), req.expiryInfo(), req.summaryKo()
         );
         deal.linkSpiritAndStoreType(spirit, req.storeType());
+        // 금액·통화가 바뀌었을 수 있으므로 원화 환산을 다시 확정한다.
+        // 이 경로에는 원래 통화 검증이 없어 외화가 원화로 오염되는 통로였다.
+        exchangeRateApplier.applyForDate(deal, resolveRateDate(deal));
+    }
+
+    /** 환산 기준일 — 수집(관측) 시점을 우선한다. 없으면 최신 환율(null). */
+    private LocalDate resolveRateDate(DealPost deal) {
+        return deal.getCrawledAt() != null ? deal.getCrawledAt().toLocalDate() : null;
     }
 
     private DealPost getOrThrow(Long id) {

@@ -95,10 +95,11 @@ export const priceTrackerApi = {
   ) => axiosInstance.post<ApiResponse<void>>(`/api/price-reports/${reportId}/reports`, body),
 
   // ── 가격 알림 ─────────────────────────────────────
-  upsertAlert: (spiritId: number, volumeMl: number, targetPrice: number) =>
+  upsertAlert: (spiritId: number, volumeMl: number, storeType: StoreType, targetPrice: number) =>
     axiosInstance.post<ApiResponse<PriceAlertResponse>>('/api/price-alerts', {
       spiritId,
       volumeMl,
+      storeType,
       targetPrice,
     }),
 

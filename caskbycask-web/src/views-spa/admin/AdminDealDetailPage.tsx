@@ -6,6 +6,7 @@ import { formatDateTime } from '@/shared/utils/format'
 import { adminDealApi } from '@/domain/admin/api/adminDealApi'
 import { DEAL_CATEGORIES, type CreateDealRequest, type DealPostDetail, type UpdateDealRequest } from '@/domain/admin/types/deal.types'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
+import { STORE_TYPES } from '@/domain/pricetracker/types/pricetracker.types'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritDetail, SpiritListItem, SpiritVariant } from '@/domain/spirit/types/spirit.types'
 import {
@@ -44,6 +45,16 @@ type SpiritConnectionPicker = {
   title: string
   options: SpiritConnectionOption[]
 }
+
+/** 백엔드 PriceCurrency enum 과 동일. 여기 없는 통화는 저장 시 DEAL_CURRENCY_NOT_SUPPORTED 로 막힌다. */
+const CURRENCY_OPTIONS = [
+  { code: 'KRW', label: '원화 (KRW)' },
+  { code: 'USD', label: '미국 달러 (USD)' },
+  { code: 'TWD', label: '대만 달러 (TWD)' },
+  { code: 'JPY', label: '일본 엔 (JPY)' },
+  { code: 'CNY', label: '중국 위안 (CNY)' },
+  { code: 'EUR', label: '유로 (EUR)' },
+] as const
 
 export default function AdminDealDetailPage() {
   const { id: idParam } = useParams<{ id: string }>()
@@ -514,24 +525,18 @@ export default function AdminDealDetailPage() {
               <select
                 required
                 aria-required="true"
-                disabled={isCreateMode}
-                className={`${inputCls}${isCreateMode ? ' bg-neutral-50 text-neutral-500' : ''}`}
-                value={isCreateMode ? 'KRW' : form.currency}
+                className={inputCls}
+                value={form.currency || 'KRW'}
                 onChange={(e) => setForm({ ...form, currency: e.target.value })}
               >
-                <option value="KRW">원화 (KRW)</option>
-                {!isCreateMode && <option value="USD">달러 (USD)</option>}
-                {!isCreateMode && <option value="JPY">엔화 (JPY)</option>}
-                {!isCreateMode && <option value="TWD">대만 달러 (TWD)</option>}
-                {!isCreateMode && <option value="HKD">홍콩 달러 (HKD)</option>}
-                {!isCreateMode && <option value="SGD">싱가포르 달러 (SGD)</option>}
+                {CURRENCY_OPTIONS.map(({ code, label }) => (
+                  <option key={code} value={code}>{label}</option>
+                ))}
               </select>
-              {isCreateMode && (
-                <p className="mt-1 text-[11px] text-neutral-400">
-                  가격 차트는 이 금액을 원화로 그대로 집계합니다(환율 환산 없음).
-                  외화 가격은 환산이 필요하므로 '가격 등록 승인' 경로를 이용해주세요.
-                </p>
-              )}
+              <p className="mt-1 text-[11px] text-neutral-400">
+                외화는 저장 시점(관측일 기준) 환율로 원화 환산해 차트에 집계합니다.
+                환율 조회에 실패하면 환산값이 비어 차트에서 제외되니, 저장 후 금액을 확인해주세요.
+              </p>
             </div>
           </Field>
           <Field label="판매처">
@@ -543,7 +548,7 @@ export default function AdminDealDetailPage() {
           </Field>
           <Field label="판매처 유형">
             <div className="flex gap-1.5 mt-0.5">
-              {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((t_) => (
+              {STORE_TYPES.map((t_) => (
                 <button
                   type="button"
                   key={t_}

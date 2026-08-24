@@ -62,8 +62,12 @@ export function usePriceVolumeOptions(spiritId: number, storeType: StoreType, sp
 export function useUpsertPriceAlert() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ spiritId, volumeMl, targetPrice }: { spiritId: number; volumeMl: number; targetPrice: number }) =>
-      priceTrackerApi.upsertAlert(spiritId, volumeMl, targetPrice),
+    mutationFn: ({ spiritId, volumeMl, storeType, targetPrice }: {
+      spiritId: number
+      volumeMl: number
+      storeType: StoreType
+      targetPrice: number
+    }) => priceTrackerApi.upsertAlert(spiritId, volumeMl, storeType, targetPrice),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['priceAlerts'] }),
   })
 }

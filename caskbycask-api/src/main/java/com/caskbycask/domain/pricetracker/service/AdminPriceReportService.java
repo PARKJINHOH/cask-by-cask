@@ -116,14 +116,16 @@ public class AdminPriceReportService {
                     ScoreActions.PRICE_REGISTER, "PRICE_REPORT", saved.getId());
         }
 
-        // [패치 8] 면세(USD) 가격은 환율 변동으로 근사치라 KRW 목표가 알림 비교에서 제외.
-        //          국내 매장(DOMESTIC) + 통화 KRW 인 경우에만 알림 비교 대상.
-        boolean isDomesticKrw = saved.getEffectiveStoreType() == StoreType.DOMESTIC
-                && saved.getCurrency() == PriceCurrency.KRW;
-        if (isDomesticKrw) {
-            priceAlertService.checkAndNotifyAlerts(
-                    saved.getSpirit().getId(), saved.getVolumeMl(), saved.getActualPrice(), saved.getId());
-        }
+        // 목표가 알림은 국내/해외/면세를 각각 별도 구간으로 본다(V96). 비교 기준은 항상 원화이므로
+        // 원 통화 금액(getActualPrice)이 아니라 환율 스냅샷으로 환산한 값을 넘겨야 한다 —
+        // 그냥 넘기면 $187 을 187원으로 비교해 모든 알림이 오발동한다.
+        // 환율 스냅샷이 없는 레거시 제보는 환산값이 null 이라 알림 대상에서 자연히 빠진다.
+        priceAlertService.checkAndNotifyAlerts(
+                saved.getSpirit().getId(),
+                saved.getVolumeMl(),
+                saved.getEffectiveStoreType(),
+                saved.resolveActualPriceKrw(),
+                saved.getId());
 
         List<PriceReportImage> images = priceReportImageRepository
                 .findByPriceReportIdOrderBySortOrder(id);

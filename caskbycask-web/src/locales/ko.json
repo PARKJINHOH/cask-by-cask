@@ -2144,7 +2144,8 @@
       "avgSale": "평균 행사가",
       "storeCount": "매장 수",
       "noData": "등록된 가격 데이터가 없습니다.",
-      "clickHint": "차트를 클릭하면 매장별 상세를 볼 수 있어요"
+      "clickHint": "차트를 클릭하면 매장별 상세를 볼 수 있어요",
+      "krwConvertedNote": "해외·면세 가격은 등록 시점 환율로 원화 환산해 표시합니다."
     },
     "panel": {
       "title": "매장별 상세",
@@ -2154,6 +2155,8 @@
       "unknownStore": "직접 등록",
       "hotDeal": "특가",
       "hotDealReporter": "수집",
+      "approxKrw": "약 {{price}}",
+      "rateBasis": "적용 환율 1 {{currency}} = {{rate}}원 ({{date}} 기준)",
       "showMore": "상세 보기",
       "hideMore": "접기",
       "description": "가격 설명",
@@ -2188,17 +2191,9 @@
       "deleteConfirm": "이 가격 등록을 삭제하시겠습니까?"
     },
     "alert": {
-      "title": "가격 알림",
-      "set": "알림 설정",
       "setBtn": "설정",
-      "targetPrice": "목표 가격 (KRW)",
-      "toggle": "알림 켜기/끄기",
-      "delete": "알림 삭제",
-      "myAlerts": "내 가격 알림",
       "noAlerts": "설정된 가격 알림이 없습니다",
       "noAlertsDesc": "원하는 가격에 도달하면 알려드릴게요. 술 상세 페이지에서 목표가를 설정해보세요!",
-      "success": "가격 알림이 설정되었습니다",
-      "dutyfreeNote": "면세 가격은 환율 근사치로 인해 KRW 알림 비교에서 제외됩니다",
       "loginRequired": "로그인 후 목표가 알림을 설정할 수 있습니다",
       "volumeRequired": "확인된 병 용량을 선택하면 목표가 알림을 설정할 수 있습니다",
       "inlineLabel": "목표가 알림",
@@ -2208,7 +2203,9 @@
       "off": "해제",
       "triggered": "도달함",
       "bannerTitle": "관심 가격 도달!",
-      "bannerTarget": "목표 {{price}}원 이하"
+      "bannerTarget": "목표 {{price}}원 이하",
+      "foreignNote": "해외·면세 가격은 등록 시점 환율로 환산한 원화와 비교합니다. 환율에 따라 도달 시점이 달라질 수 있어요.",
+      "deleteConfirm": "이 목표가 알림을 삭제할까요?"
     },
     "register": {
       "title": "가격 등록",

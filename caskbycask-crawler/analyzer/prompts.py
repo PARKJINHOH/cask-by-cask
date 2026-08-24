@@ -24,6 +24,14 @@ SYSTEM_PROMPT = (
     "- 구매가만 있고 정상가가 없으면 is_deal=false로 판단한다.\n"
     "- discount_rate는 (original_price - deal_price) / original_price 로 계산한다.\n"
     "- 복합 할인이라 최종 단품 가격을 확정할 수 없으면 is_deal=false로 판단한다."
+    "\n통화 규칙:\n"
+    "- currency는 가격이 적힌 통화를 그대로 넣는다. 원화가 아닌데 KRW로 넣으면 "
+    "환율 환산이 되지 않아 $187이 187원으로 집계된다.\n"
+    "- '$'는 US$/USD/미국 달러일 때만 USD다. NT$/TWD/대만 달러는 TWD로 넣는다.\n"
+    "- 대만 면세점·대만 매장 가격은 명시가 없으면 TWD로 본다(카발란 등 대만 위스키에서 흔하다).\n"
+    "- 한국 면세점 가격은 보통 USD로 표기된다.\n"
+    "- 지원 통화는 KRW/USD/EUR/TWD/JPY/CNY 뿐이다. 그 외 통화면 is_deal=false로 판단한다.\n"
+    "- original_price/deal_price는 통화 기호를 뺀 숫자만 넣는다(소수점은 반올림)."
     "\n용량 규칙:\n"
     "- volume_ml은 병 1개의 표기 용량을 ml 정수로 넣는다(700ml=700, 70cl=700, 0.7L=700).\n"
     "- 묶음 가격만 제시된 700ml x 2 같은 상품은 병당 가격을 확정할 수 없으므로 is_deal=false로 판단한다.\n"
@@ -39,7 +47,7 @@ _SCHEMA = """{
   "original_price": 정수 또는 null,
   "deal_price": 정수 또는 null,
   "discount_rate": 0.0~1.0 또는 null,
-  "currency": "KRW|USD|EUR",
+  "currency": "KRW|USD|EUR|TWD|JPY|CNY",
   "seller": "판매처명",
   "canonical_brand": "정규화 브랜드/증류소명 (예: 글렌알라키, 모르면 null)",
   "canonical_product": "정규화 상품/라인명 (예: 10년 CS, 30자, 모르면 null)",

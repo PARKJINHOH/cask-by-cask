@@ -28,7 +28,13 @@ public record PriceReportChartDetailResponse(
         List<PriceDiscountItemResponse> discountItems,
         Boolean isHotDeal,
         String sourceSite,
-        String sourceUrl
+        String sourceUrl,
+        // ── 원 통화 병기용. finalPrice/salePrice/regularPrice 는 계속 원화다(하위 호환).
+        String currency,
+        BigDecimal originalFinalPrice,
+        BigDecimal originalRegularPrice,
+        BigDecimal exchangeRateSnapshot,
+        LocalDate exchangeRateDate
 ) {
     public static PriceReportChartDetailResponse from(PriceReport report,
                                                       List<PriceReportImage> publicImages,
@@ -57,16 +63,22 @@ public record PriceReportChartDetailResponse(
                         .toList(),
                 false,
                 null,
-                null
+                null,
+                report.getCurrency() != null ? report.getCurrency().name() : null,
+                report.getActualPrice(),
+                report.getPrice(),
+                report.getExchangeRateSnapshot(),
+                report.getExchangeRateDate()
         );
     }
 
     public static PriceReportChartDetailResponse from(DealPost d) {
+        // 표시 금액은 원화로 통일한다. 외화 딜은 수집 시점 환율로 환산된 값이 들어온다.
+        BigDecimal priceVal = d.resolveDealPriceKrw();
+        BigDecimal origVal = d.resolveOriginalPriceKrw();
         Integer rawDealPrice = d.getDealPrice();
         Integer rawOrigPrice = d.getOriginalPrice();
-        Integer finalPriceVal = (rawDealPrice != null && rawDealPrice > 0) ? rawDealPrice : rawOrigPrice;
-        BigDecimal priceVal = finalPriceVal != null ? BigDecimal.valueOf(finalPriceVal) : null;
-        BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
+        Integer rawFinalPrice = (rawDealPrice != null && rawDealPrice > 0) ? rawDealPrice : rawOrigPrice;
         LocalDate dateVal = d.getCrawledAt() != null ? d.getCrawledAt().toLocalDate() : d.getCreatedAt().toLocalDate();
 
         return new PriceReportChartDetailResponse(
@@ -88,7 +100,12 @@ public record PriceReportChartDetailResponse(
                 List.of(),
                 true,
                 d.getSourceSite(),
-                d.getSourceUrl()
+                d.getSourceUrl(),
+                d.isKrw() ? "KRW" : d.getCurrency(),
+                rawFinalPrice != null ? BigDecimal.valueOf(rawFinalPrice) : null,
+                rawOrigPrice != null ? BigDecimal.valueOf(rawOrigPrice) : null,
+                d.getExchangeRateSnapshot(),
+                d.getExchangeRateDate()
         );
     }
 }

@@ -9,6 +9,8 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -71,6 +73,30 @@ public class DealPost extends BaseTimeEntity {
     @Column(name = "deal_price")
     @Comment("할인가")
     private Integer dealPrice;
+
+    /**
+     * 수집 당시 환율로 확정한 원화 할인가.
+     *
+     * <p>가격 차트는 price_reports 와 deal_posts 를 원화 축 하나로 합쳐 집계한다.
+     * 외화 딜을 환산 없이 넣으면 "$187 → 187원" 으로 찍혀 차트가 무너지므로,
+     * price_reports 의 actual_price_krw 와 같은 의미의 값을 저장 시점에 박제한다.
+     * 환율 조회에 실패하면 NULL 로 남고, 그런 행은 차트 집계에서 제외된다.
+     */
+    @Column(name = "deal_price_krw", precision = 14, scale = 0)
+    @Comment("수집 당시 환율 기준 원화 할인가")
+    private BigDecimal dealPriceKrw;
+
+    @Column(name = "original_price_krw", precision = 14, scale = 0)
+    @Comment("수집 당시 환율 기준 원화 정가")
+    private BigDecimal originalPriceKrw;
+
+    @Column(name = "exchange_rate_snapshot", precision = 18, scale = 8)
+    @Comment("외화 1단위당 원화 환율 스냅샷")
+    private BigDecimal exchangeRateSnapshot;
+
+    @Column(name = "exchange_rate_date")
+    @Comment("적용 환율 기준일")
+    private LocalDate exchangeRateDate;
 
     @Column(name = "volume_ml")
     @Comment("핫딜 대상 병 1개 용량(ml)")
@@ -167,5 +193,69 @@ public class DealPost extends BaseTimeEntity {
         this.dealCondition = dealCondition;
         this.expiryInfo = expiryInfo;
         this.summaryKo = summaryKo;
+    }
+
+    /**
+     * 원화 환산값을 확정한다. KRW 딜은 rate 없이(null) 호출해 금액을 그대로 복사한다.
+     *
+     * <p>{@code PriceReport.convertToKrw} 와 동일하게 scale 0, HALF_UP 으로 맞춘다.
+     */
+    public void applyExchangeRate(BigDecimal krwPerUnit, LocalDate rateDate) {
+        if (isKrw()) {
+            this.exchangeRateSnapshot = null;
+            this.exchangeRateDate = null;
+            this.dealPriceKrw = toKrwScale(toDecimal(this.dealPrice));
+            this.originalPriceKrw = toKrwScale(toDecimal(this.originalPrice));
+            return;
+        }
+        if (krwPerUnit == null || krwPerUnit.compareTo(BigDecimal.ZERO) <= 0) {
+            this.exchangeRateSnapshot = null;
+            this.exchangeRateDate = null;
+            this.dealPriceKrw = null;
+            this.originalPriceKrw = null;
+            return;
+        }
+        this.exchangeRateSnapshot = krwPerUnit;
+        this.exchangeRateDate = rateDate;
+        this.dealPriceKrw = convertToKrw(toDecimal(this.dealPrice));
+        this.originalPriceKrw = convertToKrw(toDecimal(this.originalPrice));
+    }
+
+    public boolean isKrw() {
+        return currency == null || currency.isBlank() || "KRW".equalsIgnoreCase(currency);
+    }
+
+    /** 차트가 쓰는 원화 실구매가. 할인가가 없으면 정가로 대체한다. */
+    public BigDecimal resolveDealPriceKrw() {
+        BigDecimal deal = dealPriceKrw != null ? dealPriceKrw : convertToKrw(toDecimal(dealPrice));
+        if (deal != null && deal.compareTo(BigDecimal.ZERO) > 0) {
+            return deal;
+        }
+        return resolveOriginalPriceKrw();
+    }
+
+    /** 차트가 쓰는 원화 정가. */
+    public BigDecimal resolveOriginalPriceKrw() {
+        if (originalPriceKrw != null) {
+            return originalPriceKrw;
+        }
+        return convertToKrw(toDecimal(originalPrice));
+    }
+
+    private BigDecimal convertToKrw(BigDecimal amount) {
+        if (amount == null) return null;
+        if (isKrw()) return toKrwScale(amount);
+        if (exchangeRateSnapshot == null || exchangeRateSnapshot.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return toKrwScale(amount.multiply(exchangeRateSnapshot));
+    }
+
+    private static BigDecimal toDecimal(Integer value) {
+        return value != null ? BigDecimal.valueOf(value) : null;
+    }
+
+    private static BigDecimal toKrwScale(BigDecimal value) {
+        return value != null ? value.setScale(0, RoundingMode.HALF_UP) : null;
     }
 }

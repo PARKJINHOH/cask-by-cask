@@ -42,6 +42,8 @@ function targetPath(item: NotificationItem): string | null {
   }
   if (!item.targetId) return null
   if (item.targetType === 'SPIRIT') return `/spirits/${item.targetId}`
+  // 목표가 알림은 targetId 가 spiritId 다 — 해당 술의 가격 화면으로 보낸다.
+  if (item.targetType === 'SPIRIT_PRICE') return `/price-tracker/spirits/${item.targetId}`
   switch (item.type) {
     case 'COMMENT':
     case 'REPLY':

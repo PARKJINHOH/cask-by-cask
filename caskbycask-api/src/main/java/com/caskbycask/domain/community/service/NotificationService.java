@@ -38,6 +38,26 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    /**
+     * 동기 발송. 저장 성공 여부를 호출 측이 알아야 할 때 쓴다.
+     *
+     * <p>목표가 알림은 저장 성공 후에만 발동 시각을 남겨야 한다. {@link #send}는 {@code @Async}라
+     * 저장이 실패해도 호출 측이 알 수 없어, 쿨다운만 걸리고 알림은 사라지는 경로가 생긴다.
+     * 별도 트랜잭션인 것은 동일하므로 여기서 실패해도 본문 처리(가격 승인)는 롤백되지 않는다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendNow(User recipient, NotificationType type, String message,
+                        String targetType, Long targetId) {
+        Notification notification = Notification.builder()
+                .recipient(recipient)
+                .type(type)
+                .message(message)
+                .targetType(targetType)
+                .targetId(targetId)
+                .build();
+        notificationRepository.save(notification);
+    }
+
     // ─── 조회 ──────────────────────────────────────────────
     // 추후 롱폴링 전환 시 이 메서드를 DeferredResult 방식으로 교체 가능한 구조
     @Transactional(readOnly = true)

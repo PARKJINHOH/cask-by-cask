@@ -2144,7 +2144,8 @@
       "avgSale": "Avg Sale Price",
       "storeCount": "Stores",
       "noData": "No price data available.",
-      "clickHint": "Click on the chart to see store details"
+      "clickHint": "Click on the chart to see store details",
+      "krwConvertedNote": "Overseas and duty-free prices are converted to KRW at the exchange rate on the reporting date."
     },
     "panel": {
       "title": "Store Details",
@@ -2154,6 +2155,8 @@
       "unknownStore": "User Submitted",
       "hotDeal": "Special Price",
       "hotDealReporter": "Collected",
+      "approxKrw": "approx. {{price}}",
+      "rateBasis": "Rate applied: 1 {{currency}} = {{rate}} KRW (as of {{date}})",
       "showMore": "Show Details",
       "hideMore": "Collapse",
       "description": "Description",
@@ -2188,17 +2191,9 @@
       "deleteConfirm": "Delete this price report?"
     },
     "alert": {
-      "title": "Price Alert",
-      "set": "Set Alert",
       "setBtn": "Set",
-      "targetPrice": "Target Price (KRW)",
-      "toggle": "Toggle Alert",
-      "delete": "Delete Alert",
-      "myAlerts": "My Price Alerts",
       "noAlerts": "No price alerts set",
       "noAlertsDesc": "We'll notify you when the price drops. Set a target price from a spirit's detail page!",
-      "success": "Price alert set successfully",
-      "dutyfreeNote": "Duty-free prices are excluded from KRW alerts (approximate exchange rate)",
       "loginRequired": "Log in to set a target-price alert",
       "volumeRequired": "Select a confirmed bottle size to set a target-price alert",
       "inlineLabel": "Target Alert",
@@ -2208,7 +2203,9 @@
       "off": "Off",
       "triggered": "Reached",
       "bannerTitle": "Target price reached!",
-      "bannerTarget": "below target {{price}} KRW"
+      "bannerTarget": "below target {{price}} KRW",
+      "foreignNote": "Overseas and duty-free prices are compared in KRW using the exchange rate at the time of reporting, so the trigger point can shift with the rate.",
+      "deleteConfirm": "Delete this price alert?"
     },
     "register": {
       "title": "Register Price",

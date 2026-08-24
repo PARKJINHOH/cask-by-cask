@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DealIngestService {
 
     private final DealPostRepository dealPostRepository;
+    private final DealExchangeRateApplier exchangeRateApplier;
 
     /** 크롤러 수신 → PENDING 적재. sourceUrl 중복은 409(멱등). */
     @Transactional
@@ -45,6 +46,9 @@ public class DealIngestService {
                 .summaryKo(req.summaryKo())
                 .crawledAt(req.crawledAt() != null ? req.crawledAt().toLocalDateTime() : null)
                 .build();
+
+        // 외화 딜은 여기서 원화 환산을 박제한다. 실패해도 적재는 계속하고 차트에서만 빠진다.
+        exchangeRateApplier.apply(deal);
 
         try {
             // saveAndFlush: 동시 수신 레이스로 인한 unique 위반을 이 시점에 잡아 멱등 처리

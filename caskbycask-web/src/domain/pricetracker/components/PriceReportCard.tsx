@@ -6,9 +6,9 @@ import { priceTrackerApi } from '../api/priceTrackerApi'
 import type { DiscountItemDetail, PriceReportChartDetail, PriceReportReportReason } from '../types/pricetracker.types'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import { formatAmount, formatKrw, formatMoney, isKrw } from '@/shared/utils/currencyFormat'
 
 const REASONS: PriceReportReportReason[] = ['FALSE_PRICE', 'DUPLICATE', 'BAD_IMAGE', 'OTHER']
-const fmt = new Intl.NumberFormat('ko-KR')
 
 interface Props {
   detail: PriceReportChartDetail
@@ -27,6 +27,7 @@ export default function PriceReportCard({ detail, isBest }: Props) {
   const [reportDone, setReportDone] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState(-1)
 
+  const isForeign = !isKrw(detail.currency)
   const displayName =
     detail.storeName ?? detail.suggestedStoreName ?? t('price.panel.unknownStore', '직접 등록')
   const reporterLabel = detail.isHotDeal
@@ -84,15 +85,29 @@ export default function PriceReportCard({ detail, isBest }: Props) {
           </div>
 
           <div className="text-right shrink-0">
-            {detail.finalPrice != null && (
-              <p className="text-lg font-bold text-primary-700">
-                {fmt.format(detail.finalPrice)}
-                <span className="text-xs font-normal ml-0.5">원</span>
-              </p>
+            {/* 외화 구매는 원 통화를 앞세우고 원화 환산을 아래에 붙인다 — US$187 / 약 259,000원 */}
+            {isForeign && detail.originalFinalPrice != null ? (
+              <>
+                <p className="text-lg font-bold text-primary-700">
+                  {formatMoney(detail.originalFinalPrice, detail.currency)}
+                </p>
+                {detail.finalPrice != null && (
+                  <p className="text-xs text-neutral-500">
+                    {t('price.panel.approxKrw', { price: formatKrw(detail.finalPrice) })}
+                  </p>
+                )}
+              </>
+            ) : (
+              detail.finalPrice != null && (
+                <p className="text-lg font-bold text-primary-700">
+                  {formatAmount(detail.finalPrice)}
+                  <span className="text-xs font-normal ml-0.5">원</span>
+                </p>
+              )
             )}
             {detail.salePrice != null && detail.salePrice !== detail.finalPrice && (
               <p className="text-xs text-neutral-400 line-through">
-                {fmt.format(detail.salePrice)}원
+                {formatKrw(detail.salePrice)}
               </p>
             )}
             {canEditHotDeal && (
@@ -119,6 +134,17 @@ export default function PriceReportCard({ detail, isBest }: Props) {
       {/* 펼침 콘텐츠 */}
       {expanded && (
         <div className="border-t border-neutral-100 p-4 space-y-4 bg-neutral-50">
+          {/* 환율 기준 — 환산가가 근사치임을 드러낸다 */}
+          {isForeign && detail.exchangeRateSnapshot != null && (
+            <p className="text-xs text-neutral-500">
+              {t('price.panel.rateBasis', {
+                rate: formatAmount(Math.round(detail.exchangeRateSnapshot)),
+                currency: detail.currency,
+                date: detail.exchangeRateDate ?? '-',
+              })}
+            </p>
+          )}
+
           {/* 가격 분해 */}
           <PriceBreakdown detail={detail} />
 
@@ -237,7 +263,7 @@ function PriceBreakdown({ detail }: { detail: PriceReportChartDetail }) {
         <div key={label} className="flex justify-between text-neutral-500">
           <span>{label}</span>
           <span className={value < 0 ? 'text-green-600' : ''}>
-            {value < 0 ? '-' : ''}{new Intl.NumberFormat('ko-KR').format(Math.abs(value))}원
+            {value < 0 ? '-' : ''}{formatKrw(Math.abs(value))}
           </span>
         </div>
       ))}
@@ -255,26 +281,25 @@ function DiscountBreakdown({
   finalPrice: number | null
 }) {
   const { t } = useTranslation()
-  const fmt = new Intl.NumberFormat('ko-KR')
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-3 text-xs space-y-1.5">
       <p className="font-medium text-neutral-600 mb-2">{t('price.panel.discountBreakdown')}</p>
       {regularPrice != null && (
         <div className="flex justify-between text-neutral-500">
           <span>{t('price.panel.basePrice')}</span>
-          <span>{fmt.format(regularPrice)}원</span>
+          <span>{formatAmount(regularPrice)}원</span>
         </div>
       )}
       {items.map((item) => (
         <div key={item.id} className="flex justify-between text-green-700">
           <span>{item.description ?? t(`price.register.discountType.${item.discountType}`)}</span>
-          <span>-{fmt.format(item.discountAmount)}원</span>
+          <span>-{formatAmount(item.discountAmount)}원</span>
         </div>
       ))}
       {finalPrice != null && (
         <div className="flex justify-between font-bold text-primary-700 border-t border-neutral-100 pt-1.5">
           <span>{t('price.panel.finalPrice')}</span>
-          <span>{fmt.format(finalPrice)}원</span>
+          <span>{formatAmount(finalPrice)}원</span>
         </div>
       )}
     </div>

@@ -562,6 +562,8 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 - 환율 갱신은 `exchange-rate-scheduling-*` 전용 스케줄러에서 실행되어 재시도 대기 중에도 다른 배치 작업을 막지 않는다.
 - 외부 API가 실패하면 기존 행을 덮어쓰지 않고 마지막 정상 환율을 계속 사용한다. 저장 이력이 전혀 없을 때만 사용자가 자동 환산을 선택할 수 없으며 원화 직접 입력은 계속 가능하다.
 - 가격 제보에는 등록 당시 환율과 원화 실구매가가 별도 스냅샷으로 저장되므로 이후 환율 갱신이 과거 그래프를 바꾸지 않는다.
+- 크롤러가 수집한 외화 딜(`deal_posts`)도 `V96` 부터 같은 방식으로 수집일 환율을 박제한다. 환율 조회에 실패한 행은 원화 환산값이 비어 가격 차트에서 제외되므로, 외화 금액이 원화 축에 그대로 찍히는 일이 없다.
+- 목표가 알림은 `V96` 부터 국내/해외/면세 구간별로 설정되며, 비교 기준은 항상 환산 원화다. 기존 알림은 전부 `DOMESTIC` 으로 이관되어 동작이 그대로 유지된다.
 - 정상 로그: `Exchange rates refreshed`. 재시도 로그: `Exchange-rate provider request failed; retrying`. 모든 시도 실패 후 최종 로그: `Exchange-rate refresh failed; keeping the last successful rates`.
 
 기존 운영 서버의 `/app/env/api.env`는 배포 시 자동 교체되지 않으므로 아래 값을 직접 확인한 뒤 API를 재시작한다. 변수를 생략하면 애플리케이션 기본값이 적용된다.
@@ -576,7 +578,25 @@ EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS=1000
 
 ```bash
 curl -fsS 'https://api.frankfurter.dev/v2/rates?base=EUR&quotes=KRW,USD,JPY,CNY,TWD'
+```
+
+```bash
 sudo journalctl -u caskbycask-api --since '12 hours ago' | grep -E 'Exchange rates refreshed|Exchange-rate refresh failed'
+```
+
+#### V96 배포 직후 1회 — 기존 외화 딜 원화 백필
+
+`V96` 은 스키마만 추가하고 과거 외화 행은 비워 둔다(과거 환율은 SQL 로 구할 수 없다).
+아래를 관리자 세션으로 한 번 호출하면 `crawled_at` 기준 과거 환율로 일괄 환산한다. 재실행해도 안전하다.
+
+```bash
+curl -fsS -X POST 'https://www.caskbycask.net/api/admin/deals/backfill-krw' -H "Cookie: $ADMIN_SESSION_COOKIE"
+```
+
+응답의 `converted`/`skipped` 로 커버리지를 확인하고, 남은 행은 아래로 조회한다.
+
+```bash
+mysql -e "SELECT currency, COUNT(*) total, COUNT(deal_price_krw) converted FROM deal_posts GROUP BY currency;"
 ```
 
 ### 유튜브 갤러리 수집·가용성 점검

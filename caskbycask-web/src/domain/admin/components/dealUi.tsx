@@ -1,5 +1,6 @@
 // 가격 동향(핫딜 수집·관리자 직접 등록) 공용 UI/포맷 (목록·상세 공유). 관리자 전용이라 한국어 고정.
 import type { DealStatus } from '../types/deal.types'
+import { formatMoney } from '@/shared/utils/currencyFormat'
 
 export const SITE_LABEL: Record<string, string> = {
   DCINSIDE: '디시인사이드',
@@ -24,18 +25,10 @@ const STATUS_STYLE: Record<DealStatus, string> = {
   REJECTED: 'bg-red-100 text-red-600',
 }
 
+/** 관리자 화면 가격 표기. 통화 기호는 사용자 화면과 같은 규칙(US$/NT$)을 쓴다. */
 export function formatPrice(v: number | null | undefined, currency?: string | null): string {
   const value = Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0
-  const n = new Intl.NumberFormat('ko-KR').format(value)
-  switch (currency) {
-    case 'USD': return `$${n}`
-    case 'EUR': return `€${n}`
-    case 'JPY': return `¥${n}`
-    case 'TWD': return `NT$${n}`
-    case 'HKD': return `HK$${n}`
-    case 'SGD': return `S$${n}`
-    default: return `${n}원`
-  }
+  return formatMoney(value, currency)
 }
 
 export function formatDiscount(rate: number | null | undefined): string {

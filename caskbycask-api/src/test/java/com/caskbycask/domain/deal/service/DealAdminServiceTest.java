@@ -26,6 +26,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -35,6 +36,7 @@ class DealAdminServiceTest {
 
     @Mock DealPostRepository dealPostRepository;
     @Mock SpiritRepository spiritRepository;
+    @Mock DealExchangeRateApplier exchangeRateApplier;
     @InjectMocks DealAdminService service;
 
     @Test
@@ -98,6 +100,8 @@ class DealAdminServiceTest {
         assertThat(saved.getDiscountRate()).isEqualByComparingTo("0.2500");
         assertThat(saved.getCurrency()).isEqualTo("KRW");
         assertThat(saved.getSpirit()).isNotNull();
+        // 원화 환산은 관측일 환율로 확정한다(KRW 는 금액을 그대로 복사).
+        then(exchangeRateApplier).should().applyForDate(any(DealPost.class), eq(LocalDate.of(2026, 7, 30)));
     }
 
     @Test
@@ -154,14 +158,30 @@ class DealAdminServiceTest {
     }
 
     @Test
-    @DisplayName("외화 등록은 거부한다 — 가격 차트가 deal 금액을 환산 없이 원화로 집계하기 때문")
-    void create_rejectsForeignCurrency() {
+    @DisplayName("외화 등록을 허용하고 원화 환산을 확정한다 — 환산 컬럼이 생겨 차트가 올바르게 집계된다")
+    void create_acceptsForeignCurrencyAndConverts() {
+        given(spiritRepository.findById(7L)).willReturn(Optional.of(sampleSpirit()));
+        given(dealPostRepository.existsBySourceUrl(any(String.class))).willReturn(false);
+
+        service.create(new CreateDealRequest(
+                7L, null, null, null, 234, 187,
+                "usd", null, null, null, null, null, null, null));
+
+        ArgumentCaptor<DealPost> captor = ArgumentCaptor.forClass(DealPost.class);
+        then(dealPostRepository).should().saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getCurrency()).isEqualTo("USD");
+        then(exchangeRateApplier).should().applyForDate(any(DealPost.class), org.mockito.ArgumentMatchers.isNull());
+    }
+
+    @Test
+    @DisplayName("지원하지 않는 통화는 거부한다 — 환율을 붙일 수 없어 원화 축이 오염된다")
+    void create_rejectsUnsupportedCurrency() {
         given(spiritRepository.findById(7L)).willReturn(Optional.of(sampleSpirit()));
         given(dealPostRepository.existsBySourceUrl(any(String.class))).willReturn(false);
 
         assertThatThrownBy(() -> service.create(new CreateDealRequest(
                 7L, null, null, null, 120, 100,
-                "USD", null, null, null, null, null, null, null)))
+                "HKD", null, null, null, null, null, null, null)))
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DEAL_CURRENCY_NOT_SUPPORTED);
 

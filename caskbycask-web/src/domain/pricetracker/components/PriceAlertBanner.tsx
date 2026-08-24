@@ -60,6 +60,8 @@ export default function PriceAlertBanner({ spiritId, volume }: { spiritId?: numb
           <p className="text-amber-900 min-w-0 truncate">
             <span className="font-semibold">{t('price.alert.bannerTitle')}</span>{' '}
             <span className="font-medium">{isEn ? a.spiritNameEn || a.spiritNameKo : a.spiritNameKo}</span>
+            {/* 알림이 구간별로 나뉘므로 어느 구간에서 도달했는지 함께 보여준다. */}
+            <span className="font-medium"> · {t(`price.chart.${a.storeType.toLowerCase()}`)}</span>
             {a.volumeMl != null && <span className="font-medium"> · {a.volumeMl.toLocaleString()}ml</span>}
             {' — '}
             {t('price.alert.bannerTarget', { price: krw.format(a.targetPriceKrw) })}

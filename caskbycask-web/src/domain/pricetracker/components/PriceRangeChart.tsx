@@ -4,6 +4,8 @@ import {
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
 import type { BucketType, ChartResponse, StoreType } from '../types/pricetracker.types'
+import { STORE_TYPES } from '../types/pricetracker.types'
+import { formatAmount } from '@/shared/utils/currencyFormat'
 
 const PERIODS = ['1M', '3M', '6M', '1Y', 'ALL'] as const
 const SERIES_COLORS = ['#b45309', '#2563eb', '#059669', '#dc2626', '#7c3aed', '#0891b2', '#ea580c', '#4f46e5']
@@ -26,11 +28,10 @@ interface Props {
   seriesLabels?: Record<number, string>
 }
 
-const fmt = new Intl.NumberFormat('ko-KR')
 const fmtPrice = (v: number) => {
   if (v >= 10000) return `${Math.round(v / 10000)}만`
   if (v >= 1000) return `${Math.round(v / 1000)}천`
-  return fmt.format(v)
+  return formatAmount(v)
 }
 
 function CustomTooltip({
@@ -60,7 +61,7 @@ function CustomTooltip({
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: row.color }} />
                 <span className="truncate">{row.label}</span>
               </span>
-              <span className="font-semibold text-neutral-800">{fmt.format(row.value!)}원</span>
+              <span className="font-semibold text-neutral-800">{formatAmount(row.value!)}원</span>
             </div>
           ))}
         </div>
@@ -75,15 +76,15 @@ function CustomTooltip({
           <Row label={t('price.chart.storeCount')} value={`${d.storeCount}개`} />
         )}
         {d.maxPrice != null && (
-          <Row label={t('price.chart.maxPrice')} value={`${fmt.format(d.maxPrice)}원`} />
+          <Row label={t('price.chart.maxPrice')} value={`${formatAmount(d.maxPrice)}원`} />
         )}
         {d.avgSalePrice != null && (
-          <Row label={t('price.chart.avgSale')} value={`${fmt.format(d.avgSalePrice)}원`} />
+          <Row label={t('price.chart.avgSale')} value={`${formatAmount(d.avgSalePrice)}원`} />
         )}
         {d.minFinalPrice != null && (
           <Row
             label={t('price.chart.minPrice')}
-            value={`${fmt.format(d.minFinalPrice)}원`}
+            value={`${formatAmount(d.minFinalPrice)}원`}
             highlight
           />
         )}
@@ -172,25 +173,34 @@ export default function PriceRangeChart({
     <div className="space-y-3">
       {/* 탭 + 기간 툴바 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* 국내/면세 탭 */}
+        {/* 국내/해외/면세 탭 — 각 탭에 현재 필터 기준 등록 건수를 함께 보여준다 */}
         <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-sm">
-          {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((t_) => (
-            <button
-              key={t_}
-              onClick={() => onStoreTypeChange(t_)}
-              className={`px-4 py-1.5 font-medium transition-colors ${
-                storeType === t_
-                  ? 'bg-primary-700 text-white'
-                  : 'text-neutral-500 hover:bg-neutral-50'
-              }`}
-            >
-              {t_ === 'DOMESTIC'
-                ? t('price.chart.domestic')
-                : t_ === 'OVERSEAS'
-                ? t('price.chart.overseas', '해외')
-                : t('price.chart.dutyfree')}
-            </button>
-          ))}
+          {STORE_TYPES.map((t_) => {
+            const selected = storeType === t_
+            const count = data?.storeTypeCounts?.[t_]
+            return (
+              <button
+                key={t_}
+                onClick={() => onStoreTypeChange(t_)}
+                className={`inline-flex items-center gap-1 px-4 py-1.5 font-medium transition-colors ${
+                  selected
+                    ? 'bg-primary-700 text-white'
+                    : 'text-neutral-500 hover:bg-neutral-50'
+                }`}
+              >
+                <span>
+                  {t_ === 'DOMESTIC'
+                    ? t('price.chart.domestic')
+                    : t_ === 'OVERSEAS'
+                    ? t('price.chart.overseas', '해외')
+                    : t('price.chart.dutyfree')}
+                </span>
+                {count != null && (
+                  <span className={selected ? 'text-white/70' : 'text-neutral-400'}>{count}</span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* 기간 토글 */}
@@ -327,10 +337,10 @@ export default function PriceRangeChart({
                         dataKey="minFinalPrice"
                         position="top"
                         formatter={(value) => {
-                          if (typeof value === 'number') return `${fmt.format(value)}원`
+                          if (typeof value === 'number') return `${formatAmount(value)}원`
                           if (typeof value === 'string' && value.trim() !== '') {
                             const numericValue = Number(value)
-                            return Number.isFinite(numericValue) ? `${fmt.format(numericValue)}원` : ''
+                            return Number.isFinite(numericValue) ? `${formatAmount(numericValue)}원` : ''
                           }
                           return ''
                         }}
@@ -398,6 +408,11 @@ export default function PriceRangeChart({
                 </span>
               ))}
             </div>
+          )}
+          {storeType !== 'DOMESTIC' && (
+            <p className="mt-1 text-center text-xs text-neutral-400">
+              {t('price.chart.krwConvertedNote')}
+            </p>
           )}
           <p className="text-center text-xs text-neutral-400 mt-1">
             {t('price.chart.clickHint')}

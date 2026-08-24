@@ -94,7 +94,7 @@ export default function SpiritPriceDetailPage() {
 
       {/* 목표가 알림 인라인 */}
       <div className="mb-6">
-        <PriceAlertInline spiritId={spiritId} volumeMl={selectedKnownVolume} />
+        <PriceAlertInline spiritId={spiritId} volumeMl={selectedKnownVolume} storeType={storeType} />
       </div>
 
       {/* PC: 차트(좌) + 패널(우) */}
@@ -140,9 +140,6 @@ export default function SpiritPriceDetailPage() {
           onClick={() => setPanelOpen(false)}
         />
       )}
-
-      {/* 알림 면세 안내 */}
-      <p className="mt-4 text-center text-xs text-neutral-400">{t('price.alert.dutyfreeNote')}</p>
     </div>
   )
 }

@@ -67,10 +67,24 @@ public class ExchangeRateProviderClient {
     }
 
     public List<ProviderQuote> fetchLatestKrwRates() {
+        return fetchKrwRates(null);
+    }
+
+    /**
+     * 지정한 날짜의 환율을 조회한다(제공자가 휴장일이면 직전 영업일 값을 돌려준다).
+     *
+     * <p>과거 수집분(deal_posts)을 수집일 환율로 백필할 때 쓴다. 재시도/타임아웃/EUR 기준 환산은
+     * 최신 환율 조회와 동일한 경로를 탄다.
+     */
+    public List<ProviderQuote> fetchHistoricalKrwRates(LocalDate date) {
+        return fetchKrwRates(Objects.requireNonNull(date, "date"));
+    }
+
+    private List<ProviderQuote> fetchKrwRates(LocalDate date) {
         long backoffMs = initialBackoffMs;
         for (int attempt = 1; ; attempt++) {
             try {
-                return fetchLatestKrwRatesOnce();
+                return fetchKrwRatesOnce(date);
             } catch (RuntimeException e) {
                 if (!isRetryable(e) || attempt >= maxAttempts) {
                     throw e;
@@ -85,13 +99,17 @@ public class ExchangeRateProviderClient {
         }
     }
 
-    private List<ProviderQuote> fetchLatestKrwRatesOnce() {
+    private List<ProviderQuote> fetchKrwRatesOnce(LocalDate date) {
         FrankfurterRate[] response = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v2/rates")
-                        .queryParam("base", "EUR")
-                        .queryParam("quotes", QUOTES)
-                        .build())
+                .uri(uriBuilder -> {
+                    uriBuilder.path("/v2/rates")
+                            .queryParam("base", "EUR")
+                            .queryParam("quotes", QUOTES);
+                    if (date != null) {
+                        uriBuilder.queryParam("date", date.toString());
+                    }
+                    return uriBuilder.build();
+                })
                 .retrieve()
                 .body(FrankfurterRate[].class);
 

@@ -1,5 +1,9 @@
 package com.caskbycask.domain.deal.service;
 
+import com.caskbycask.domain.pricetracker.entity.enums.PriceCurrency;
+import com.caskbycask.global.exception.CustomException;
+import com.caskbycask.global.exception.ErrorCode;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -28,9 +32,23 @@ final class DealPriceNormalizer {
     }
 
     static String normalizeCurrency(String currency) {
+        return resolveCurrency(currency).name();
+    }
+
+    /**
+     * 통화 문자열을 {@link PriceCurrency} 로 확정한다. 빈 값은 KRW 로 본다.
+     *
+     * <p>deal_posts.currency 는 자유 문자열이라 예전에는 임의 값이 그대로 통과했고, 차트가 이를
+     * 환산 없이 원화로 집계해 "$187 → 187원" 문제를 만들었다. 환율을 붙일 수 있는 통화만 허용한다.
+     */
+    static PriceCurrency resolveCurrency(String currency) {
         if (currency == null || currency.isBlank()) {
-            return "KRW";
+            return PriceCurrency.KRW;
         }
-        return currency.trim().toUpperCase();
+        try {
+            return PriceCurrency.valueOf(currency.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.DEAL_CURRENCY_NOT_SUPPORTED);
+        }
     }
 }

@@ -49,28 +49,37 @@ public class PriceChartService {
         List<Long> targetSpiritIds = normalizeSpiritIds(spiritIds);
         PriceCurrency currency = PriceCurrency.KRW;
         if (targetSpiritIds.isEmpty()) {
-            return new ChartResponse(BucketType.INDIVIDUAL, currency, List.of(), List.of());
+            return new ChartResponse(BucketType.INDIVIDUAL, currency, List.of(), List.of(), emptyStoreTypeCounts());
         }
         LocalDate startDate = computeStartDate(period);
 
         List<PriceReport> reports = priceReportRepository.findApprovedForChart(
                 targetSpiritIds, PriceReportStatus.APPROVED);
 
-        reports = reports.stream()
+        // storeType 을 제외한 조건만 먼저 건다. 이 결과로 탭별 건수(storeTypeCounts)를 함께 계산한다.
+        List<PriceReport> reportsBeforeStoreType = reports.stream()
                 .filter(r -> startDate == null || !effectiveDate(r).isBefore(startDate))
-                .filter(r -> matchesStoreType(r, storeType))
                 .filter(r -> matchesVolume(r.getVolumeMl(), volumeMl, unknownVolume))
                 .filter(r -> region == null || region.isBlank()
                         || (r.getStore() != null && region.equals(r.getStore().getRegion())))
                 .toList();
+        reports = reportsBeforeStoreType.stream()
+                .filter(r -> matchesStoreType(r, storeType))
+                .toList();
 
         List<DealPost> deals = dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(targetSpiritIds, DealStatus.APPROVED);
-        deals = deals.stream()
+        List<DealPost> dealsBeforeStoreType = deals.stream()
                 .filter(d -> (d.getDealPrice() != null && d.getDealPrice() > 0) || (d.getOriginalPrice() != null && d.getOriginalPrice() > 0))
+                // 원화 환산이 없는 외화 딜은 집계에서 제외한다. 넣으면 "$187 → 187원" 으로 축이 무너진다.
+                .filter(d -> d.resolveDealPriceKrw() != null || d.resolveOriginalPriceKrw() != null)
                 .filter(d -> startDate == null || !effectiveDate(d).isBefore(startDate))
-                .filter(d -> storeType == null || d.getStoreType() == storeType)
                 .filter(d -> matchesVolume(d.getVolumeMl(), volumeMl, unknownVolume))
                 .toList();
+        deals = dealsBeforeStoreType.stream()
+                .filter(d -> storeType == null || d.getStoreType() == storeType)
+                .toList();
+
+        Map<StoreType, Long> storeTypeCounts = countByStoreType(reportsBeforeStoreType, dealsBeforeStoreType);
 
         List<TempPrice> tempPrices = buildTempPrices(reports, deals);
         List<DailyPrice> dailyPrices = buildDailyPrices(tempPrices);
@@ -94,7 +103,7 @@ public class PriceChartService {
                 .filter(s -> !s.points().isEmpty())
                 .toList();
 
-        return new ChartResponse(bucketType, currency, points, series);
+        return new ChartResponse(bucketType, currency, points, series, storeTypeCounts);
     }
 
     @Transactional(readOnly = true)
@@ -129,6 +138,8 @@ public class PriceChartService {
         List<DealPost> deals = dealPostRepository.findAllBySpiritIdInAndStatusAndIsVisibleTrue(targetSpiritIds, DealStatus.APPROVED);
         List<DealPost> rangeDeals = deals.stream()
                 .filter(d -> (d.getDealPrice() != null && d.getDealPrice() > 0) || (d.getOriginalPrice() != null && d.getOriginalPrice() > 0))
+                // 차트에 안 그려진 딜이 상세 목록에만 나오지 않도록 getChart 와 같은 조건을 건다.
+                .filter(d -> d.resolveDealPriceKrw() != null || d.resolveOriginalPriceKrw() != null)
                 .filter(d -> {
                     LocalDate dDate = effectiveDate(d);
                     return !dDate.isBefore(rangeStart) && !dDate.isAfter(rangeEnd);
@@ -253,6 +264,27 @@ public class PriceChartService {
         return r.getEffectiveStoreType() == storeType;
     }
 
+    /** 국내/해외/면세 탭에 붙일 건수. 세 값은 항상 존재하며 데이터가 없으면 0 이다. */
+    private Map<StoreType, Long> countByStoreType(List<PriceReport> reports, List<DealPost> deals) {
+        Map<StoreType, Long> counts = emptyStoreTypeCounts();
+        for (PriceReport report : reports) {
+            counts.merge(report.getEffectiveStoreType(), 1L, Long::sum);
+        }
+        for (DealPost deal : deals) {
+            StoreType type = deal.getStoreType() != null ? deal.getStoreType() : StoreType.DOMESTIC;
+            counts.merge(type, 1L, Long::sum);
+        }
+        return counts;
+    }
+
+    private Map<StoreType, Long> emptyStoreTypeCounts() {
+        Map<StoreType, Long> counts = new EnumMap<>(StoreType.class);
+        for (StoreType type : StoreType.values()) {
+            counts.put(type, 0L);
+        }
+        return counts;
+    }
+
     private boolean matchesVolume(Integer candidateVolumeMl, Integer volumeMl, boolean unknownVolume) {
         if (unknownVolume) return candidateVolumeMl == null;
         if (volumeMl != null) return Objects.equals(candidateVolumeMl, volumeMl);
@@ -277,11 +309,9 @@ public class PriceChartService {
             ));
         }
         for (DealPost d : deals) {
-            Integer rawDealPrice = d.getDealPrice();
-            Integer rawOrigPrice = d.getOriginalPrice();
-            Integer finalPriceVal = (rawDealPrice != null && rawDealPrice > 0) ? rawDealPrice : rawOrigPrice;
-            BigDecimal priceVal = finalPriceVal != null ? BigDecimal.valueOf(finalPriceVal) : null;
-            BigDecimal origVal = d.getOriginalPrice() != null ? BigDecimal.valueOf(d.getOriginalPrice()) : null;
+            // 차트 축은 원화다. 외화 딜은 수집 시점 환율로 환산한 값을 쓴다(환산 불가 시 null → 위 필터에서 제외).
+            BigDecimal priceVal = d.resolveDealPriceKrw();
+            BigDecimal origVal = d.resolveOriginalPriceKrw();
             tempPrices.add(new TempPrice(
                     d.getSpirit() != null ? d.getSpirit().getId() : null,
                     effectiveDate(d),

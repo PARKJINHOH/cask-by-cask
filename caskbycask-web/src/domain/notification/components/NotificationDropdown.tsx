@@ -45,6 +45,8 @@ function targetPath(item: NotificationItem): string | null {
     case 'BYOB':    return `/community/byob/${item.targetId}`
     case 'MESSAGE': return `/mypage?tab=messages&messageId=${item.targetId}`
     case 'SPIRIT':  return `/spirits/${item.targetId}`
+    // 목표가 알림 — targetId 는 spiritId 다.
+    case 'SPIRIT_PRICE': return `/price-tracker/spirits/${item.targetId}`
     default:        return null
   }
 }

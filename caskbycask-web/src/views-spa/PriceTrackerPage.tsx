@@ -7,6 +7,7 @@ import PriceSparkline from '@/domain/pricetracker/components/PriceSparkline'
 import PriceAlertBanner from '@/domain/pricetracker/components/PriceAlertBanner'
 import type { SpiritListItem } from '@/domain/spirit/types/spirit.types'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
+import { STORE_TYPES } from '@/domain/pricetracker/types/pricetracker.types'
 import { usePriceChart } from '@/domain/pricetracker/hooks/usePriceChart'
 import { getLocalizedSpiritListNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
@@ -109,7 +110,7 @@ export default function PriceTrackerPage() {
       <div className="bg-white rounded-2xl border border-neutral-200 p-4 mb-6 space-y-3">
         {/* 국내/면세 탭 */}
         <div className="flex rounded-lg border border-neutral-200 overflow-hidden w-fit text-sm">
-          {(['DOMESTIC', 'OVERSEAS', 'DUTYFREE'] as const).map((t_) => (
+          {STORE_TYPES.map((t_) => (
             <button
               key={t_}
               onClick={() => setStoreType(t_)}

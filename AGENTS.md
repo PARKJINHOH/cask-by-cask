@@ -189,8 +189,12 @@
   - `spiritId` **필수** — 차트는 `spirit_id + APPROVED + is_visible` 로 집계하므로 미연결 건은 유령 데이터가 된다.
   - `source_url` 은 NOT NULL + UNIQUE(크롤러 멱등키)라, 원문이 없으면 `admin://deal/{UUID}` 를 생성한다.
     `admin://` 은 http(s) 가 아니므로 `isOpenableSourceUrl()` 로 링크 렌더를 건너뛴다.
-  - **KRW 만 허용**한다. 차트가 deal 금액을 환율 환산 없이 원화로 집계하기 때문(`buildTempPrices`).
-    외화 가격은 환율 스냅샷을 저장하는 **가격 제보** 경로를 써야 한다.
+  - **외화 등록을 허용**한다(V96~). `deal_posts` 에도 `deal_price_krw`/`exchange_rate_snapshot` 이 생겨
+    저장 시점에 `DealExchangeRateApplier` 가 원화를 확정하고, 차트는 그 환산값만 집계한다.
+    지원 통화는 `PriceCurrency` enum(KRW/USD/TWD/JPY/CNY/EUR) 뿐이며 그 외는 `DEAL_CURRENCY_NOT_SUPPORTED`.
+    환율 조회에 실패하면 환산값이 NULL 로 남고 `PriceChartService` 가 그 행을 차트에서 제외한다 —
+    환산 없는 외화가 원화 축에 섞여 "$187 → 187원" 으로 찍히던 사고(운영 spirit 236 면세)를 막는 방어선이다.
+    V96 이전 수집분은 `POST /api/admin/deals/backfill-krw` 로 수집일 환율을 채운다.
   - 관측일(`observedAt`)을 `crawled_at` 에 저장한다 — 차트 X축이 `crawledAt ?: createdAt` 이다.
   - 등록자에게 **점수를 주지 않는다**(제보 점수는 `price_reports` 승인 시에만 지급).
 - 관리자 화면은 `/admin/deals/new` 가 `AdminDealDetailPage` 의 **등록 모드**를 재사용한다
