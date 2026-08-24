@@ -1,7 +1,13 @@
 import type { SeoSnapshotData } from '@/shared/utils/seoHelpers'
+import { SITE_SOCIAL_LINKS } from '@/shared/config/site'
 
 interface Props {
   snapshot: SeoSnapshotData | null
+}
+
+/** 섹션 제목을 aria-labelledby 로 쓸 수 있는 id 로 바꾼다. 한글 제목이라 공백만 걷어내면 된다. */
+function slugify(heading: string): string {
+  return heading.trim().replace(/\s+/g, '-')
 }
 
 export default function SeoFallback({ snapshot }: Props) {
@@ -172,6 +178,42 @@ export default function SeoFallback({ snapshot }: Props) {
           </section>
         )}
 
+        {snapshot.sections?.map((section) => (
+          <section
+            key={section.heading}
+            className="border-t border-neutral-200 p-6 md:p-8"
+            aria-labelledby={`seo-section-${slugify(section.heading)}`}
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h2
+                id={`seo-section-${slugify(section.heading)}`}
+                className="text-xl font-bold text-neutral-950"
+              >
+                {section.heading}
+              </h2>
+              {section.moreHref && (
+                <a className="text-sm font-semibold text-amber-800 hover:underline" href={section.moreHref}>
+                  {section.moreLabel ?? (snapshot.lang === 'en' ? 'View all' : '전체 보기')}
+                </a>
+              )}
+            </div>
+            <ul className="mt-4 divide-y divide-neutral-100">
+              {section.items.map((item) => (
+                <li key={item.href} className="py-4">
+                  <a className="text-base font-semibold text-amber-900 hover:underline" href={item.href}>
+                    {item.title}
+                  </a>
+                  {(item.description || item.meta) && (
+                    <p className="mt-1 text-sm text-neutral-500">
+                      {[item.description, item.meta].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+
         {snapshot.links.length > 0 && (
           <nav
             className="border-t border-neutral-200 bg-neutral-50 px-6 py-4 md:px-8"
@@ -189,6 +231,31 @@ export default function SeoFallback({ snapshot }: Props) {
           </nav>
         )}
       </article>
+
+      {/*
+        브랜드 공식 계정 링크. 화면 푸터(MainLayout)는 SPA 안에 있어 JS 를 실행하지 않는
+        크롤러에게는 존재하지 않는다. Organization.sameAs 와 같은 목록을 서버 HTML 에도
+        남겨야 '이 계정과 이 도메인은 같은 주체'라는 신호가 렌더링 여부와 무관하게 성립한다.
+        rel="me" 는 계정 프로필 bio 의 역링크와 짝을 이루는 신원 관계 선언이다.
+      */}
+      <footer className="mx-auto mt-6 max-w-5xl px-2 text-sm">
+        <h2 className="font-bold text-neutral-700">
+          {snapshot.lang === 'en' ? 'Official accounts' : '공식 계정'}
+        </h2>
+        <ul className="mt-2 flex flex-wrap gap-4">
+          {SITE_SOCIAL_LINKS.map((link) => (
+            <li key={link.url}>
+              <a
+                className="text-amber-800 hover:underline"
+                href={link.url}
+                rel="me noopener noreferrer"
+              >
+                {link.name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </footer>
     </main>
   )
 }

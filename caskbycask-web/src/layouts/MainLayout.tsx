@@ -27,6 +27,7 @@ import AdminIcon from '@/shared/components/icons/AdminIcon'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
 import InstagramIcon from '@/shared/components/icons/InstagramIcon'
 import ThreadsIcon from '@/shared/components/icons/ThreadsIcon'
+import { SITE_SOCIAL_LINKS } from '@/shared/config/site'
 import AttendanceButton from '@/domain/score/components/AttendanceButton'
 import axios from 'axios'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
@@ -49,7 +50,7 @@ function SocialFooterLinks({ className = '' }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <a
-        href="https://www.instagram.com/caskbycask"
+        href={SITE_SOCIAL_LINKS[0].url}
         target="_blank"
         rel="me noopener noreferrer"
         aria-label={t('footer.instagramAria')}
@@ -59,7 +60,7 @@ function SocialFooterLinks({ className = '' }: { className?: string }) {
         <InstagramIcon size={21} />
       </a>
       <a
-        href="https://www.threads.com/@caskbycask"
+        href={SITE_SOCIAL_LINKS[1].url}
         target="_blank"
         rel="me noopener noreferrer"
         aria-label={t('footer.threadsAria')}

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import { getHiddenGnbMenuKeys } from '@/shared/utils/seoHelpers'
+import { DEFAULT_SEO_TEXT } from '@/shared/utils/seoSchema'
 // Pretendard 는 self-host 한다(가변 + dynamic subset, 92조각).
 // 번들된 CSS 로 들어가므로 서드파티 연결과 별도 CSS 요청이 모두 사라진다.
 // 자산 갱신은 `npm run fonts:sync` — 생성 파일은 직접 편집하지 않는다.
@@ -9,11 +10,12 @@ import '@/index.css'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.caskbycask.net'),
-  title: 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티',
-  description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.',
+  // 경로별 generateMetadata 가 덮어쓰는 최후 기본값. 홈 문구와 같은 출처를 쓴다.
+  title: DEFAULT_SEO_TEXT.ko.title,
+  description: DEFAULT_SEO_TEXT.ko.description,
   openGraph: {
-    title: 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티',
-    description: '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.',
+    title: DEFAULT_SEO_TEXT.ko.title,
+    description: DEFAULT_SEO_TEXT.ko.description,
   },
 }
 

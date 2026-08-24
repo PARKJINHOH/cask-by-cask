@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
+import { buildHomeJsonLdGraph, DEFAULT_SEO_TEXT } from '@/shared/utils/seoSchema'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import { eventApi } from '@/domain/event/api/eventApi'
 import { reviewApi } from '@/domain/review/api/reviewApi'
@@ -773,15 +774,20 @@ export default function MainPage() {
 
   const isEn = i18n.language === 'en'
 
+  /*
+    SSR 이 심어 둔 Organization/WebSite 그래프를 하이드레이션 뒤에도 유지한다.
+    SeoMeta 는 자기가 받은 jsonLd 로 route JSON-LD 스크립트를 덮어쓰므로, 여기서 같은
+    값을 넘기지 않으면 JS 를 실행하는 크롤러가 보는 최종 DOM 에서 그래프가 사라진다.
+    새 배열이 매 렌더 만들어지면 SeoMeta 의 effect 가 계속 재실행되므로 메모한다.
+  */
+  const homeJsonLd = useMemo(() => buildHomeJsonLdGraph(isEn ? 'en' : 'ko'), [isEn])
+
   return (
     <div>
       <SeoMeta
-        title={isEn
-          ? 'CaskByCask — Detailed Liquor Info, Reviews & Community'
-          : 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티'}
-        description={isEn
-          ? 'Explore detailed specifications, user ratings, and reviews of global spirits (whisky, wine, cognac, rum, tequila) and join our community.'
-          : '전 세계 위스키, 와인, 꼬냑 등의 상세한 주류 정보와 평점 리뷰를 제공하고 소통하는 주류 전문 정보 커뮤니티 플랫폼입니다.'}
+        jsonLd={homeJsonLd}
+        title={DEFAULT_SEO_TEXT[isEn ? 'en' : 'ko'].title}
+        description={DEFAULT_SEO_TEXT[isEn ? 'en' : 'ko'].description}
         canonical={buildCanonical(isEn ? '/en' : '/ko')}
         locale={isEn ? 'en_US' : 'ko_KR'}
         alternateKo={buildCanonical('/ko')}

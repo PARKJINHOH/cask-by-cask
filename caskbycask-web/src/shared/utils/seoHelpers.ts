@@ -14,6 +14,7 @@ import {
   type MetadataSearchParams,
 } from '@/shared/utils/seoIndexing'
 import { appendWineVintageDisplay } from '@/domain/spirit/utils/spiritDisplayName'
+import { buildHomeJsonLdGraph, DEFAULT_SEO_TEXT } from '@/shared/utils/seoSchema'
 
 // 페이지네이션 규칙은 SPA 도 함께 써야 하므로 client-safe 한 seoIndexing 이 원본이다.
 export { isBoardListNoindex, buildListPageHref, readPageParam, hasUnsupportedPageParam }
@@ -281,6 +282,20 @@ export interface SeoSnapshotItem {
   meta?: string | null
 }
 
+/**
+ * 메인 목록 뒤에 이어 붙이는 추가 목록. 홈처럼 한 화면이 여러 섹션으로 이뤄진 경로가 쓴다.
+ *
+ * 서버 폴백은 화면에 실제로 보이는 것과 같은 섹션만 내보낸다 — 크롤러에게만 보여주는
+ * 콘텐츠를 늘리면 클로킹이 된다.
+ */
+export interface SeoSnapshotSection {
+  heading: string
+  items: SeoSnapshotItem[]
+  /** 섹션 헤더의 '전체 보기' 링크. 화면과 같은 경로를 가리킨다. */
+  moreHref?: string
+  moreLabel?: string
+}
+
 export interface SeoPaginationLink {
   /** 0-based 페이지 번호. 화면에는 +1 해서 보여준다. */
   page: number
@@ -319,6 +334,8 @@ export interface SeoSnapshotData {
   items?: SeoSnapshotItem[]
   /** 목록 섹션의 제목. 주류 목록과 게시글 목록이 같은 문구를 쓰지 않도록 경로별로 지정한다. */
   itemsHeading?: string
+  /** 메인 목록 뒤에 이어지는 추가 목록들. */
+  sections?: SeoSnapshotSection[]
   pagination?: SeoPagination | null
   links: Array<{ label: string; href: string }>
 }
@@ -1855,12 +1872,9 @@ export function getDefaultMetadata(
   const canonicalEn = `${SITE_URL}/en${pathSuffix}`
   const routeKey = canonicalPath?.split('/')[0] ?? ''
   const routeMeta = DEFAULT_ROUTE_METADATA[routeKey]?.[resolvedLang]
-  const title = routeMeta?.title ?? (resolvedLang === 'en'
-    ? 'CaskByCask — Spirits Information, Reviews and Community'
-    : 'CaskByCask(캐바캐) — 주류 정보, 리뷰, 커뮤니티')
-  const description = routeMeta?.description ?? (resolvedLang === 'en'
-    ? 'Explore whisky, wine, cognac and other spirits with detailed information, ratings, reviews, and community discussions.'
-    : '위스키, 와인, 꼬냑 등 주류 정보와 평점 리뷰 전문 플랫폼, CaskByCask(캐바캐)입니다.')
+  // 홈 JSON-LD 의 WebPage 노드와 같은 문구를 써야 메타태그와 구조화 데이터가 어긋나지 않는다.
+  const title = routeMeta?.title ?? DEFAULT_SEO_TEXT[resolvedLang].title
+  const description = routeMeta?.description ?? DEFAULT_SEO_TEXT[resolvedLang].description
   return {
     title,
     description,
@@ -2311,6 +2325,51 @@ async function getSharedTasteTreeMetadata(
   }
 }
 
+/** 최근 리뷰 응답 — 리뷰 자체의 정본은 그 리뷰가 달린 주류 상세라 주류 canonical 을 함께 받는다. */
+interface RecentReviewSeoResponse {
+  id: number
+  spiritId: number
+  displayNameKo: string
+  displayNameEn?: string | null
+  canonicalPathKo?: string | null
+  canonicalPathEn?: string | null
+  nickname?: string | null
+  totalScore?: number | null
+  createdAt?: string | null
+}
+
+interface SpiritCategoryStatResponse {
+  category: string
+  totalCount: number
+}
+
+interface PinnedNoticeListItemResponse extends NoticeListItemResponse {
+  isPinned?: boolean | null
+}
+
+/** 같은 항목이 두 번 들어오면 목록 키가 겹친다. 먼저 온 것을 남긴다. */
+function dedupeByHref(items: SeoSnapshotItem[]): SeoSnapshotItem[] {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    if (seen.has(item.href)) return false
+    seen.add(item.href)
+    return true
+  })
+}
+
+/** 총점 표시. 화면의 `formatScore` 와 같은 소수 1자리 규칙을 쓴다. */
+function formatSnapshotScore(value: number | null | undefined, isEn: boolean): string | null {
+  if (value == null) return null
+  const score = Number(value)
+  if (!Number.isFinite(score)) return null
+  return isEn ? `${score.toFixed(1)} pts` : `${score.toFixed(1)}점`
+}
+
+function joinMeta(parts: Array<string | null | undefined>): string | null {
+  const kept = parts.filter((part): part is string => Boolean(part))
+  return kept.length > 0 ? kept.join(' · ') : null
+}
+
 /**
  * 홈의 raw HTML 요약을 생성한다.
  *
@@ -2319,16 +2378,29 @@ async function getSharedTasteTreeMetadata(
  * 카테고리·주요 경로·주류 canonical 링크를 서버 HTML로 제공해 주류 상세 페이지가
  * 홈에서 바로 발견되게 한다.
  * (SPA가 마운트되면 이 블록은 숨겨지고 동일한 내용을 클라이언트가 렌더링한다)
+ *
+ * 내보내는 섹션은 `MainPage` 가 실제로 그리는 섹션과 1:1로 맞춘다 — 최근 등록된 술,
+ * 최근 등록된 리뷰, 평점 Top 5, 커뮤니티 최신글, 소식, 그리고 사이드바의 두 집계 카드.
+ * 크롤러에게만 보이는 문단을 여기서 늘리면 화면과 내용이 갈려 클로킹이 된다.
  */
 export async function getHomeSeoSnapshot(lang: 'ko' | 'en' | null): Promise<SeoSnapshotData> {
   const resolvedLang = normalizeLang(lang)
   const isEn = resolvedLang === 'en'
-  const page = await fetchApiData<PageResponse<SpiritListSeoItemResponse>>(
-    '/api/spirits?page=0&size=12',
-    300,
-  )
 
-  const items = (page?.content ?? []).map((spirit) => ({
+  // 어느 하나가 죽어도 나머지 섹션은 살려야 하므로 전부 개별 null 처리다.
+  const [recentPage, topRatedPage, categoryStats, reviewCount, recentReviews, freePosts, newsPosts, noticePage] =
+    await Promise.all([
+      fetchApiData<PageResponse<SpiritListSeoItemResponse>>('/api/spirits?page=0&size=12&sort=LATEST', 300),
+      fetchApiData<PageResponse<SpiritListSeoItemResponse>>('/api/spirits?page=0&size=5&sort=SCORE_DESC', 300),
+      fetchApiData<SpiritCategoryStatResponse[]>('/api/spirits/category-stats', 300),
+      fetchApiData<number>('/api/public/reviews/count', 300),
+      fetchApiData<RecentReviewSeoResponse[]>('/api/public/reviews/recent?size=10', 120),
+      fetchApiData<PageResponse<CommunityPostListItemResponse>>('/api/posts?boardType=FREE&sort=LATEST&page=0&size=5', 120),
+      fetchApiData<PageResponse<CommunityPostListItemResponse>>('/api/posts?boardType=NOTICE&sort=LATEST&page=0&size=3', 120),
+      fetchApiData<PageResponse<PinnedNoticeListItemResponse>>('/api/notices?page=0&size=20', 300),
+    ])
+
+  const toSpiritItem = (spirit: SpiritListSeoItemResponse): SeoSnapshotItem => ({
     title: appendWineVintageDisplay(
       isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
       spirit,
@@ -2339,13 +2411,118 @@ export async function getHomeSeoSnapshot(lang: 'ko' | 'en' | null): Promise<SeoS
     meta: isEn
       ? (spirit.producerNameEn || spirit.producerNameKo)
       : spirit.producerNameKo,
-  }))
-  const totalElements = page?.totalElements
+  })
+
+  const items = dedupeByHref((recentPage?.content ?? []).map(toSpiritItem))
+  const topRatedItems = dedupeByHref((topRatedPage?.content ?? []).map(toSpiritItem))
+
+  const reviewItems = dedupeByHref((recentReviews ?? []).map((review) => ({
+    title: isEn ? (review.displayNameEn || review.displayNameKo) : review.displayNameKo,
+    href: isEn
+      ? (review.canonicalPathEn || `/en/spirits/${review.spiritId}`)
+      : (review.canonicalPathKo || `/ko/spirits/${review.spiritId}`),
+    description: review.nickname || null,
+    meta: joinMeta([
+      // BigDecimal 이 '85.50' 처럼 내려올 수 있어 화면(formatScore)과 같은 소수 1자리로 맞춘다.
+      formatSnapshotScore(review.totalScore, isEn),
+      formatDateOnly(review.createdAt),
+    ]),
+  })))
+
+  // 게시판과 공지는 한국어 원문으로 신호를 통합하므로 항상 /ko 경로를 가리킨다.
+  const toPostItem = (post: CommunityPostListItemResponse, boardPath: string): SeoSnapshotItem => ({
+    title: post.title,
+    href: `/ko/community/${boardPath}/${post.id}`,
+    description: post.authorNickname || null,
+    meta: formatDateOnly(post.createdAt),
+  })
+
+  const pinnedNoticeItems = (noticePage?.content ?? [])
+    .filter((notice) => notice.isPinned)
+    .slice(0, 5)
+    .map((notice) => ({
+      title: notice.title,
+      href: `/ko/notices/${notice.id}`,
+      description: notice.category || null,
+      meta: formatDateOnly(notice.createdAt),
+    }))
+
+  const communityItems = dedupeByHref([
+    ...pinnedNoticeItems,
+    ...(freePosts?.content ?? [])
+      .filter((post) => !isRestrictedPost(post))
+      .map((post) => toPostItem(post, 'free')),
+  ])
+
+  const newsItems = dedupeByHref((newsPosts?.content ?? [])
+    .filter((post) => !isRestrictedPost(post))
+    .map((post) => toPostItem(post, 'notice')))
+
+  // 카테고리별 등록 수 — 화면 사이드바 카드와 같은 순서·같은 숫자(에디션 포함)를 쓴다.
+  const orderedStats = SPIRIT_CATEGORIES
+    .map((category) => {
+      const stat = (categoryStats ?? []).find((candidate) => candidate.category === category)
+      return stat ? { category, totalCount: stat.totalCount } : null
+    })
+    .filter((stat): stat is { category: SpiritSeoCategory; totalCount: number } => stat != null)
+
+  const locale = isEn ? 'en-US' : 'ko-KR'
+  const spiritTotal = orderedStats.reduce((sum, stat) => sum + stat.totalCount, 0)
+  const metrics: Array<{ label: string; value: string }> = []
+  if (spiritTotal > 0) {
+    metrics.push({
+      label: isEn ? 'Spirits' : '등록 주류',
+      value: spiritTotal.toLocaleString(locale),
+    })
+  } else if (recentPage?.totalElements != null) {
+    metrics.push({
+      label: isEn ? 'Spirits' : '등록 주류',
+      value: recentPage.totalElements.toLocaleString(locale),
+    })
+  }
+  if (reviewCount != null) {
+    metrics.push({
+      label: isEn ? 'Reviews' : '등록 리뷰',
+      value: reviewCount.toLocaleString(locale),
+    })
+  }
 
   const categoryLinks = SPIRIT_CATEGORIES.map((category) => ({
     label: isEn ? SPIRIT_CATEGORY_META[category].titleEn : SPIRIT_CATEGORY_META[category].titleKo,
     href: `/${resolvedLang}/spirits?category=${category}`,
   }))
+
+  const sections: SeoSnapshotSection[] = []
+  if (reviewItems.length > 0) {
+    sections.push({
+      heading: isEn ? 'Latest Reviews' : '최근 등록된 리뷰',
+      items: reviewItems,
+    })
+  }
+  if (topRatedItems.length > 0) {
+    sections.push({
+      heading: isEn ? 'Top 5 Rated' : '평점 Top 5',
+      items: topRatedItems,
+      moreHref: `/${resolvedLang}/spirits?sort=SCORE_DESC`,
+      moreLabel: isEn ? 'View All' : '전체보기',
+    })
+  }
+  if (communityItems.length > 0) {
+    sections.push({
+      heading: isEn ? 'Latest from Community' : '커뮤니티 최신글',
+      items: communityItems,
+      moreHref: '/ko/community/all',
+      moreLabel: isEn ? 'View All' : '전체보기',
+    })
+  }
+  if (newsItems.length > 0) {
+    sections.push({
+      heading: isEn ? 'Latest News' : '소식 최신글',
+      items: newsItems,
+      moreHref: '/ko/community/notice',
+      moreLabel: isEn ? 'View All' : '전체보기',
+    })
+  }
 
   return {
     kind: 'home',
@@ -2358,15 +2535,14 @@ export async function getHomeSeoSnapshot(lang: 'ko' | 'en' | null): Promise<SeoS
       ? 'Explore whisky, wine, cognac and other spirits with detailed specs, tasting notes, user ratings, and community discussions.'
       : '위스키·와인·꼬냑 등 주류의 상세 정보와 시음 노트, 사용자 평점 리뷰, 커뮤니티를 CaskByCask에서 확인하세요.',
     image: null,
-    metrics: totalElements == null
-      ? []
-      : [{
-        label: isEn ? 'Spirits' : '등록 주류',
-        value: totalElements.toLocaleString(isEn ? 'en-US' : 'ko-KR'),
-      }],
-    details: [],
+    metrics,
+    details: orderedStats.map((stat) => ({
+      label: isEn ? SPIRIT_CATEGORY_META[stat.category].titleEn : SPIRIT_CATEGORY_META[stat.category].titleKo,
+      value: stat.totalCount.toLocaleString(locale),
+    })),
     items,
-    itemsHeading: isEn ? 'Spirits in the catalog' : '등록된 주류',
+    itemsHeading: isEn ? 'Recently Added' : '최근 등록된 술',
+    sections,
     links: [
       { label: isEn ? 'All spirits' : '주류 전체', href: `/${resolvedLang}/spirits` },
       ...categoryLinks,
@@ -2374,11 +2550,27 @@ export async function getHomeSeoSnapshot(lang: 'ko' | 'en' | null): Promise<SeoS
       { label: isEn ? 'Taste trees' : '취향 트리', href: `/${resolvedLang}/taste-trees` },
       { label: isEn ? 'Price information' : '가격 정보', href: `/${resolvedLang}/price-tracker` },
       { label: isEn ? 'Rankings' : '랭킹', href: `/${resolvedLang}/ranking` },
+      { label: isEn ? 'Event calendar' : '행사 캘린더', href: `/${resolvedLang}/calendar` },
+      { label: isEn ? 'YouTube gallery' : '유튜브 갤러리', href: `/${resolvedLang}/youtube` },
       { label: 'FAQ', href: `/${resolvedLang}/faq` },
       // 게시판과 공지는 한국어 원문으로 신호를 통합하므로 항상 /ko 경로를 가리킨다.
       { label: isEn ? 'Community' : '커뮤니티', href: '/ko/community/all' },
+      { label: 'BYOB', href: '/ko/community/byob' },
       { label: isEn ? 'Notices' : '공지사항', href: '/ko/notices' },
     ],
+  }
+}
+
+/**
+ * 홈의 JSON-LD. Organization 으로 브랜드 엔티티를 이 도메인에 묶는 것이 핵심이다.
+ *
+ * 그래프 본문은 `seoSchema` 가 갖는다 — 하이드레이션 뒤 `SeoMeta` 가 같은 값을 다시
+ * 써야 해서, 클라이언트 번들에서도 import 할 수 있는 자리에 있어야 한다.
+ */
+export function getHomeJsonLd(lang: 'ko' | 'en' | null): object {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': buildHomeJsonLdGraph(normalizeLang(lang)),
   }
 }
 

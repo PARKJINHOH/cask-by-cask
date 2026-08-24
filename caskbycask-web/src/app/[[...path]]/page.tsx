@@ -9,6 +9,7 @@ import {
   getDefaultMetadata,
   getPublicRouteMetadata,
   getHomeSeoSnapshot,
+  getHomeJsonLd,
   getTierListMetadata,
   getTierListSeoSnapshot,
   getSpiritsListMetadata,
@@ -114,6 +115,8 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
   let jsonLdData: object | null = null
   let snapshot: SeoSnapshotData | null = null
   if (parsed.type === 'home') {
+    // 홈에만 Organization/WebSite 를 싣는다 — 여러 페이지에 흩으면 대표 엔티티가 모호해진다.
+    jsonLdData = getHomeJsonLd(parsed.lang)
     snapshot = await getHomeSeoSnapshot(parsed.lang)
   } else if (parsed.type === 'spirits-list') {
     ;[jsonLdData, snapshot] = await Promise.all([
