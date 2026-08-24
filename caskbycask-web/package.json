@@ -22,6 +22,7 @@
     "test:wine-origin-map": "node --test scripts/wine-origin-map.test.mjs",
     "test:region-label": "node --import ./scripts/test-alias-register.mjs --test scripts/region-label.test.mjs",
     "test:wine-taste": "node --import ./scripts/test-alias-register.mjs --test scripts/wine-taste.test.mjs",
+    "test:spirit-share-url": "node --import ./scripts/test-alias-register.mjs --test scripts/spirit-share-url.test.mjs",
     "test:spirit-display-name": "node --import ./scripts/test-alias-register.mjs --test scripts/spirit-display-name.test.mjs",
     "test:cognac": "node --import ./scripts/test-alias-register.mjs --test scripts/cognac.test.mjs",
     "test:research-prompts": "node --import ./scripts/test-alias-register.mjs --test scripts/research-prompts.test.mjs",

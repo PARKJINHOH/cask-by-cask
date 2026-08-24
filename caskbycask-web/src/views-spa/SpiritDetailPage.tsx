@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueries } from '@tanstack/react-query'
 import { useSpiritDetail, useSpiritSeo } from '@/domain/spirit/hooks/useSpiritDetail'
 import { spiritSeoApi } from '@/domain/spirit/api/spiritSeoApi'
+import { getSpiritShareUrl } from '@/domain/spirit/utils/spiritUrl'
 import { localizeCountry } from '@/shared/utils/countryName'
 import WineOriginMap from '@/domain/location/components/WineOriginMap'
 import WineTasteBars from '@/domain/spirit/components/WineTasteBars'
@@ -945,6 +946,9 @@ export default function SpiritDetailPage() {
   const spiritId = parseInt(id || '', 10)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
+  // URL 복사는 보고 있는 주소의 ID 를 쓴다. 마스터 상세는 최신 에디션 정보를 표시하므로
+  // displaySpirit.id 가 현재 URL 의 ID 와 다를 수 있다.
+  const shareUrl = getSpiritShareUrl(spiritId, i18n.language)
   const [selectedImg, setSelectedImg]   = useState(0)
   const [activeTab, setActiveTab]       = useState<Tab>('reviews')
   const [loginModal, setLoginModal]     = useState(false)
@@ -1240,7 +1244,7 @@ export default function SpiritDetailPage() {
             {/* Favorites / share — mobile only: floats over the image top-right */}
             <div className="absolute top-7 right-7 z-10 flex items-center gap-2 md:hidden">
               <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
-              <ShareUrlButton />
+              <ShareUrlButton url={shareUrl} />
             </div>
           </div>
 
@@ -1249,7 +1253,7 @@ export default function SpiritDetailPage() {
             {/* Favorites button — top right (desktop; mobile version sits over the image) */}
             <div className="absolute top-4 right-4 hidden md:flex items-center gap-2">
               <WishlistButtons spiritId={spiritId} onNeedLogin={() => setLoginModal(true)} />
-              <ShareUrlButton />
+              <ShareUrlButton url={shareUrl} />
             </div>
 
             <div className="md:pr-24">
