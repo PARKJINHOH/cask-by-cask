@@ -105,6 +105,46 @@ const FIXTURES = {
     avgScore: 92,
     reviewCount: 3,
   },
+  // 가짜 서버는 쿼리스트링을 버리므로(`req.url.split('?')[0]`) 생산자 주류 목록의 키는
+  // `/api/spirits?producerId=7...` 이 아니라 `/api/spirits` 다.
+  '/api/spirits': {
+    content: [
+      {
+        id: 883,
+        nameKo: '글렌알라키 10년 캐스크 스트렝스 배치 12',
+        nameEn: 'GlenAllachie 10 Year Old Cask Strength Batch 12',
+        category: 'WHISKY',
+        producerNameKo: '글렌알라키',
+        producerNameEn: 'GlenAllachie',
+        canonicalPathKo: '/ko/spirits/883-glenallachie',
+        canonicalPathEn: '/en/spirits/883-glenallachie',
+      },
+    ],
+    totalElements: 1,
+  },
+  '/api/youtube/videos/rwNigQmE5Jo': {
+    videoKey: 'rwNigQmE5Jo',
+    title: '이건 정말 맛있습니다. 초코맛 칵테일',
+    description: '맛은 개인차가 큰 영역인 만큼, 다르게 느낄 수 있습니다.',
+    thumbnailUrl: 'https://i.ytimg.com/vi/rwNigQmE5Jo/maxresdefault.jpg',
+    videoType: 'VIDEO',
+    publishedAt: '2023-02-27T12:00:00',
+    embedUrl: 'https://www.youtube.com/embed/rwNigQmE5Jo',
+    channel: { title: '어쿠스틱 드링크', handle: 'acoustic', channelUrl: 'https://youtube.com/@acoustic' },
+    spiritTags: [],
+  },
+  '/api/youtube/channels/acoustic': {
+    id: 3,
+    channelKey: 'UCabc',
+    handle: 'acoustic',
+    title: '어쿠스틱 드링크',
+    description: '칵테일 채널',
+    descriptionEn: null,
+    thumbnailUrl: null,
+    channelUrl: 'https://youtube.com/@acoustic',
+    videoCount: 30,
+  },
+  '/api/youtube/videos': { content: [], totalElements: 0 },
   '/api/users/5/bottles': { totalElements: 12, ownerNickname: '인피튜드' },
   '/api/taste-trees/share/abc123': {
     shareKey: 'abc123',
@@ -213,6 +253,27 @@ async function readHead(path) {
   }
 }
 
+/**
+ * 서버가 크롤러에게 실제로 준 <body> 를 본다.
+ *
+ * readHead 는 <head> 만 파싱하므로 "제목은 맞는데 본문이 비어 있다"를 잡지 못한다.
+ * 생산자 236건이 h1 없는 빈 본문으로 크롤되던 버그가 정확히 그 사각지대에 있었다.
+ */
+async function readBody(path) {
+  const res = await fetch(`${BASE}${path}`, { redirect: 'manual' })
+  const html = await res.text()
+  const body = html.split(/<body\b[^>]*>/i)[1] ?? ''
+  const stripped = body.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ')
+  return {
+    status: res.status,
+    h1: [...stripped.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)]
+      .map((match) => match[1].replace(/<[^>]+>/g, '').trim()),
+    text: stripped.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+    hrefs: [...body.matchAll(/href="([^"]+)"/gi)].map((match) => match[1]),
+    routeJsonLd: [...html.matchAll(/<script[^>]*data-cbc-route-jsonld[^>]*>/gi)].length,
+  }
+}
+
 test('엔티티별 metadata', async (t) => {
   await rm('.next/cache/fetch-cache', { recursive: true, force: true })
 
@@ -277,6 +338,40 @@ test('엔티티별 metadata', async (t) => {
     assert.deepEqual(en.canonical, [`${SITE}/en/producers/7`])
   })
 
+  // 제목만 맞고 본문이 비면 크롤러에게는 빈 페이지다. metadata 경로와 본문 경로는 서로 다른
+  // 분기라 한쪽만 살아 있을 수 있으므로, 본문 쪽을 따로 못박는다.
+  await t.test('생산자: 서버 HTML 에 단일 h1 과 소속 주류 링크가 있다', async () => {
+    const ko = await readBody('/ko/producers/7')
+    assert.equal(ko.status, 200)
+    assert.deepEqual(ko.h1, ['글렌알라키'])
+    assert.match(ko.text, /스코틀랜드/)
+    assert.match(ko.text, /스페이사이드/)
+    assert.match(ko.text, /1967/)
+    // 생산자 → 주류로 내려가는 크롤 경로
+    assert.ok(
+      ko.hrefs.includes('/ko/spirits/883-glenallachie'),
+      `소속 주류 링크가 없다: ${ko.hrefs.join(', ')}`,
+    )
+
+    const en = await readBody('/en/producers/7')
+    assert.deepEqual(en.h1, ['GlenAllachie'])
+    assert.ok(en.hrefs.includes('/en/spirits/883-glenallachie'))
+  })
+
+  // 매핑 없는 응답까지 본문을 만들면 홈 문구를 물려받아 h1 이 중복된다.
+  await t.test('생산자: 이름이 비어 있으면 본문을 만들지 않는다', async () => {
+    const ko = await readBody('/ko/producers/9')
+    assert.deepEqual(ko.h1, [])
+  })
+
+  await t.test('정적 공개 경로: 약관·FAQ 도 단일 h1 을 갖는다', async () => {
+    for (const [path, heading] of [['/ko/terms', '이용약관'], ['/ko/faq', '주류·서비스 FAQ']]) {
+      const page = await readBody(path)
+      assert.equal(page.status, 200, path)
+      assert.deepEqual(page.h1, [heading], path)
+    }
+  })
+
   await t.test('생산자: 서로 다른 생산자는 서로 다른 title (종류 라벨 포함)', async () => {
     const distillery = await readHead('/ko/producers/7')
     const winery = await readHead('/ko/producers/8')
@@ -324,6 +419,30 @@ test('엔티티별 metadata', async (t) => {
     assert.deepEqual(ko.hreflangEn, [`${SITE}/en/taste-trees/t/abc123`])
   })
 
+  // 영상·채널 페이지는 제목·설명·썸네일이 모두 남의 영상에서 온 값이라 색인 대상이 아니다.
+  // follow 는 남겨야 태그된 주류로 가는 크롤 경로가 유지된다 — nofollow 로 바뀌면 실패한다.
+  await t.test('유튜브 영상·채널: noindex, follow 이고 라우트 JSON-LD 를 싣지 않는다', async () => {
+    for (const path of ['/ko/youtube/rwNigQmE5Jo', '/ko/youtube/channels/acoustic']) {
+      const head = await readHead(path)
+      assert.equal(head.status, 200, path)
+      assert.deepEqual(head.robots, ['noindex, follow'], path)
+      // self-canonical 과 hreflang 은 유지한다 — SPA 가 무조건 쓰므로 서버에서만 빼면 어긋난다.
+      assert.deepEqual(head.canonical, [`${SITE}${path}`], path)
+
+      // noindex 면 SeoMeta 가 하이드레이션 때 SSR JSON-LD 를 지운다. 서버에서 미리 빼 둬야
+      // SSR 에만 있고 렌더 후에는 없는 상태가 되지 않는다.
+      const body = await readBody(path)
+      assert.equal(body.routeJsonLd, 0, `${path}: noindex 라우트에 라우트 JSON-LD 가 남아 있다`)
+    }
+  })
+
+  // 갤러리 허브는 자체 큐레이션 화면이고, 영상·채널을 사이트맵에서 내린 뒤로는
+  // 그쪽으로 가는 유일한 발견 경로이기도 하다.
+  await t.test('유튜브 허브: 색인 대상으로 남는다', async () => {
+    const head = await readHead('/ko/youtube')
+    assert.deepEqual(head.robots, ['index, follow'])
+  })
+
   await t.test('어떤 엔티티 페이지도 홈과 title 이 같지 않다', async () => {
     const home = await readHead('/ko')
     const paths = [
@@ -332,6 +451,8 @@ test('엔티티별 metadata', async (t) => {
       '/ko/price-tracker/spirits/244',
       '/ko/users/5/bottles', '/ko/users/5/reviews',
       '/ko/taste-trees/t/abc123',
+      // DEFAULT_ROUTE_METADATA 에 매핑이 없으면 홈 문구를 그대로 물려받아 title 이 겹쳤다.
+      '/ko/social',
     ]
     const titles = []
     for (const path of paths) {
