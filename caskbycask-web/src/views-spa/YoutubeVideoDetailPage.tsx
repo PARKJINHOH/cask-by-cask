@@ -3,17 +3,16 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import Spinner from '@/shared/components/Spinner'
-import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
 import { youtubeApi } from '@/domain/youtube/api/youtubeApi'
 import YoutubeVideoView from '@/domain/youtube/components/YoutubeVideoView'
-import { buildVideoObjectSchema } from '@/domain/youtube/utils/youtubeSchema'
 
 /**
  * 영상 상세 페이지 — 갤러리 팝업과 같은 내용을 **독립된 주소**로 연다.
  *
- * 팝업만 있으면 영상마다 검색엔진이 색인할 주소가 없다. 이 페이지가 있어야
- * 사이트맵에 영상별 URL 을 실을 수 있고, VideoObject 구조화 데이터도 여기에 붙는다.
- * 갤러리에서 타일을 새 탭으로 열면 바로 이 화면이다.
+ * 사람이 공유하고 새 탭으로 여는 주소가 목적이지, 색인 자산은 아니다. 제목·설명·썸네일이
+ * 전부 남의 영상에서 온 값이라 `noindex, follow` 로 두고 사이트맵에도 싣지 않는다.
+ * 대신 follow 를 남겨 아래 태그된 주류 링크가 크롤 경로로 살아 있게 한다.
+ * 색인 대상 유튜브 주소는 `/youtube` 허브 하나뿐이다.
  */
 export default function YoutubeVideoDetailPage() {
   const { videoKey = '' } = useParams()
@@ -65,14 +64,10 @@ export default function YoutubeVideoDetailPage() {
         locale={isEn ? 'en_US' : 'ko_KR'}
         ogType="article"
         ogImage={video.thumbnailUrl ?? undefined}
-        jsonLd={[
-          buildVideoObjectSchema(video),
-          buildBreadcrumbSchema([
-            { name: t('nav.home'), path: '/' },
-            { name: t('youtube.title'), path: '/youtube' },
-            { name: video.title, path: `/youtube/${video.videoKey}` },
-          ]),
-        ]}
+        // 제목·설명·썸네일이 모두 남의 영상에서 온 값이라 색인 대상이 아니다.
+        // SSR(getYoutubeVideoMetadata)도 같은 판정이며, 둘이 어긋나면 하이드레이션 후 robots 가 뒤집힌다.
+        // follow 는 유지 — 아래 태그된 주류 링크가 갤러리에서 카탈로그로 가는 크롤 경로다.
+        noindex
       />
 
       <nav className="mb-3">

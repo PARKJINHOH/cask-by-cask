@@ -15,6 +15,10 @@ import {
 } from '@/shared/utils/seoIndexing'
 import { appendWineVintageDisplay } from '@/domain/spirit/utils/spiritDisplayName'
 import { buildHomeJsonLdGraph, DEFAULT_SEO_TEXT } from '@/shared/utils/seoSchema'
+// 생산자 폴백은 화면과 같은 라벨·같은 지역명을 써야 한다. 다른 문자열을 쓰면 크롤러 전용 텍스트가 된다.
+import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
+import { localizeCountry } from '@/shared/utils/countryName'
+import { localizeRegion } from '@/shared/utils/regionName'
 
 // 페이지네이션 규칙은 SPA 도 함께 써야 하므로 client-safe 한 seoIndexing 이 원본이다.
 export { isBoardListNoindex, buildListPageHref, readPageParam, hasUnsupportedPageParam }
@@ -319,7 +323,7 @@ export interface SeoPagination {
 
 export interface SeoSnapshotData {
   kind: 'home' | 'spirit' | 'spirits-list' | 'community' | 'byob' | 'board-list' | 'notice' | 'tier-list'
-    | 'youtube'
+    | 'youtube' | 'producer' | 'page'
   lang: 'ko' | 'en'
   eyebrow: string
   title: string
@@ -1418,39 +1422,13 @@ export async function getYoutubeVideoMetadata(
     description: video.description?.slice(0, 200) || YOUTUBE_SEO_TEXT[resolvedLang].description,
     canonical: `${SITE_URL}/${resolvedLang}/youtube/${video.videoKey}`,
     lang: resolvedLang,
-    index: true,
+    // 제목·설명·썸네일이 모두 남의 영상에서 온 값이라 색인 자산이 아니다.
+    // follow 는 유지한다 — 이 페이지가 태그된 주류로 내보내는 링크가 갤러리에서
+    // 카탈로그로 가는 유일한 크롤 경로다. 그래서 proxy.ts 의 X-Robots-Tag(noindex, nofollow)를 쓰지 않는다.
+    index: false,
     image: video.thumbnailUrl ?? undefined,
     ogType: 'article',
   })
-}
-
-export async function getYoutubeVideoJsonLd(videoKey: string): Promise<object | null> {
-  const video = await getYoutubeVideo(videoKey)
-  if (!video) return null
-
-  const canonical = `${SITE_URL}/ko/youtube/${video.videoKey}`
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'VideoObject',
-    'name': video.title,
-    'description': video.description || video.title,
-    'thumbnailUrl': [video.thumbnailUrl ?? `https://i.ytimg.com/vi/${video.videoKey}/hqdefault.jpg`],
-    'uploadDate': video.publishedAt,
-    'embedUrl': video.embedUrl,
-    'url': canonical,
-    'publisher': {
-      '@type': 'Organization',
-      'name': video.channel.title,
-      'url': video.channel.channelUrl,
-    },
-    ...(video.spiritTags.length > 0 ? {
-      'about': video.spiritTags.map((tag) => ({
-        '@type': 'Product',
-        'name': tag.nameKo,
-        'url': `${SITE_URL}/ko/spirits/${tag.spiritId}`,
-      })),
-    } : {}),
-  }
 }
 
 interface YoutubeChannelSeoResponse {
@@ -1500,53 +1478,10 @@ export async function getYoutubeChannelMetadata(
         : `${channel.title} 채널의 최신 영상과 숏츠를 모았습니다.`),
     canonical: `${SITE_URL}/${resolvedLang}/youtube/channels/${youtubeChannelRef(channel)}`,
     lang: resolvedLang,
-    index: true,
+    // 영상 상세와 같은 이유로 noindex + follow. 색인 대상 유튜브 경로는 /youtube 허브 하나뿐이다.
+    index: false,
     image: channel.thumbnailUrl ?? undefined,
   })
-}
-
-/**
- * 채널 페이지 구조화 데이터.
- * <p>`about` 이 채널(Organization)이고 `sameAs` 로 유튜브 채널 홈을 가리킨다 —
- * 이 페이지가 <b>채널을 소개하는 페이지</b>임을 밝히고, 우리가 채널 본인인 척하지 않는다.
- */
-export async function getYoutubeChannelJsonLd(ref: string): Promise<object | null> {
-  const channel = await getYoutubeChannel(ref)
-  if (!channel) return null
-
-  const canonical = `${SITE_URL}/ko/youtube/channels/${youtubeChannelRef(channel)}`
-  const videos = await fetchApiData<PageResponse<YoutubeVideoSeoResponse>>(
-    `/api/youtube/videos?page=0&size=24&channelId=${channel.id}`, 300)
-
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    'name': channel.title,
-    'description': channel.description || undefined,
-    'url': canonical,
-    'inLanguage': 'ko-KR',
-    'about': {
-      '@type': 'Organization',
-      'name': channel.title,
-      'url': channel.channelUrl,
-      'sameAs': [channel.channelUrl],
-      ...(channel.thumbnailUrl ? { logo: channel.thumbnailUrl } : {}),
-    },
-    ...(videos?.content?.length
-      ? {
-        'mainEntity': {
-          '@type': 'ItemList',
-          'numberOfItems': videos.content.length,
-          'itemListElement': videos.content.map((video, index) => ({
-            '@type': 'ListItem',
-            'position': index + 1,
-            'name': video.title,
-            'url': `${SITE_URL}/ko/youtube/${video.videoKey}`,
-          })),
-        },
-      }
-      : {}),
-  }
 }
 
 export async function getYoutubeChannelSeoSnapshot(
@@ -1812,8 +1747,8 @@ export async function getNoticeDetailJsonLd(
  * 기본/홈페이지 메타데이터를 반환합니다.
  */
 const DEFAULT_ROUTE_METADATA: Record<string, {
-  ko: { title: string; description: string }
-  en: { title: string; description: string }
+  ko: { title: string; description: string; h1?: string }
+  en: { title: string; description: string; h1?: string }
 }> = {
   ranking: {
     ko: { title: '활동 점수 랭킹 — CaskByCask', description: '주간·월간·전체 기간별 CaskByCask 사용자 활동 점수와 레벨 순위를 확인하세요.' },
@@ -1858,6 +1793,20 @@ const DEFAULT_ROUTE_METADATA: Record<string, {
   users: {
     ko: { title: '사용자 주류 기록 — CaskByCask', description: 'CaskByCask 사용자가 공개한 보틀과 주류 리뷰를 확인하세요.' },
     en: { title: 'Public Spirits Collection — CaskByCask', description: 'Browse public bottles and spirits reviews shared by a CaskByCask user.' },
+  },
+  // 이 항목이 없으면 /social 이 DEFAULT_SEO_TEXT(홈 문구)를 그대로 물려받아 홈과 title 이 같아진다.
+  // h1 은 SocialHubPage 가 화면에 그리는 t('social.hubTitle') 과 글자 단위로 같아야 한다.
+  social: {
+    ko: {
+      title: '최신 리뷰·소식 — CaskByCask',
+      description: '공식 Instagram과 Threads에 소개된 최신 리뷰와 소식을 한곳에서 확인하세요.',
+      h1: 'CaskByCask 최신 리뷰·소식',
+    },
+    en: {
+      title: 'Latest Reviews and News — CaskByCask',
+      description: 'See the latest reviews and news featured on our official Instagram and Threads accounts.',
+      h1: 'Latest CaskByCask reviews and news',
+    },
   },
 }
 
@@ -1949,6 +1898,64 @@ export async function getPublicRouteMetadata(
     return (await getSharedTasteTreeMetadata(segments[2], lang)) ?? fallback()
   }
   return fallback()
+}
+
+/**
+ * `type: 'default'` 라우트의 raw HTML 본문.
+ *
+ * getPublicRouteMetadata 의 쌍이다. 같은 segments 분해를 쓰고 바로 옆에 두어, 한쪽만 늘어나
+ * 제목은 있는데 본문이 빈 페이지가 다시 생기지 않게 한다. (이 함수가 없던 동안 생산자 236건을
+ * 비롯한 default 라우트 전체가 h1 없는 빈 본문으로 크롤됐다.)
+ *
+ * 단일 세그먼트 정적 경로만 DEFAULT_ROUTE_METADATA 로 폴백한다. 다세그먼트 경로까지 폴백하면
+ * 상세 URL 수백 개가 루트의 제목·h1 을 공유하게 되므로, 전용 스냅샷이 생기기 전까지는 null 이다.
+ */
+export async function getDefaultRouteSeoSnapshot(
+  lang: 'ko' | 'en' | null,
+  canonicalPath?: string,
+): Promise<SeoSnapshotData | null> {
+  const segments = (canonicalPath ?? '').split('/').filter(Boolean)
+
+  if (segments[0] === 'producers' && segments[1]) {
+    return getProducerSeoSnapshot(segments[1], lang)
+  }
+  if (segments.length === 1) {
+    return getStaticRouteSeoSnapshot(lang, segments[0])
+  }
+  return null
+}
+
+/**
+ * 정적 공개 경로(약관·FAQ·랭킹 등)의 최소 스냅샷.
+ *
+ * 화면 본문을 서버에서 재현하지는 않지만, 단일 h1 과 설명·홈 링크는 확보한다.
+ * 티어리스트가 이미 같은 수준으로 운영되고 있고 seo:verify 를 통과한다.
+ */
+function getStaticRouteSeoSnapshot(
+  lang: 'ko' | 'en' | null,
+  routeKey: string,
+): SeoSnapshotData | null {
+  const resolvedLang = normalizeLang(lang)
+  const config = DEFAULT_ROUTE_METADATA[routeKey]?.[resolvedLang]
+  // 매핑이 없으면 홈 문구(DEFAULT_SEO_TEXT)를 물려받게 되므로 본문을 만들지 않는다.
+  if (!config) return null
+
+  const heading = config.h1 ?? config.title.replace(/\s+—\s+CaskByCask$/, '')
+  const labels = localLabels(resolvedLang)
+  return {
+    kind: 'page',
+    lang: resolvedLang,
+    eyebrow: 'CaskByCask',
+    title: heading,
+    description: config.description,
+    image: null,
+    metrics: [],
+    details: [],
+    links: [
+      { label: labels.home, href: `/${resolvedLang}` },
+      { label: heading, href: `/${resolvedLang}/${routeKey}` },
+    ],
+  }
 }
 
 interface PublicReviewResponse {
@@ -2068,6 +2075,8 @@ interface ProducerResponse {
   foundedYear: number | null
   descriptionKo: string | null
   descriptionEn: string | null
+  /** 화면(ProducerDetailPage)이 같은 응답에서 읽어 외부 링크로 그리는 값. */
+  website?: string | null
 }
 
 const PRODUCER_TYPE_SEO_LABEL: Record<string, { ko: string; en: string }> = {
@@ -2145,6 +2154,72 @@ async function getProducerMetadata(
       description,
       images: [DEFAULT_OG_IMAGE],
     },
+  }
+}
+
+/**
+ * 생산자 상세의 raw HTML 본문.
+ *
+ * 화면(ProducerDetailPage)이 부르는 것과 같은 두 엔드포인트만 쓴다. 생산자 조회는
+ * getProducerMetadata 와 URL·revalidate 가 같아 같은 ISR 캐시를 타므로 업스트림 요청이 늘지 않는다.
+ *
+ * description 에 getProducerMetadata 의 조립 문구를 쓰지 않는 것은 의도적이다. 그 문구는
+ * meta description 폴백 전용이고, 본문에 그리면 화면에 없는 크롤러 전용 텍스트가 된다.
+ */
+async function getProducerSeoSnapshot(
+  id: string,
+  lang: 'ko' | 'en' | null,
+): Promise<SeoSnapshotData | null> {
+  const resolvedLang = normalizeLang(lang)
+  const isEn = resolvedLang === 'en'
+  const [producer, spiritsPage] = await Promise.all([
+    fetchApiData<ProducerResponse>(`/api/producers/${id}`, 3600),
+    fetchApiData<PageResponse<SpiritListSeoItemResponse>>(
+      `/api/spirits?producerId=${encodeURIComponent(id)}&page=0&size=24`,
+      300,
+    ),
+  ])
+  if (!producer) return null
+
+  const name = isEn
+    ? firstNonBlank(producer.nameEn, producer.nameKo)
+    : firstNonBlank(producer.nameKo, producer.nameEn)
+  if (!name) return null
+
+  const secondaryName = isEn ? producer.nameKo : producer.nameEn
+  const typeLabel = PRODUCER_TYPE_LABEL[producer.type ?? 'OTHER'] ?? PRODUCER_TYPE_LABEL.OTHER
+  const labels = localLabels(resolvedLang)
+  const countryLabel = localizeCountry(producer.country, resolvedLang)
+  const regionLabel = producer.region ? localizeRegion(producer.region, resolvedLang) : null
+  const description = isEn
+    ? (producer.descriptionEn || producer.descriptionKo)
+    : (producer.descriptionKo || producer.descriptionEn)
+
+  const items = dedupeByHref(
+    (spiritsPage?.content ?? []).map((spirit) => buildSpiritSnapshotItem(spirit, isEn)),
+  )
+
+  return {
+    kind: 'producer',
+    lang: resolvedLang,
+    eyebrow: isEn ? typeLabel.en : typeLabel.ko,
+    title: name,
+    subtitle: secondaryName && secondaryName !== name ? secondaryName : null,
+    description: description || null,
+    image: null,
+    metrics: [],
+    details: compactDetails([
+      { label: labels.country, value: countryLabel },
+      { label: labels.region, value: regionLabel },
+      { label: isEn ? 'Founded' : '설립', value: producer.foundedYear },
+    ]),
+    sourceUrls: producer.website ? [producer.website] : undefined,
+    items: items.length ? items : undefined,
+    itemsHeading: isEn ? 'Spirits from this producer' : '이 생산자의 술',
+    links: [
+      { label: labels.home, href: `/${resolvedLang}` },
+      { label: labels.spirits, href: `/${resolvedLang}/spirits` },
+    ],
   }
 }
 
@@ -2347,6 +2422,27 @@ interface PinnedNoticeListItemResponse extends NoticeListItemResponse {
   isPinned?: boolean | null
 }
 
+/**
+ * 주류 목록 항목 하나를 스냅샷 항목으로 바꾼다.
+ *
+ * 홈·주류 목록·생산자 상세가 같은 카드 목록을 서로 다른 링크로 그리면 크롤 경로가 갈리므로
+ * 세 곳이 이 함수 하나만 쓴다. canonicalPath 가 비면 id 경로로 떨어뜨려 링크가 사라지지 않게 한다.
+ */
+function buildSpiritSnapshotItem(spirit: SpiritListSeoItemResponse, isEn: boolean): SeoSnapshotItem {
+  return {
+    title: appendWineVintageDisplay(
+      isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
+      spirit,
+    ),
+    href: isEn
+      ? (spirit.canonicalPathEn || `/en/spirits/${spirit.id}`)
+      : (spirit.canonicalPathKo || `/ko/spirits/${spirit.id}`),
+    meta: isEn
+      ? (spirit.producerNameEn || spirit.producerNameKo)
+      : spirit.producerNameKo,
+  }
+}
+
 /** 같은 항목이 두 번 들어오면 목록 키가 겹친다. 먼저 온 것을 남긴다. */
 function dedupeByHref(items: SeoSnapshotItem[]): SeoSnapshotItem[] {
   const seen = new Set<string>()
@@ -2400,18 +2496,8 @@ export async function getHomeSeoSnapshot(lang: 'ko' | 'en' | null): Promise<SeoS
       fetchApiData<PageResponse<PinnedNoticeListItemResponse>>('/api/notices?page=0&size=20', 300),
     ])
 
-  const toSpiritItem = (spirit: SpiritListSeoItemResponse): SeoSnapshotItem => ({
-    title: appendWineVintageDisplay(
-      isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
-      spirit,
-    ),
-    href: isEn
-      ? (spirit.canonicalPathEn || `/en/spirits/${spirit.id}`)
-      : (spirit.canonicalPathKo || `/ko/spirits/${spirit.id}`),
-    meta: isEn
-      ? (spirit.producerNameEn || spirit.producerNameKo)
-      : spirit.producerNameKo,
-  })
+  const toSpiritItem = (spirit: SpiritListSeoItemResponse): SeoSnapshotItem =>
+    buildSpiritSnapshotItem(spirit, isEn)
 
   const items = dedupeByHref((recentPage?.content ?? []).map(toSpiritItem))
   const topRatedItems = dedupeByHref((topRatedPage?.content ?? []).map(toSpiritItem))
@@ -2767,18 +2853,7 @@ export async function getSpiritsListSeoSnapshot(
 ): Promise<SeoSnapshotData> {
   const state = await resolveSpiritsListSeoState(lang, searchParams, true)
   const isEn = state.lang === 'en'
-  const items = (state.pageData?.content ?? []).map((spirit) => ({
-    title: appendWineVintageDisplay(
-      isEn ? (spirit.nameEn || spirit.nameKo) : spirit.nameKo,
-      spirit,
-    ),
-    href: isEn
-      ? (spirit.canonicalPathEn || `/en/spirits/${spirit.id}`)
-      : (spirit.canonicalPathKo || `/ko/spirits/${spirit.id}`),
-    meta: isEn
-      ? (spirit.producerNameEn || spirit.producerNameKo)
-      : spirit.producerNameKo,
-  }))
+  const items = (state.pageData?.content ?? []).map((spirit) => buildSpiritSnapshotItem(spirit, isEn))
   const count = state.pageData?.totalElements
 
   return {

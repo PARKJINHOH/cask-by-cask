@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import Spinner from '@/shared/components/Spinner'
-import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
 import InfiniteSentinel from '@/domain/photo-gallery/components/InfiniteSentinel'
 import { youtubeApi } from '@/domain/youtube/api/youtubeApi'
 import YoutubeChannelAvatar from '@/domain/youtube/components/YoutubeChannelAvatar'
@@ -14,14 +13,14 @@ import {
   flattenYoutubeVideos,
   useInfiniteYoutubeVideos,
 } from '@/domain/youtube/hooks/useInfiniteYoutubeVideos'
-import { buildYoutubeChannelSchema } from '@/domain/youtube/utils/youtubeSchema'
 
 /**
  * 채널 랜딩 페이지 — 채널 하나의 소개와 그 채널 영상만 모아 보여 준다.
  *
- * 갤러리의 `?channel=` 필터와 보이는 것은 비슷하지만 성격이 다르다.
- * 필터는 색인하지 않는 화면이고, 이 페이지는 **채널마다 색인 대상 주소를 하나씩 갖게** 하는 것이
- * 목적이다. 창작자에게 "당신 채널 페이지가 우리 사이트에 있다"고 보여 줄 수 있는 자리이기도 하다.
+ * 갤러리의 `?channel=` 필터와 보이는 것은 비슷하지만, 채널마다 **사람이 공유할 수 있는 주소**를
+ * 하나씩 준다는 점이 다르다. 창작자에게 "당신 채널 페이지가 우리 사이트에 있다"고 보여 줄 수 있는
+ * 자리이기도 하다. 다만 내용이 채널 메타데이터와 남의 영상 목록이라 색인 자산은 아니어서
+ * `noindex, follow` 로 두고 사이트맵에도 싣지 않는다.
  *
  * 주소의 식별자는 사람이 읽는 핸들이다(`/youtube/channels/juryuhak`). 핸들이 없는 채널은
  * 채널 ID 로 열리며, 서버가 둘 다 받는다.
@@ -112,14 +111,8 @@ export default function YoutubeChannelPage() {
         alternateDefault={buildCanonical(`/ko/youtube/channels/${canonicalRef}`)}
         locale={isEn ? 'en_US' : 'ko_KR'}
         ogImage={channel.thumbnailUrl ?? undefined}
-        jsonLd={[
-          buildYoutubeChannelSchema(channel, videos),
-          buildBreadcrumbSchema([
-            { name: t('nav.home'), path: '/' },
-            { name: t('youtube.title'), path: '/youtube' },
-            { name: channel.title, path: `/youtube/channels/${canonicalRef}` },
-          ]),
-        ]}
+        // 영상 상세와 같은 판정. 색인 대상 유튜브 경로는 /youtube 허브 하나뿐이다.
+        noindex
       />
 
       <nav className="mb-3">

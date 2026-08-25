@@ -8,6 +8,7 @@ import {
   parsePath,
   getDefaultMetadata,
   getPublicRouteMetadata,
+  getDefaultRouteSeoSnapshot,
   getHomeSeoSnapshot,
   getHomeJsonLd,
   getTierListMetadata,
@@ -34,10 +35,8 @@ import {
   getYoutubeListMetadata,
   getYoutubeListSeoSnapshot,
   getYoutubeVideoMetadata,
-  getYoutubeVideoJsonLd,
   getYoutubeVideoSeoSnapshot,
   getYoutubeChannelMetadata,
-  getYoutubeChannelJsonLd,
   getYoutubeChannelSeoSnapshot,
   getNoindexMetadata,
   getPublicReviewMetadata,
@@ -151,17 +150,18 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
   } else if (parsed.type === 'youtube-list') {
     snapshot = await getYoutubeListSeoSnapshot(parsed.lang)
   } else if (parsed.type === 'youtube-detail') {
-    ;[jsonLdData, snapshot] = await Promise.all([
-      getYoutubeVideoJsonLd(parsed.youtubeVideoKey!),
-      getYoutubeVideoSeoSnapshot(parsed.youtubeVideoKey!, parsed.lang),
-    ])
+    // noindex 라우트라 라우트 JSON-LD 를 싣지 않는다. SeoMeta.syncRouteJsonLd 가
+    // noindex 일 때 schemas 를 비우고 SSR 스크립트를 지우므로, 남겨두면 SSR 에만 있고
+    // 렌더 후 DOM 에는 없는 상태가 확정된다.
+    snapshot = await getYoutubeVideoSeoSnapshot(parsed.youtubeVideoKey!, parsed.lang)
   } else if (parsed.type === 'youtube-channel') {
-    ;[jsonLdData, snapshot] = await Promise.all([
-      getYoutubeChannelJsonLd(parsed.youtubeChannelRef!),
-      getYoutubeChannelSeoSnapshot(parsed.youtubeChannelRef!, parsed.lang),
-    ])
+    snapshot = await getYoutubeChannelSeoSnapshot(parsed.youtubeChannelRef!, parsed.lang)
   } else if (parsed.type === 'tier-list' && !parsed.tierListShareKey) {
     snapshot = getTierListSeoSnapshot(parsed.lang)
+  } else if (parsed.type === 'default') {
+    // generateMetadata 의 getPublicRouteMetadata 와 짝을 이룬다. 이 분기가 없던 동안
+    // 생산자·약관·FAQ 등 default 라우트 전체가 제목만 있고 본문이 빈 채로 크롤됐다.
+    snapshot = await getDefaultRouteSeoSnapshot(parsed.lang, parsed.canonicalPath)
   }
 
   if (!snapshot && parsed.resourcePath

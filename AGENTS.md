@@ -332,12 +332,19 @@ RSS 는 최신 15편만 담아 **옛 영상이 지워졌는지 알려 주지 않
   16:9·9:16 어느 쪽이든 원본 프레임만 남는다.
 - 트랜잭션: 유튜브 호출은 **트랜잭션 밖**에서 끝내고 쓰기는 `YoutubeSyncWriter`·`YoutubeAdminWriter`
   (별도 빈)가 맡는다. 같은 클래스의 메서드로 합치면 자기 호출이라 `@Transactional` 프록시가 걸리지 않는다.
-- **색인 대상 주소는 셋**이다. 목록 `/youtube`, 채널 `/youtube/channels/{핸들|채널ID}`,
-  영상 `/youtube/{videoKey}`(DB PK 가 아니라 **유튜브 영상 ID**). 모두 `/sitemaps/youtube.xml`
-  에 실리고 서버 렌더 JSON-LD 가 붙는다(`seoHelpers.getYoutube*JsonLd`).
-  - `VideoObject` 의 `publisher` 는 우리가 아니라 **채널**이고 `contentUrl` 은 쓰지 않는다
-    (우리가 호스팅하는 파일이 아니다). 채널 페이지는 `CollectionPage.about` 이 채널이고
-    `sameAs` 로 유튜브 채널 홈을 가리킨다 — 우리가 채널 본인인 척하지 않기 위해서다.
+- **색인 대상 주소는 목록 `/youtube` 하나뿐이다.** 채널 `/youtube/channels/{핸들|채널ID}` 과
+  영상 `/youtube/{videoKey}`(DB PK 가 아니라 **유튜브 영상 ID**)는 `noindex, follow` 이고
+  사이트맵에도 싣지 않는다. 세 주소 모두 사람이 공유하는 주소로는 계속 살아 있다.
+  - 이유: 채널·영상 페이지는 제목·설명·썸네일이 전부 남의 영상에서 온 값이라 색인 자산이 아니다.
+    2026-08 감사에서 이 1,500여 건이 사이트맵의 41%를 차지해 크롤 예산을 잠식하고 있었다.
+  - **`nofollow` 는 붙이지 않는다.** 영상 페이지가 태그된 주류로 내보내는 링크가 갤러리에서
+    카탈로그로 가는 크롤 경로다. 그래서 `proxy.ts` 의 `X-Robots-Tag`(noindex, **nofollow**)
+    목록에 `/youtube` 를 넣으면 안 된다.
+  - noindex 라우트라 **라우트 JSON-LD 를 싣지 않는다.** `SeoMeta.syncRouteJsonLd` 가 noindex 일 때
+    스키마를 비우고 SSR 스크립트를 지우므로, 서버에만 남기면 SSR↔DOM 이 어긋난다.
+  - 판정은 세 곳이 함께 맞춰야 한다: SSR(`seoHelpers.getYoutube{Video,Channel}Metadata`),
+    클라이언트(`Youtube{VideoDetail,Channel}Page` 의 `SeoMeta noindex`),
+    사이트맵(`SitemapService.generateSitemapIndex`). 하나만 바꾸면 하이드레이션 후 뒤집힌다.
   - 목록의 필터·검색 주소(`?type`·`?q`·`?spirit`·`?v`)는 본 목록과 겹쳐 noindex 다.
 - **채널별 목록은 갤러리 필터가 아니라 채널 페이지가 맡는다.** 예전에는 갤러리 상단 카드가
   `?channel=` 로 그 자리에서 걸러 주기만 했는데, 주소가 갤러리와 같아 검색엔진에 채널이 하나도

@@ -58,7 +58,10 @@ public class SitemapService {
         for (long bucket : contentBuckets()) {
             appendSitemap(sb, "/sitemaps/content-" + bucket + ".xml");
         }
-        appendSitemap(sb, "/sitemaps/youtube.xml");
+        // youtube.xml 은 의도적으로 싣지 않는다 — 영상·채널 페이지는 제목·설명·썸네일이 모두
+        // 남의 영상에서 온 값이라 noindex 로 전환했다. 색인 대상 유튜브 주소는 static.xml 의
+        // /youtube 허브 하나뿐이며, 영상·채널은 내부 링크로만 발견된다.
+        // (엔드포인트 자체는 살아 있다 — 되돌리려면 이 자리에 appendSitemap 한 줄만 복구하면 된다.)
         for (long bucket : producerBuckets()) {
             appendSitemap(sb, "/sitemaps/producers-" + bucket + ".xml");
         }
@@ -243,6 +246,9 @@ public class SitemapService {
 
     /**
      * 유튜브 갤러리 영상 상세.
+     * <p>
+     * <b>현재 사이트맵 인덱스에 등재되지 않는다.</b> 영상·채널 페이지가 noindex 로 바뀌었기 때문이다
+     * ({@code generateSitemapIndex} 주석 참고). 엔드포인트는 롤백과 수동 점검을 위해 남겨 둔다.
      * <p>
      * 채널당 최신 15편씩만 쌓이는 목록이라 버킷을 나누지 않는다 — 5만 URL 상한에 닿으려면
      * 채널이 3천 개를 넘어야 한다. 그때가 오면 주류 사이트맵처럼 샤딩할 것.

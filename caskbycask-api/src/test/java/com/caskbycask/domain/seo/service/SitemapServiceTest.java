@@ -60,6 +60,9 @@ class SitemapServiceTest {
         assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-ko-1.xml");
         assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-en-0.xml");
         assertThat(xml).contains("https://www.caskbycask.net/sitemaps/spirits-en-1.xml");
+        // 유튜브 영상·채널은 noindex 라 인덱스에 실리지 않는다. 다시 실리면 사이트맵이
+        // noindex URL 1,500여 건을 제출하게 되므로 여기서 막는다.
+        assertThat(xml).doesNotContain("/sitemaps/youtube.xml");
         assertThat(xml).doesNotContain("<urlset");
     }
 
@@ -85,6 +88,9 @@ class SitemapServiceTest {
         assertThat(xml).contains("/ko/taste-trees", "/en/taste-trees");
         assertThat(xml).contains("/ko/price-tracker", "/en/price-tracker");
         assertThat(xml).contains("/ko/operation-policy", "/en/operation-policy");
+        // 영상·채널을 noindex 로 내린 뒤 /youtube 허브는 유일한 색인 대상 유튜브 주소이자
+        // 영상 페이지로 가는 유일한 발견 경로다. 정리하다 함께 빠지지 않도록 고정한다.
+        assertThat(xml).contains("/ko/youtube", "/en/youtube");
     }
 
     @Test
