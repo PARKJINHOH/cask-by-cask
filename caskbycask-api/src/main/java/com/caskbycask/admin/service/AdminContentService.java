@@ -15,6 +15,7 @@ import com.caskbycask.domain.review.service.ReviewImageService;
 import com.caskbycask.domain.review.service.ReviewService;
 import com.caskbycask.domain.social.entity.enums.SocialSourceType;
 import com.caskbycask.domain.social.service.SocialPublishRequestService;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -45,6 +46,7 @@ public class AdminContentService {
     private final SocialPublishRequestService socialPublishRequestService;
     private final EmailSender emailSender;
     private final NotificationService notificationService;
+    private final TranslationCacheInvalidator translationCacheInvalidator;
 
     // ── 리뷰 관리 ──────────────────────────────────────────
 
@@ -69,6 +71,7 @@ public class AdminContentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
 
         review.hide();
+        translationCacheInvalidator.invalidateReview(reviewId);
         reviewService.recalculateAvgScore(review.getSpirit().getId());
         sendReviewModerationEmailIfNeeded(review, request, "리뷰 노출 제한 안내", "숨김 처리");
         sendReviewModerationNotification(review, "리뷰가 운영 정책에 따라 숨김 처리되었습니다.", moderationReason(request), TARGET_MY_REVIEWS);
@@ -80,6 +83,7 @@ public class AdminContentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
 
         review.unhide();
+        translationCacheInvalidator.invalidateReview(reviewId);
         reviewService.recalculateAvgScore(review.getSpirit().getId());
         sendReviewSystemNotification(review, "리뷰 노출 제한이 해제되었습니다.", TARGET_SPIRIT);
     }
@@ -91,6 +95,7 @@ public class AdminContentService {
 
         Long spiritId = review.getSpirit().getId();
         review.softDelete();
+        translationCacheInvalidator.invalidateReview(reviewId);
         socialPublishRequestService.markSourceDeleted(SocialSourceType.REVIEW, reviewId);
         reviewImageService.deleteForReview(reviewId);
         reviewService.recalculateAvgScore(spiritId);
@@ -104,6 +109,7 @@ public class AdminContentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
 
         review.unhide();
+        translationCacheInvalidator.invalidateReview(reviewId);
         reviewService.recalculateAvgScore(review.getSpirit().getId());
         sendReviewSystemNotification(review, "리뷰가 복구되었습니다.", TARGET_SPIRIT);
     }

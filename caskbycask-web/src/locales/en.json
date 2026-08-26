@@ -3,6 +3,18 @@
     "name": "CaskByCask",
     "tagline": "Whisky · Wine · Cognac Review Community"
   },
+  "translation": {
+    "translate": "Translate",
+    "loading": "Translating…",
+    "showOriginal": "See original",
+    "attributionLabel": "Translation powered by Google Translate",
+    "error": {
+      "monthlyLimit": "The free translation allowance for this month has been used.",
+      "dailyLimit": "Today's free translation allowance has been used. Please try again later.",
+      "disabled": "Automatic translation is not available yet.",
+      "unavailable": "Automatic translation is temporarily unavailable. Please refer to the original text."
+    }
+  },
   "imageEditor": {
     "title": "Edit image",
     "undo": "Undo",

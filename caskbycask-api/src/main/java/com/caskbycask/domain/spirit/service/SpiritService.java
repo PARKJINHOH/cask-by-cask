@@ -27,6 +27,7 @@ import com.caskbycask.domain.spirit.repository.SpiritVariantLinkRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -90,6 +91,7 @@ public class SpiritService {
     private final SpiritSearchService spiritSearchService;
     private final EmailSender emailSender;
     private final WineRegionService wineRegionService;
+    private final TranslationCacheInvalidator translationCacheInvalidator;
 
     /** Optional field injection keeps domain unit tests and IndexNow-disabled environments isolated. */
     @Autowired(required = false)
@@ -867,6 +869,9 @@ public class SpiritService {
 
         notifyIndexing(indexingTargets);
 
+        indexingTargets.stream().map(Spirit::getId).distinct()
+                .forEach(translationCacheInvalidator::invalidateSpirit);
+
         return SpiritDetailResponse.of(spirit, images);
     }
 
@@ -874,6 +879,7 @@ public class SpiritService {
     public void deleteSpirit(Long id) {
         Spirit spirit = getSpirit(id);
         spirit.hide();
+        translationCacheInvalidator.invalidateSpirit(id);
         notifyIndexing(spirit);
     }
 
@@ -881,6 +887,7 @@ public class SpiritService {
     public void restoreSpirit(Long id) {
         Spirit spirit = getSpirit(id);
         spirit.activate();
+        translationCacheInvalidator.invalidateSpirit(id);
         notifyIndexing(spirit);
     }
 
@@ -895,6 +902,7 @@ public class SpiritService {
         }
 
         spiritImageService.deleteImagesBySpiritId(id);
+        translationCacheInvalidator.invalidateSpirit(id);
         spiritRepository.delete(spirit);
         notifyIndexing(spirit);
     }

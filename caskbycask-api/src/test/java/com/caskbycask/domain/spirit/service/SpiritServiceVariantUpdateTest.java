@@ -16,6 +16,7 @@ import com.caskbycask.domain.spirit.repository.SpiritVariantLinkRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.util.BadWordFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,6 +60,7 @@ class SpiritServiceVariantUpdateTest {
     @Mock private BadWordFilter badWordFilter;
     @Mock private SpiritSearchService spiritSearchService;
     @Mock private EmailSender emailSender;
+    @Mock private TranslationCacheInvalidator translationCacheInvalidator;
     @Spy private WineRegionService wineRegionService = new WineRegionService();
 
     @InjectMocks private SpiritService spiritService;

@@ -9,6 +9,9 @@ import ImageLightbox from '@/shared/components/ImageLightbox'
 import { stripLocalePrefix } from '@/domain/spirit/utils/spiritUrl'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 import ShareUrlButton from '@/shared/components/ShareUrlButton'
+import { useContentTranslation } from '@/domain/translation/hooks/useContentTranslation'
+import TranslationAction from '@/domain/translation/components/TranslationAction'
+import { shouldOfferContentTranslation } from '@/domain/translation/utils/contentLanguage'
 
 function score(value: number | null) {
   return value == null ? '-' : Number(value).toFixed(1)
@@ -20,6 +23,7 @@ export default function PublicReviewPage() {
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const contentTranslation = useContentTranslation('REVIEW', id)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['public-review', id],
     queryFn: () => socialApi.publicReview(id),
@@ -46,11 +50,19 @@ export default function PublicReviewPage() {
   const canonicalPath = isEn ? data.canonicalPathEn : data.canonicalPathKo
   const reviewImages = data.images ?? []
   const reviewImageUrls = reviewImages.map((image) => image.imageUrl)
+  const translated = contentTranslation.fields
   const notes = [
-    ['nose', data.noseScore, data.noseNote],
-    ['taste', data.tasteScore, data.tasteNote],
-    ['finish', data.finishScore, data.finishNote],
+    ['nose', data.noseScore, translated?.noseNote ?? data.noseNote],
+    ['taste', data.tasteScore, translated?.tasteNote ?? data.tasteNote],
+    ['finish', data.finishScore, translated?.finishNote ?? data.finishNote],
   ] as const
+  const sourceReviewTexts = [data.noseNote, data.tasteNote, data.finishNote, data.comment]
+  const hasTranslatableText = sourceReviewTexts
+    .some((value) => !!value?.trim())
+  const shouldShowTranslation = hasTranslatableText && shouldOfferContentTranslation(
+    sourceReviewTexts,
+    contentTranslation.targetLanguage,
+  )
 
   return (
     <>
@@ -140,9 +152,16 @@ export default function PublicReviewPage() {
                 <section className="rounded-2xl border border-neutral-200 p-4">
                   <h2 className="font-bold text-neutral-900">{t('social.reviewField.overall')}</h2>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">
-                    {data.comment || t('social.noReviewText')}
+                    {translated?.comment || data.comment || t('social.noReviewText')}
                   </p>
                 </section>
+                <TranslationAction
+                  hasContent={shouldShowTranslation}
+                  showTranslated={contentTranslation.showTranslated}
+                  isLoading={contentTranslation.isLoading}
+                  error={contentTranslation.error}
+                  onToggle={contentTranslation.toggle}
+                />
               </div>
 
               <Link

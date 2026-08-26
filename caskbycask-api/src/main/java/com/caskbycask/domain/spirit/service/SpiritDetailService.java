@@ -358,6 +358,29 @@ public class SpiritDetailService {
 
     // ── 응답 DTO 빌더 ─────────────────────────────────────────
 
+    /** 공개 번역 원문용 카테고리별 기타 소개. 저장 형식(extra_data)은 이 서비스만 해석한다. */
+    @Transactional(readOnly = true)
+    public String extractNotes(Spirit spirit) {
+        return switch (spirit.getCategory()) {
+            case WHISKY -> {
+                WhiskyDetailResponse detail = buildWhiskyDetailResponse(spirit.getWhiskyDetail());
+                yield detail != null ? detail.notes() : null;
+            }
+            case WINE -> {
+                WineDetailResponse detail = buildWineDetailResponse(spirit.getWineDetail());
+                yield detail != null ? detail.notes() : null;
+            }
+            case COGNAC -> {
+                CognacDetailResponse detail = buildCognacDetailResponse(spirit.getCognacDetail());
+                yield detail != null ? detail.notes() : null;
+            }
+            case OTHER -> {
+                OtherDetailResponse detail = buildOtherDetailResponse(spirit.getOtherDetail());
+                yield detail != null ? detail.notes() : null;
+            }
+        };
+    }
+
     @Transactional(readOnly = true)
     public SpiritDetailResponse buildFullDetailResponse(Spirit spirit,
                                                          List<SpiritImageResponse> images,

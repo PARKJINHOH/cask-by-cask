@@ -21,6 +21,7 @@ import com.caskbycask.domain.spirit.repository.SpiritVariantLinkRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -78,6 +79,7 @@ class SpiritServiceRegionCodeTest {
     @Mock private BadWordFilter badWordFilter;
     @Mock private SpiritSearchService spiritSearchService;
     @Mock private EmailSender emailSender;
+    @Mock private TranslationCacheInvalidator translationCacheInvalidator;
 
     /** 카탈로그 해석은 실제 동작을 검증해야 하므로 실 구현을 주입한다 */
     @Spy private WineRegionService wineRegionService = new WineRegionService();
@@ -180,6 +182,7 @@ class SpiritServiceRegionCodeTest {
 
         assertThat(existing.getRegionCode()).isEqualTo(WineRegion.IT_PIEMONTE_BAROLO);
         assertThat(existing.getRegion()).isEqualTo("피에몬테");
+        verify(translationCacheInvalidator).invalidateSpirit(5L);
     }
 
     @Test

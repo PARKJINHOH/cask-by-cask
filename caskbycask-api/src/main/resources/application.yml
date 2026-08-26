@@ -118,6 +118,16 @@ exchange-rate:
   retry-max-attempts: ${EXCHANGE_RATE_RETRY_MAX_ATTEMPTS:3}
   retry-initial-backoff-ms: ${EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS:1000}
 
+# 공개 주류 소개·리뷰의 온디맨드 Google 번역. 법률 문서·Cloud 쿼터 준비 전에는 false 유지.
+translation:
+  enabled: ${TRANSLATION_ENABLED:false}
+  monthly-character-limit: ${TRANSLATION_MONTHLY_CHARACTER_LIMIT:450000}
+  google:
+    api-key: ${TRANSLATION_GOOGLE_API_KEY:}
+    base-url: ${TRANSLATION_GOOGLE_BASE_URL:https://translation.googleapis.com}
+    connect-timeout-ms: ${TRANSLATION_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${TRANSLATION_READ_TIMEOUT_MS:8000}
+
 # 유튜브 갤러리 — 승인한 채널의 새 영상을 공식 Data API v3 또는 공개 RSS 피드로 따라잡는다.
 # API 키가 있으면 공식 Data API v3를 우선 사용(클라우드 IP 차단 방지)하며, 미설정 시 RSS 피드로 fallback 합니다.
 youtube:

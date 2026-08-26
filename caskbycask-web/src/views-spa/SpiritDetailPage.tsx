@@ -36,8 +36,9 @@ import { useState as useStateForPrice } from 'react'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
-import { findLatestRegisteredVariant } from '@/domain/spirit/utils/latestSpiritVariant'
+import { compareVariantDisplayOrder, findLastDisplayedVariant } from '@/domain/spirit/utils/variantDisplayOrder'
 import SpiritYoutubeSection from '@/domain/youtube/components/SpiritYoutubeSection'
+import TranslatableTextBlock from '@/domain/translation/components/TranslatableTextBlock'
 
 // 가격 차트는 recharts(약 313KB)를 끌어오지만 기본 탭이 '리뷰'라 첫 화면에서는 쓰이지 않는다.
 // 가격 탭을 열 때만 내려받도록 지연 로드한다.
@@ -706,13 +707,6 @@ function toVariantOption(spirit: SpiritDetail): SpiritVariant {
   }
 }
 
-function compareVariantDisplayOrder(a: SpiritVariant, b: SpiritVariant) {
-  const orderA = a.displayOrder ?? Number.MAX_SAFE_INTEGER
-  const orderB = b.displayOrder ?? Number.MAX_SAFE_INTEGER
-  if (orderA !== orderB) return orderA - orderB
-  return a.id - b.id
-}
-
 function stripLangPrefix(path: string) {
   return path.replace(/^\/(ko|en)(?=\/)/, '') || '/'
 }
@@ -946,7 +940,7 @@ export default function SpiritDetailPage() {
   const spiritId = parseInt(id || '', 10)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
-  // URL 복사는 보고 있는 주소의 ID 를 쓴다. 마스터 상세는 최신 에디션 정보를 표시하므로
+  // URL 복사는 보고 있는 주소의 ID 를 쓴다. 마스터 상세는 마지막 에디션 정보를 표시하므로
   // displaySpirit.id 가 현재 URL 의 ID 와 다를 수 있다.
   const shareUrl = getSpiritShareUrl(spiritId, i18n.language)
   const [selectedImg, setSelectedImg]   = useState(0)
@@ -957,19 +951,20 @@ export default function SpiritDetailPage() {
   const [priceVariantId, setPriceVariantId] = useState<number | null>(null)
 
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
-  // 마스터 상세는 관리자가 가장 나중에 등록한 활성 에디션의 제품 정보를 기본으로 보여 준다.
+  // 마스터 상세는 에디션 목록의 마지막 활성 에디션(= 목록 카드가 링크하는 대표 에디션)의
+  // 제품 정보를 기본으로 보여 준다.
   // 리뷰·댓글·가격 등 탭의 조회 ID는 아래에서 기존처럼 마스터 ID를 계속 사용한다.
-  const latestRegisteredVariant = useMemo(
+  const lastEditionVariant = useMemo(
     () => spirit?.parentId == null
-      ? findLatestRegisteredVariant(spirit?.variants ?? [])
+      ? findLastDisplayedVariant(spirit?.variants ?? [])
       : null,
     [spirit],
   )
   const {
-    data: latestVariantSpirit,
-    isLoading: isLatestVariantLoading,
-    isPlaceholderData: isLatestVariantPlaceholder,
-  } = useSpiritDetail(latestRegisteredVariant?.id ?? 0, false)
+    data: lastEditionSpirit,
+    isLoading: isLastEditionLoading,
+    isPlaceholderData: isLastEditionPlaceholder,
+  } = useSpiritDetail(lastEditionVariant?.id ?? 0, false)
   // 릴리즈에 누락된 공통 위스키 스타일은 상위 원본 주류에서만 보완한다.
   // React Query 캐시를 공유하므로 상위 주류를 이미 본 경우 추가 요청은 발생하지 않는다.
   const { data: parentSpirit } = useSpiritDetail(spirit?.parentId ?? 0)
@@ -1063,7 +1058,7 @@ export default function SpiritDetailPage() {
     scrollToPageTop(null)
   }, [spiritId])
 
-  if (isLoading || isLatestVariantLoading || isLatestVariantPlaceholder) return <Spinner fullscreen />
+  if (isLoading || isLastEditionLoading || isLastEditionPlaceholder) return <Spinner fullscreen />
 
   if (!spirit) {
     return (
@@ -1073,7 +1068,7 @@ export default function SpiritDetailPage() {
     )
   }
 
-  const displaySpirit = latestVariantSpirit ?? spirit
+  const displaySpirit = lastEditionSpirit ?? spirit
   const { primaryName, secondaryName } = getLocalizedNames(displaySpirit.nameKo, displaySpirit.nameEn, i18n.language)
   const primaryProducer   = isEn ? (displaySpirit.producerNameEn || displaySpirit.producerNameKo) : displaySpirit.producerNameKo
   const secondaryProducer = isEn ? displaySpirit.producerNameKo : displaySpirit.producerNameEn
@@ -1343,9 +1338,14 @@ export default function SpiritDetailPage() {
 
             {/* 카테고리별 서술형 추가 정보 — 별도 제목 없이 기존 핵심 스펙 위치를 사용한다 */}
             {headerAdditionalInfo && (
-              <p className="border-t border-neutral-200 pt-4 text-[14px] text-neutral-700 whitespace-pre-wrap leading-relaxed">
-                {headerAdditionalInfo}
-              </p>
+              <TranslatableTextBlock
+                resourceType="SPIRIT_NOTES"
+                resourceId={displaySpirit.id}
+                field="notes"
+                text={headerAdditionalInfo}
+                className="border-t border-neutral-200 pt-4"
+                textClassName="text-[14px] text-neutral-700 whitespace-pre-wrap leading-relaxed"
+              />
             )}
 
           </div>

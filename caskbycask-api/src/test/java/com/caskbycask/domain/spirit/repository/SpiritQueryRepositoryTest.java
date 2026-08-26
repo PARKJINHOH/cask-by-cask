@@ -8,6 +8,7 @@ import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritSort;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
+import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.global.config.JpaAuditingConfig;
 import com.caskbycask.global.config.QuerydslConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -173,6 +174,51 @@ class SpiritQueryRepositoryTest {
     }
 
     @Test
+    @DisplayName("대표 에디션 — 목록 카드는 표시 순서의 마지막 에디션으로 링크한다")
+    void canonicalPathPointsToLastDisplayedVariant() {
+        Spirit master = spiritRepository.save(spirit("아드벡 우거다일", "Ardbeg Uigeadail",
+                SpiritCategory.WHISKY, "Scotland", new BigDecimal("54.2"), null, 0, producer));
+        // 저장 순서를 표시 순서와 다르게 섞어, 등록 순이 아니라 displayOrder 가 기준임을 확인한다
+        Spirit lastEdition = spiritRepository.save(variant(master, "Batch 3", 2));
+        spiritRepository.save(variant(master, "Batch 1", 0));
+        spiritRepository.save(variant(master, "Batch 2", 1));
+
+        SpiritListResponse row = searchOne("우거다일");
+
+        assertThat(row.id()).isEqualTo(master.getId());
+        assertThat(row.canonicalPathKo()).startsWith("/ko/spirits/" + lastEdition.getId() + "-");
+        assertThat(row.canonicalPathEn()).startsWith("/en/spirits/" + lastEdition.getId() + "-");
+    }
+
+    @Test
+    @DisplayName("대표 에디션 — 표시 순서가 없는 에디션은 목록 맨 뒤로 취급한다")
+    void canonicalPathTreatsNullDisplayOrderAsLast() {
+        Spirit master = spiritRepository.save(spirit("탈리스커 스톰", "Talisker Storm",
+                SpiritCategory.WHISKY, "Scotland", new BigDecimal("45.8"), null, 0, producer));
+        spiritRepository.save(variant(master, "Batch 1", 0));
+        Spirit unordered = spiritRepository.save(variant(master, "Batch 2", null));
+
+        SpiritListResponse row = searchOne("스톰");
+
+        assertThat(row.canonicalPathKo()).startsWith("/ko/spirits/" + unordered.getId() + "-");
+    }
+
+    @Test
+    @DisplayName("대표 에디션 — 숨김 에디션이 마지막이어도 활성 에디션을 링크한다")
+    void canonicalPathSkipsHiddenVariant() {
+        Spirit master = spiritRepository.save(spirit("라가불린 8년", "Lagavulin 8",
+                SpiritCategory.WHISKY, "Scotland", new BigDecimal("48.0"), null, 0, producer));
+        Spirit visible = spiritRepository.save(variant(master, "Batch 1", 0));
+        Spirit hiddenEdition = variant(master, "Batch 2", 1);
+        hiddenEdition.hide();
+        spiritRepository.save(hiddenEdition);
+
+        SpiritListResponse row = searchOne("라가불린");
+
+        assertThat(row.canonicalPathKo()).startsWith("/ko/spirits/" + visible.getId() + "-");
+    }
+
+    @Test
     @DisplayName("페이지네이션")
     void pagination() {
         PageRequest firstPage = PageRequest.of(0, 2);
@@ -188,6 +234,13 @@ class SpiritQueryRepositoryTest {
         return spiritRepository.search(condition, page);
     }
 
+    /** 키워드로 마스터 1건만 걸리는 상황을 전제로 그 행을 꺼낸다. */
+    private SpiritListResponse searchOne(String keyword) {
+        Page<SpiritListResponse> result = search(condition().keyword(keyword).build());
+        assertThat(result.getContent()).hasSize(1);
+        return result.getContent().get(0);
+    }
+
     private ConditionBuilder condition() {
         return new ConditionBuilder();
     }
@@ -201,6 +254,21 @@ class SpiritQueryRepositoryTest {
         s.approve();
         s.updateAvgScore(avgScore, reviewCount, reviewCount);
         return s;
+    }
+
+    /** 마스터에 달리는 하위 에디션(배치). */
+    private Spirit variant(Spirit master, String variantValue, Integer displayOrder) {
+        Spirit v = Spirit.builder()
+                .nameKo(master.getNameKo()).nameEn(master.getNameEn())
+                .category(master.getCategory()).country(master.getCountry())
+                .producer(master.getProducer())
+                .parent(master)
+                .variantType(VariantType.BATCH)
+                .variantValue(variantValue)
+                .displayOrder(displayOrder)
+                .build();
+        v.approve();
+        return v;
     }
 
     private static class ConditionBuilder {
