@@ -17,7 +17,11 @@ import ImageLightbox from '@/shared/components/ImageLightbox'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import ReviewList from '@/domain/review/components/ReviewList'
 import { useReviews } from '@/domain/review/hooks/useReviews'
-import { buildBreadcrumbSchema, buildReviewSchema } from '@/shared/utils/seoSchema'
+import {
+  buildReviewSchema,
+  buildSpiritBreadcrumbSchema,
+  buildSpiritProductSchema,
+} from '@/shared/utils/seoSchema'
 import CommentList from '@/domain/comment/components/CommentList'
 import { useComments } from '@/domain/comment/hooks/useComments'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
@@ -36,8 +40,9 @@ import { useState as useStateForPrice } from 'react'
 import type { StoreType } from '@/domain/pricetracker/types/pricetracker.types'
 import { CATEGORY_TO_PRODUCER_TYPE, PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
-import { findLatestRegisteredVariant } from '@/domain/spirit/utils/latestSpiritVariant'
+import { compareVariantDisplayOrder, findLastDisplayedVariant } from '@/domain/spirit/utils/variantDisplayOrder'
 import SpiritYoutubeSection from '@/domain/youtube/components/SpiritYoutubeSection'
+import TranslatableTextBlock from '@/domain/translation/components/TranslatableTextBlock'
 
 // 가격 차트는 recharts(약 313KB)를 끌어오지만 기본 탭이 '리뷰'라 첫 화면에서는 쓰이지 않는다.
 // 가격 탭을 열 때만 내려받도록 지연 로드한다.
@@ -706,13 +711,6 @@ function toVariantOption(spirit: SpiritDetail): SpiritVariant {
   }
 }
 
-function compareVariantDisplayOrder(a: SpiritVariant, b: SpiritVariant) {
-  const orderA = a.displayOrder ?? Number.MAX_SAFE_INTEGER
-  const orderB = b.displayOrder ?? Number.MAX_SAFE_INTEGER
-  if (orderA !== orderB) return orderA - orderB
-  return a.id - b.id
-}
-
 function stripLangPrefix(path: string) {
   return path.replace(/^\/(ko|en)(?=\/)/, '') || '/'
 }
@@ -946,7 +944,7 @@ export default function SpiritDetailPage() {
   const spiritId = parseInt(id || '', 10)
   const { t, i18n } = useTranslation()
   const isEn = i18n.language === 'en'
-  // URL 복사는 보고 있는 주소의 ID 를 쓴다. 마스터 상세는 최신 에디션 정보를 표시하므로
+  // URL 복사는 보고 있는 주소의 ID 를 쓴다. 마스터 상세는 마지막 에디션 정보를 표시하므로
   // displaySpirit.id 가 현재 URL 의 ID 와 다를 수 있다.
   const shareUrl = getSpiritShareUrl(spiritId, i18n.language)
   const [selectedImg, setSelectedImg]   = useState(0)
@@ -957,19 +955,20 @@ export default function SpiritDetailPage() {
   const [priceVariantId, setPriceVariantId] = useState<number | null>(null)
 
   const { data: spirit, isLoading } = useSpiritDetail(spiritId)
-  // 마스터 상세는 관리자가 가장 나중에 등록한 활성 에디션의 제품 정보를 기본으로 보여 준다.
+  // 마스터 상세는 에디션 목록의 마지막 활성 에디션(= 목록 카드가 링크하는 대표 에디션)의
+  // 제품 정보를 기본으로 보여 준다.
   // 리뷰·댓글·가격 등 탭의 조회 ID는 아래에서 기존처럼 마스터 ID를 계속 사용한다.
-  const latestRegisteredVariant = useMemo(
+  const lastEditionVariant = useMemo(
     () => spirit?.parentId == null
-      ? findLatestRegisteredVariant(spirit?.variants ?? [])
+      ? findLastDisplayedVariant(spirit?.variants ?? [])
       : null,
     [spirit],
   )
   const {
-    data: latestVariantSpirit,
-    isLoading: isLatestVariantLoading,
-    isPlaceholderData: isLatestVariantPlaceholder,
-  } = useSpiritDetail(latestRegisteredVariant?.id ?? 0, false)
+    data: lastEditionSpirit,
+    isLoading: isLastEditionLoading,
+    isPlaceholderData: isLastEditionPlaceholder,
+  } = useSpiritDetail(lastEditionVariant?.id ?? 0, false)
   // 릴리즈에 누락된 공통 위스키 스타일은 상위 원본 주류에서만 보완한다.
   // React Query 캐시를 공유하므로 상위 주류를 이미 본 경우 추가 요청은 발생하지 않는다.
   const { data: parentSpirit } = useSpiritDetail(spirit?.parentId ?? 0)
@@ -1063,7 +1062,7 @@ export default function SpiritDetailPage() {
     scrollToPageTop(null)
   }, [spiritId])
 
-  if (isLoading || isLatestVariantLoading || isLatestVariantPlaceholder) return <Spinner fullscreen />
+  if (isLoading || isLastEditionLoading || isLastEditionPlaceholder) return <Spinner fullscreen />
 
   if (!spirit) {
     return (
@@ -1073,7 +1072,7 @@ export default function SpiritDetailPage() {
     )
   }
 
-  const displaySpirit = latestVariantSpirit ?? spirit
+  const displaySpirit = lastEditionSpirit ?? spirit
   const { primaryName, secondaryName } = getLocalizedNames(displaySpirit.nameKo, displaySpirit.nameEn, i18n.language)
   const primaryProducer   = isEn ? (displaySpirit.producerNameEn || displaySpirit.producerNameKo) : displaySpirit.producerNameKo
   const secondaryProducer = isEn ? displaySpirit.producerNameKo : displaySpirit.producerNameEn
@@ -1118,69 +1117,35 @@ export default function SpiritDetailPage() {
     }),
   )
 
-  const langPrefix = isEn ? '/en' : '/ko'
   // 평점을 낸 모수는 점수를 남긴 리뷰뿐이다 — reviewCount(총 리뷰 수)를 쓰면
   // aggregateRating 의 개수가 실제 평점 수와 어긋나 구조화 데이터가 틀린 값이 된다.
   const ratedReviewCount = scoreSource?.scoredReviewCount ?? 0
-  const hasProductSnippetData = (spirit.avgScore != null && ratedReviewCount > 0) || reviewSchemas.length > 0
 
-  const spiritJsonLd = hasProductSnippetData ? {
-    '@type': 'Product',
-    name: primaryName,
-    alternateName: secondaryName || undefined,
-    description: isEn
-      ? `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · Liquor specifications, tasting notes & user reviews on CaskByCask.`
-      : `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · 원산지, 도수 등 상세 주류 정보와 테이스팅 노트 및 사용자 리뷰.`,
-    url: canonicalUrl,
+  // 스키마는 서버(seoHelpers.getSpiritDetailJsonLd)와 **같은 빌더**를 쓴다. 예전에는 양쪽이
+  // 각자 리터럴을 만들어, 같은 페이지인데 JS 실행 여부에 따라 구글이 다른 평점을 봤다.
+  // 평점 출처는 바로 아래 StarScore 와 같은 scoreSource(에디션이면 마스터)여야 한다 —
+  // 예전 게이트는 spirit.avgScore 를 봐서, 부모에만 평점이 있는 에디션에서 평점이 통째로 빠졌다.
+  const spiritJsonLd = buildSpiritProductSchema({
+    lang: isEn ? 'en' : 'ko',
+    primaryName,
+    secondaryName,
+    canonicalUrl,
     image: heroImage,
-    brand: primaryProducer ? {
-      '@type': 'Brand',
-      name: primaryProducer,
-      ...(secondaryProducer ? { alternateName: secondaryProducer } : {}),
-    } : undefined,
-    manufacturer: primaryProducer ? {
-      '@type': 'Organization',
-      name: primaryProducer,
-      ...(secondaryProducer ? { alternateName: secondaryProducer } : {}),
-      address: spirit.country ? {
-        '@type': 'PostalAddress',
-        addressCountry: spirit.country,
-      } : undefined,
-    } : undefined,
-    countryOfOrigin: countryLabel || undefined,
     category: displaySpirit.category,
-    aggregateRating: (scoreSource?.avgScore != null && ratedReviewCount > 0) ? {
-      '@type': 'AggregateRating',
-      ratingValue: scoreSource.avgScore,
-      reviewCount: ratedReviewCount,
-      bestRating: 100,
-      worstRating: 0,
-    } : undefined,
-    ...(reviewSchemas.length > 0 ? { review: reviewSchemas } : {}),
-  } : {
-    '@type': 'WebPage',
-    name: primaryName,
-    alternateName: secondaryName || undefined,
-    description: isEn
-      ? `${primaryName} specs, tasting notes, and detailed liquor information on CaskByCask.`
-      : `${primaryName} 상세 주류 정보와 시음 노트를 CaskByCask에서 확인하세요.`,
-    url: canonicalUrl,
-    image: heroImage,
-    about: {
-      '@type': 'Thing',
-      name: primaryName,
-      alternateName: secondaryName || undefined,
-      additionalType: displaySpirit.category || undefined,
-    },
-  }
+    countryOfOrigin: countryLabel,
+    producerPrimary: primaryProducer,
+    producerSecondary: secondaryProducer,
+    rating: (scoreSource?.avgScore != null && ratedReviewCount > 0)
+      ? { value: scoreSource.avgScore, count: ratedReviewCount }
+      : null,
+    reviews: reviewSchemas,
+  })
 
-  // BreadcrumbList — 홈 / 카탈로그 / 카테고리 / 현재 spirit
-  const breadcrumbJsonLd = buildBreadcrumbSchema([
-    { name: isEn ? 'Home' : '홈', path: langPrefix },
-    { name: isEn ? 'Spirits' : '주류 카탈로그', path: `${langPrefix}/spirits` },
-    { name: t(`spirit.category.${displaySpirit.category}`), path: `${langPrefix}/spirits?category=${displaySpirit.category}` },
-    { name: primaryName ?? '', path: canonicalUrl },
-  ])
+  const breadcrumbJsonLd = buildSpiritBreadcrumbSchema({
+    lang: isEn ? 'en' : 'ko',
+    spiritName: primaryName ?? '',
+    canonicalUrl,
+  })
   const seoTitle = isEn ? spiritSeo?.titleEn : spiritSeo?.titleKo
   const seoDescription = isEn ? spiritSeo?.descriptionEn : spiritSeo?.descriptionKo
 
@@ -1200,6 +1165,10 @@ export default function SpiritDetailPage() {
         alternateEn={spiritSeo?.canonicalUrlEn}
         alternateDefault={spiritSeo?.canonicalUrlKo}
         jsonLd={[spiritJsonLd, breadcrumbJsonLd]}
+        // 서버가 실은 그래프를 그대로 둔다. 서버는 additionalProperty 까지 싣는데
+        // 클라이언트가 덮어쓰면 하이드레이션 뒤 그게 사라진다(커뮤니티 상세와 같은 처리).
+        // 다른 주류로 SPA 이동하면 canonical 이 안 맞아 위 jsonLd 로 정상 교체된다.
+        preferExistingJsonLd
       />
 
       {/* Back */}
@@ -1343,9 +1312,14 @@ export default function SpiritDetailPage() {
 
             {/* 카테고리별 서술형 추가 정보 — 별도 제목 없이 기존 핵심 스펙 위치를 사용한다 */}
             {headerAdditionalInfo && (
-              <p className="border-t border-neutral-200 pt-4 text-[14px] text-neutral-700 whitespace-pre-wrap leading-relaxed">
-                {headerAdditionalInfo}
-              </p>
+              <TranslatableTextBlock
+                resourceType="SPIRIT_NOTES"
+                resourceId={displaySpirit.id}
+                field="notes"
+                text={headerAdditionalInfo}
+                className="border-t border-neutral-200 pt-4"
+                textClassName="text-[14px] text-neutral-700 whitespace-pre-wrap leading-relaxed"
+              />
             )}
 
           </div>

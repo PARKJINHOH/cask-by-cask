@@ -16,6 +16,7 @@ import com.caskbycask.domain.social.entity.enums.SocialMediaMode;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.util.BadWordFilter;
@@ -48,6 +49,7 @@ class ReviewServiceTest {
     @Mock private SocialPublishRequestService socialPublishRequestService;
     @Mock private ReviewImageService reviewImageService;
     @Mock private ReviewAromaProfileService reviewAromaProfileService;
+    @Mock private TranslationCacheInvalidator translationCacheInvalidator;
     @Mock private BadWordFilter badWordFilter; // [패치 5] 리뷰 욕설 필터 의존성
 
     @InjectMocks
@@ -166,6 +168,7 @@ class ReviewServiceTest {
         assertThat(review.getDeletedAt()).isNotNull();
         assertThat(spirit.getAvgScore()).isNull();
         assertThat(spirit.getReviewCount()).isEqualTo(0);
+        verify(translationCacheInvalidator).invalidateReview(10L);
     }
 
     @Test

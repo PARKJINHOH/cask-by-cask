@@ -16,6 +16,7 @@ import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import com.caskbycask.global.util.BadWordFilter;
@@ -45,6 +46,7 @@ public class ReviewService {
     private final SocialPublishRequestService socialPublishRequestService;
     private final ReviewImageService reviewImageService;
     private final ReviewAromaProfileService reviewAromaProfileService;
+    private final TranslationCacheInvalidator translationCacheInvalidator;
 
     // ── 조회 ──────────────────────────────────────────────
 
@@ -205,6 +207,7 @@ public class ReviewService {
         List<ReviewImage> updatedImages =
                 reviewImageService.replaceForReview(review, imagePlan, images);
         recalculateAvgScore(review.getSpirit().getId());
+        translationCacheInvalidator.invalidateReview(reviewId);
 
         return toResponse(review, updatedImages, updatedProfiles);
     }
@@ -233,6 +236,7 @@ public class ReviewService {
         socialPublishRequestService.markSourceDeleted(SocialSourceType.REVIEW, reviewId);
         reviewImageService.deleteForReview(reviewId);
         recalculateAvgScore(review.getSpirit().getId());
+        translationCacheInvalidator.invalidateReview(reviewId);
 
         // [패치 1] 리뷰 삭제 시에도 지급액 차감 (기존: 차감 없음 → 파밍 가능했음).
         //          원래 지급액만큼만 회수, 익명·관리자였다면 0이라 자동 스킵.

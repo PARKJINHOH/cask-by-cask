@@ -121,6 +121,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/social/meta/*/deauthorize",
                                 "/api/social/meta/*/data-deletion").permitAll()
+                        // 공개 콘텐츠의 온디맨드 번역 — 서버가 리소스를 재조회하므로 임의 텍스트는 받지 않는다.
+                        .requestMatchers(HttpMethod.POST, "/api/translations").permitAll()
                         .requestMatchers(HttpMethod.GET, "/indexnow-key.txt").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/indexnow-key.txt").permitAll()
                         .requestMatchers(HttpMethod.GET, "/spirits/{id:\\d+}", "/spirits/{id:\\d+}-*", "/ko/spirits/{id:\\d+}", "/ko/spirits/{id:\\d+}-*", "/en/spirits/{id:\\d+}", "/en/spirits/{id:\\d+}-*").permitAll()

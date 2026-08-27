@@ -15,6 +15,7 @@ import com.caskbycask.domain.spirit.entity.SpiritImage;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.constants.ReportConstants;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -36,6 +37,7 @@ public class ReportService {
     private final SpiritImageRepository spiritImageRepository;
     private final UserRepository userRepository;
     private final ReviewService reviewService;
+    private final TranslationCacheInvalidator translationCacheInvalidator;
 
     // ── 신고 생성 ──────────────────────────────────────────
 
@@ -117,6 +119,7 @@ public class ReportService {
             case REVIEW -> reviewRepository.findById(targetId).ifPresent(review -> {
                 if (!review.getIsHidden()) {
                     review.hide();
+                    translationCacheInvalidator.invalidateReview(targetId);
                     reviewService.recalculateAvgScore(review.getSpirit().getId());
                 }
             });
@@ -133,6 +136,7 @@ public class ReportService {
         switch (targetType) {
             case REVIEW -> reviewRepository.findById(targetId).ifPresent(review -> {
                 review.unhide();
+                translationCacheInvalidator.invalidateReview(targetId);
                 reviewService.recalculateAvgScore(review.getSpirit().getId());
             });
             case COMMENT -> commentRepository.findById(targetId)

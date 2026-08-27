@@ -13,6 +13,9 @@ import AromaProfileChartPanel from './AromaProfileChartPanel'
 import AromaProfilePreviewButton from './AromaProfilePreviewButton'
 import AromaProfileFloatingPanel from './AromaProfileFloatingPanel'
 import ReviewShareModal from '../share/ReviewShareModal'
+import { useContentTranslation } from '@/domain/translation/hooks/useContentTranslation'
+import TranslationAction from '@/domain/translation/components/TranslationAction'
+import { shouldOfferContentTranslation } from '@/domain/translation/utils/contentLanguage'
 
 function formatAromaId(id: string): string {
   return id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -76,7 +79,7 @@ function ReviewSection({ label, score, note, aromaNotes }: ReviewSectionProps) {
       </div>
 
       {/* 노트 */}
-      {note && <p className="text-sm text-neutral-600 leading-relaxed">{note}</p>}
+      {note && <p className="whitespace-pre-wrap text-sm text-neutral-600 leading-relaxed">{note}</p>}
     </div>
   )
 }
@@ -98,6 +101,7 @@ export interface ReviewItemProps {
 
 export default function ReviewItem({ review, currentUserId, onEdit, onDelete, showSpiritName, reviewVariantLabel }: ReviewItemProps) {
   const { t, i18n } = useTranslation()
+  const contentTranslation = useContentTranslation('REVIEW', review.id)
   // PC 는 프로파일이 있으면 기본으로 펼쳐서 옆에 보여준다 (버튼으로 접을 수 있음).
   // 모바일은 자리가 없어 상단 플로팅 패널로 띄우므로 기본은 닫힘 — 카드마다 자동으로 뜨면 화면을 가린다.
   const [profileExpanded, setProfileExpanded] = useState(true)
@@ -109,11 +113,19 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
     spiritCanonicalPathKo: review.spiritCanonicalPathKo,
     spiritCanonicalPathEn: review.spiritCanonicalPathEn,
   }, i18n.language)
+  const translated = contentTranslation.fields
+  const sourceReviewTexts = [review.noseNote, review.tasteNote, review.finishNote, review.comment]
+  const hasTranslatableText = sourceReviewTexts
+    .some((value) => !!value?.trim())
+  const shouldShowTranslation = hasTranslatableText && shouldOfferContentTranslation(
+    sourceReviewTexts,
+    contentTranslation.targetLanguage,
+  )
 
   const sections = [
-    { label: t('review.nose'),   score: review.noseScore,   note: review.noseNote,   aromaNotes: parseAromaNotes(review.noseAromaWheelNotes) },
-    { label: t('review.taste'),  score: review.tasteScore,  note: review.tasteNote,  aromaNotes: parseAromaNotes(review.tasteAromaWheelNotes) },
-    { label: t('review.finish'), score: review.finishScore, note: review.finishNote, aromaNotes: parseAromaNotes(review.finishAromaWheelNotes) },
+    { label: t('review.nose'),   score: review.noseScore,   note: translated?.noseNote ?? review.noseNote,   aromaNotes: parseAromaNotes(review.noseAromaWheelNotes) },
+    { label: t('review.taste'),  score: review.tasteScore,  note: translated?.tasteNote ?? review.tasteNote,  aromaNotes: parseAromaNotes(review.tasteAromaWheelNotes) },
+    { label: t('review.finish'), score: review.finishScore, note: translated?.finishNote ?? review.finishNote, aromaNotes: parseAromaNotes(review.finishAromaWheelNotes) },
   ]
   const aromaProfiles = supportsAromaProfiles(review.spiritCategory) ? (review.aromaProfiles ?? []) : []
   const hasAromaProfiles = aromaProfiles.length > 0
@@ -285,9 +297,20 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
       {review.comment && (
         <div className="border-t border-neutral-100 pt-4">
           <p className="text-base font-bold text-neutral-900 mb-1.5">{t('review.overall')}</p>
-          <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{review.comment}</p>
+          <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
+            {translated?.comment ?? review.comment}
+          </p>
         </div>
       )}
+
+      <TranslationAction
+        hasContent={shouldShowTranslation}
+        showTranslated={contentTranslation.showTranslated}
+        isLoading={contentTranslation.isLoading}
+        error={contentTranslation.error}
+        onToggle={contentTranslation.toggle}
+        className="border-t border-neutral-100 pt-1"
+      />
     </article>
   )
 }

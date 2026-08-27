@@ -16,6 +16,7 @@ import com.caskbycask.domain.spirit.repository.SpiritVariantLinkRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.entity.enums.Role;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -63,6 +64,7 @@ class SpiritServiceManagementAccessTest {
     @Mock private BadWordFilter badWordFilter;
     @Mock private SpiritSearchService spiritSearchService;
     @Mock private EmailSender emailSender;
+    @Mock private TranslationCacheInvalidator translationCacheInvalidator;
 
     @InjectMocks private SpiritService spiritService;
 
@@ -220,6 +222,16 @@ class SpiritServiceManagementAccessTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SPIRIT_ACCESS_DENIED);
         verifyNoInteractions(spiritImageService);
+    }
+
+    @Test
+    void hidingSpiritInvalidatesItsPermanentTranslationCache() {
+        Spirit spirit = spirit(300L, assignedProducer);
+        given(spiritRepository.findById(300L)).willReturn(java.util.Optional.of(spirit));
+
+        spiritService.deleteSpirit(300L);
+
+        verify(translationCacheInvalidator).invalidateSpirit(300L);
     }
 
     private SpiritSearchCondition condition(Long producerId) {

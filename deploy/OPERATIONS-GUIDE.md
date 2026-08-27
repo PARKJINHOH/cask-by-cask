@@ -118,6 +118,27 @@ Actions → Deploy (manual) → target: both
 > 배포 시간을 줄이려고 `api` 와 `web` 을 각각 따로(동시에) 실행하면 이 순서 보장이 깨지므로,
 > 두 쪽을 함께 올릴 때는 반드시 `both` 를 사용한다.
 
+### Google 자동 번역 최초 배포 순서
+
+자동 번역은 비용과 개인정보 국외 처리가 수반되므로 아래 순서를 바꾸지 않는다.
+
+1. `TRANSLATION_ENABLED=false` 상태로 Flyway `V97`을 포함한 백엔드를 먼저 배포한다.
+2. Cloud Translation 사용 이력이 없는 **전용 Google Cloud 프로젝트와 Billing Account**를 준비하고 Cloud Translation API(Basic v2)를 활성화한다. 같은 Billing Account에 다른 Translation 사용량이 있으면 분리하기 전에는 켜지 않는다.
+3. 전용 API 키에 **Cloud Translation API 제한**과 **OCI 운영 서버 고정 송신 IP 제한**을 모두 적용하고, 프로젝트의 `Characters per day` 콘텐츠 쿼터를 **16,000자**로 설정한다. Google의 일·월 경계는 미국 태평양 시간 기준이다.
+4. 관리자에서 갱신된 이용약관과 개인정보 처리방침 기본 양식으로 각각 새 버전을 만들고 적용일 7일 전(불리하거나 중대한 변경은 30일 전) 공지한 뒤 활성화한다. 이용약관에는 Google 자동 번역 제공 사실과 공식 면책조항이, 개인정보 처리방침에는 위탁·국외 처리 사실이 포함된다. 코드의 기본 템플릿은 운영 중 활성 문서를 자동 변경하지 않는다.
+5. 프론트를 배포한다. 이때 기능이 꺼져 있으므로 번역 버튼은 호출 시 원문을 유지하고 이용 불가 안내를 표시한다.
+6. `/app/env/api.env`에 제한된 키와 아래 설정을 넣고 마지막에만 `TRANSLATION_ENABLED=true`로 바꾼 뒤 API를 재시작한다.
+7. 공개 텍스트 한 건을 두 번 호출해 첫 호출만 월 사용량을 늘리고 두 번째 호출은 캐시에 적중하는지 확인한다. 본문·번역문·API 키는 로그에 남기지 않는다.
+
+무료 구간 또는 Google 표시·데이터 처리 정책이 바뀌면 즉시 `TRANSLATION_ENABLED=false`로 내리고 쿼터·UI 문구·개인정보 처리방침을 다시 검토한다.
+
+### IntelliJ 로컬 번역 스모크 테스트
+
+- 운영의 OCI IP 전용 키를 완화하거나 재사용하지 않는다. Cloud Translation API로 제한하고 현재 로컬 공인 송신 IP만 허용한 별도 개발용 키를 만든다. 테스트가 끝나면 키를 비활성화하거나 삭제한다.
+- IntelliJ `Run/Debug Configurations`의 `Environment variables`에 `TRANSLATION_ENABLED=true`와 `TRANSLATION_GOOGLE_API_KEY=<개발용 키>`를 넣는 방식을 권장한다. 키는 저장소의 설정 파일이나 공유 실행 구성에 기록하지 않는다.
+- `VM options`를 사용할 때는 `-Dtranslation.enabled=true -Dtranslation.google.api-key=<개발용 키>`처럼 Spring 속성명을 사용한다. 이를 `Program arguments`에 넣으면 JVM 속성으로 인식되지 않으며, 그 칸을 써야 한다면 `--translation.enabled=true --translation.google.api-key=<개발용 키>` 형식을 사용한다.
+- Google 프로젝트의 Cloud Translation API 활성화와 Billing 연결, 로컬 공인 송신 IP 제한을 확인한 뒤 백엔드를 완전히 재시작한다. API 키만 넣고 기능 플래그를 켜지 않으면 `TRANSLATION_001`(503)이 정상적으로 반환된다.
+
 ### 배포가 전송하는 것 / 안 하는 것
 
 | 자동 전송됨 (매 배포) | 자동 전송 안 됨 (수동 관리) |
@@ -522,6 +543,10 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 | `OAUTH_ALLOWED_REDIRECT_URIS` | 소셜 콜백 화이트리스트 (예: `https://www.caskbycask.net/oauth/callback`). 제공자 콘솔 등록값과 동일 |
 | `OAUTH_NAVER_CLIENT_ID` / `OAUTH_NAVER_CLIENT_SECRET` | 네이버 로그인 키 (네이버 개발자센터) |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | 구글 로그인 키 (Google Cloud Console) |
+| `TRANSLATION_ENABLED` | 공개 콘텐츠 자동 번역 feature flag. Google 쿼터·개인정보 처리방침 준비 전에는 `false` |
+| `TRANSLATION_GOOGLE_API_KEY` | Cloud Translation Basic v2 전용 키. API 제한 + OCI 고정 송신 IP 제한 필수이며 GitHub Secret에 저장하지 않음 |
+| `TRANSLATION_MONTHLY_CHARACTER_LIMIT` | 미국 태평양 시간 월 기준 앱 내부 문자 예약 하드캡. 기본·운영값 `450000`, 무료 운영 중 상향 금지 |
+| `TRANSLATION_CONNECT_TIMEOUT_MS` / `TRANSLATION_READ_TIMEOUT_MS` | Google 번역 연결/응답 제한 시간. 기본값 3000ms/8000ms, 자동 재시도 없음 |
 | `EXCHANGE_RATE_PROVIDER_URL` | 해외·면세 가격 원화 환산용 공개 환율 API. 기본값 `https://api.frankfurter.dev` |
 | `EXCHANGE_RATE_CONNECT_TIMEOUT_MS` / `EXCHANGE_RATE_READ_TIMEOUT_MS` | 환율 API 연결/응답 제한 시간. 기본값 3000ms/15000ms |
 | `EXCHANGE_RATE_RETRY_MAX_ATTEMPTS` / `EXCHANGE_RATE_RETRY_INITIAL_BACKOFF_MS` | 환율 API 최대 시도 횟수와 최초 재시도 대기시간. 기본값 3회/1000ms이며 이후 대기시간은 2배 증가 |
@@ -553,6 +578,14 @@ sudo systemctl restart caskbycask-api   # 수정 후 재시작해야 반영
 > (로컬 개발 시 `http://localhost:5173/oauth/callback`)을 등록해야 한다. 구글은 OAuth 동의 화면에 `openid`,`email`,`profile`
 > 스코프가 필요하고, refresh token 수신을 위해 앱이 `access_type=offline` + `prompt=consent` 로 인가 요청한다(코드에 반영됨).
 > 등록 redirect URI 가 `OAUTH_ALLOWED_REDIRECT_URIS` 와 다르면 콜백이 `OAUTH_008` 로 거부된다.
+
+### Google 공개 콘텐츠 자동 번역
+
+- 브라우저가 Google을 직접 호출하지 않는다. 공개 `ACTIVE` 주류 소개 또는 공개 리뷰 ID만 API에 보내며, 서버가 원문을 다시 조회한다. 임의 텍스트·닉네임·회원 ID·방문자 IP는 Google 요청에 포함하지 않는다.
+- 캐시는 TTL 없이 DB에 보관하고 원문 수정·숨김·삭제 때 제거한다. 캐시 적중은 문자 사용량을 늘리지 않는다.
+- 앱 월간 하드캡은 450,000자이고 Google 프로젝트 일일 콘텐츠 쿼터는 16,000자다. 둘 다 미국 태평양 시간 경계를 사용한다. Google 호출 실패 뒤 예약 문자는 환급하지 않는 것이 정상이다.
+- `TRANSLATION_GOOGLE_API_KEY`는 서버 `/app/env/api.env`에만 둔다. 키나 원문·번역문을 셸 명령 인자, 로그, Slack 또는 이 문서에 기록하지 않는다.
+- 공개 엔드포인트는 IP 또는 로그인 사용자 기준 10회/분 제한을 적용한다. 429는 월 하드캡 또는 Google 일일 쿼터, 503은 기능 비활성·키 누락·제공자 장애·동시 생성 대기 만료를 뜻한다.
 
 ### 해외·면세 가격 환율
 
@@ -772,6 +805,14 @@ tail -f /app/caskbycask-crawler/logs/wine-cron.log
 sudo journalctl -u caskbycask-api --since '1 day ago' \
   | grep -E 'Exchange rates refreshed|유튜브 갤러리 수집 완료|유튜브 영상 가용성 점검 완료'
 
+# 자동 번역 사용량·결과 카운터 (원문/번역문은 출력하지 않음)
+curl -s http://127.0.0.1:8081/actuator/prometheus \
+  | grep -E '^translation_(requests_total|monthly_allocated_characters)'
+
+# 태평양 시간 월별 앱 예약 문자 수 (MariaDB 비밀번호는 프롬프트 입력)
+mariadb -u CHANGE_ME_DB_USER -p caskbycask_prod \
+  -e "SELECT provider, usage_month, allocated_characters FROM translation_monthly_usage ORDER BY usage_month DESC LIMIT 3;"
+
 # DB 로컬 백업
 /app/scripts/backup-db.sh
 
@@ -820,6 +861,9 @@ Codex 샌드박스나 일부 컨테이너처럼 Chrome OS sandbox가 허용되�
 | 배포 실패 | Actions 로그에서 `롤백 및 ... 확인 완료` 여부 확인. 없으면 자동 복구도 실패한 것이므로 즉시 `systemctl`·로컬 health 확인 → `journalctl` 원인 분석 후 재배포 |
 | nginx reload 실패 | `sudo nginx -t` 로 문법 오류 위치 확인 후 수정 |
 | 백엔드 부팅 실패 (Flyway) | 마이그레이션/엔티티 스키마 불일치 가능 → 로그의 Flyway 메시지 확인 |
+| 자동 번역이 모두 503 | ① `TRANSLATION_ENABLED`와 키 설정 확인 ② API 키의 Cloud Translation API 제한 확인 ③ Google API 활성화·Billing 연결 확인 ④ OCI 고정 송신 IP 제한과 현재 송신 IP 일치 확인 ⑤ Redis 연결 확인. 원문은 계속 표시되는 것이 정상 |
+| 자동 번역 429 | 응답 코드가 `TRANSLATION_002`면 앱 월 45만 자, `TRANSLATION_003`이면 Google 일 1.6만 자 쿼터다. 한도를 올리지 말고 미국 태평양 시간의 다음 일·월 경계까지 원문으로 운영 |
+| 자동 번역 사용량 급증 | 즉시 `TRANSLATION_ENABLED=false`로 변경 후 API 재시작 → Google 키 비활성화 → `translation_monthly_usage`와 `translation_requests_total` 결과 태그, 번역 전용 10회/분 제한 적용 여부 확인. 원문·번역문은 조사 로그에 출력하지 않음 |
 | 디스크 부족 | `df -h` → `/app/logs/archived`, `/app/db_backup` 오래된 파일 정리. `upload/` 는 삭제 금지 |
 | 재부팅 후 서비스 안 뜸 | `systemctl is-enabled caskbycask-api caskbycask-web` → disabled 면 `sudo systemctl enable caskbycask-api caskbycask-web` |
 
@@ -868,6 +912,7 @@ Codex 샌드박스나 일부 컨테이너처럼 Chrome OS sandbox가 허용되�
 | JVM 힙·GC·스레드 | 4701 |
 | Spring Boot 3.x HTTP 지표 | 17175 |
 | Caffeine 캐시 히트율 | 직접 패널 추가 — 메트릭: `cache_gets_total`, `cache_size` |
+| 자동 번역 비용 방어 | 직접 패널 추가 — `translation_requests_total{outcome=~"cache_hit|cache_wait_hit|provider_success|monthly_limit|daily_limit|provider_error|disabled|busy|source_changed"}`, `translation_monthly_allocated_characters` |
 
 ### 서비스 관리
 
@@ -883,6 +928,8 @@ sudo systemctl reload prometheus || sudo kill -HUP $(pidof prometheus)
 
 - [ ] **월간**: Prometheus `localhost:9090/targets` — `caskbycask-api` UP 확인
 - [ ] **월간**: Grafana 대시보드에서 메트릭 수집 gap 없는지 육안 확인
+- [ ] **주간**: `translation_monthly_allocated_characters`와 Google Cloud 일일 사용량 비교. 차이는 실패 요청을 환급하지 않는 보수적 예약 때문에 앱 값이 더 큰 방향만 허용
+- [ ] **월간**: 새 태평양 시간 월이 시작된 뒤 게이지·DB `usage_month` 전환 확인. 400,000자(하드캡의 약 89%) 도달 시 신규 호출 추세를 확인하고 기능 비활성화를 준비
 
 ---
 

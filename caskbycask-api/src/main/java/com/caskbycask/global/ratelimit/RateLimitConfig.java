@@ -129,6 +129,10 @@ public class RateLimitConfig {
                         pp.matcher(HttpMethod.POST, "/api/messages"),
                         20, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),
                 new RateLimitRule(
+                        "public-content-translation",
+                        pp.matcher(HttpMethod.POST, "/api/translations"),
+                        10, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),
+                new RateLimitRule(
                         "spirit-search",
                         pp.matcher(HttpMethod.GET, "/api/spirits"),
                         120, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),

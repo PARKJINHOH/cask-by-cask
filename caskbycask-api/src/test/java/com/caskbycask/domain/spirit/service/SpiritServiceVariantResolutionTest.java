@@ -13,6 +13,7 @@ import com.caskbycask.domain.spirit.repository.SpiritRegisterRequestRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.spirit.repository.SpiritVariantLinkRepository;
 import com.caskbycask.domain.user.repository.UserRepository;
+import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.util.BadWordFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,6 +55,7 @@ class SpiritServiceVariantResolutionTest {
     @Mock private BadWordFilter badWordFilter;
     @Mock private SpiritSearchService spiritSearchService;
     @Mock private EmailSender emailSender;
+    @Mock private TranslationCacheInvalidator translationCacheInvalidator;
 
     @InjectMocks private SpiritService spiritService;
 

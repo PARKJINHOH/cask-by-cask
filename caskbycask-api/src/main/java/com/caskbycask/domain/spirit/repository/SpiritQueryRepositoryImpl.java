@@ -250,6 +250,13 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         ));
     }
 
+    /**
+     * 마스터별 대표 에디션 — 에디션 목록에 보이는 순서의 <b>마지막</b> 항목.
+     * <p>
+     * 정렬식은 {@link SpiritRepository#findByParentId} 의 {@code COALESCE(displayOrder, 999999) ASC, id ASC}
+     * 와 같다(= 사용자가 보는 에디션 드롭다운 순서). 그래서 정렬을 뒤집지 않고 그룹의 마지막 행을 고른다 —
+     * displayOrder 가 없는 레거시 에디션이 목록 맨 뒤에 오는 규칙까지 그대로 따라간다. ACTIVE 만 대상.
+     */
     private Map<Long, Spirit> fetchCanonicalSpirits(List<Spirit> spirits) {
         if (spirits.isEmpty()) return Map.of();
 
@@ -267,7 +274,7 @@ public class SpiritQueryRepositoryImpl implements SpiritQueryRepository {
         return variants.stream().collect(Collectors.toMap(
                 v -> v.getParent().getId(),
                 v -> v,
-                (first, ignored) -> first
+                (ignored, last) -> last
         ));
     }
 

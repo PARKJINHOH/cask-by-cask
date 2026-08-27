@@ -383,6 +383,18 @@ public enum ErrorCode {
     YOUTUBE_PERMISSION_REQUIRED(HttpStatus.BAD_REQUEST, "YOUTUBE_009",
             "채널 운영자의 게재 허락을 확인해야 갤러리에 노출할 수 있습니다."),
 
+    // Public content translation
+    TRANSLATION_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "TRANSLATION_001",
+            "자동 번역 기능이 아직 활성화되지 않았습니다."),
+    TRANSLATION_MONTHLY_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "TRANSLATION_002",
+            "이번 달 무료 번역 사용량을 모두 사용했습니다."),
+    TRANSLATION_DAILY_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "TRANSLATION_003",
+            "오늘의 무료 번역 사용량을 모두 사용했습니다. 나중에 다시 시도해주세요."),
+    TRANSLATION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "TRANSLATION_004",
+            "자동 번역을 일시적으로 사용할 수 없습니다."),
+    TRANSLATION_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "TRANSLATION_005",
+            "같은 내용을 번역하고 있습니다. 잠시 후 다시 시도해주세요."),
+
     // Common
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_001", "리소스를 찾을 수 없습니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_002", "입력값이 올바르지 않습니다."),
