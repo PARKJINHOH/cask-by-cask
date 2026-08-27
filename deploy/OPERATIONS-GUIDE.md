@@ -933,28 +933,30 @@ sudo systemctl reload prometheus || sudo kill -HUP $(pidof prometheus)
 
 ---
 
-## 14-7. AI 소식·팁 자동화
+## 14-7. AI 소식 자동화
+
+크롤러는 **소재까지만** 만든다. 저장하는 것은 제목·요약(`leadSummary`)·근거 URL 뿐이고 본문(`content`)은
+비어 있다. 본문·대표 이미지·발행은 전부 관리자 몫이며, 자동 발행과 AI 이미지 생성은 `V93`·`V94`에서
+제거됐다. 소재는 관리자 원고 목록에 `PENDING_REVIEW`로 들어가고 본문이 빈 글은 발행되지 않는다.
 
 AI 소식 크롤러의 비밀값은 API의 `/app/env/api.env`가 아니라 `/app/caskbycask-crawler/.env`에서 관리한다.
-
-필수값:
+아래 네 개가 없으면 실행이 즉시 중단된다 — `CASKBYCASK_API_URL`, `CASKBYCASK_INTERNAL_KEY`,
+`TAVILY_API_KEY`, `GEMINI_API_KEY`. 나머지는 선택값이며 비워 두면 코드 기본값으로 동작한다.
 
 | 키 | 용도 |
 |---|---|
 | `CASKBYCASK_API_URL` | 같은 서버 API. 운영 권장값 `http://127.0.0.1:8080` |
 | `CASKBYCASK_INTERNAL_KEY` | API env와 동일한 내부 인증 키 |
 | `TAVILY_API_KEY` | 2시간 주기 한국어·영어 웹 검색 |
-| `GEMINI_API_KEY` | Google AI Studio 키. 핫딜 분석과 AI 소식·팁 생성에 공용 사용 |
+| `GEMINI_API_KEY` | Google AI Studio 키. 핫딜 분석과 AI 소식 소재 선별에 공용 사용 |
 | `GEMINI_MODEL` | 핫딜 멀티모달 분석 모델. 기본 `gemini-3.1-flash-lite` |
 | `GEMINI_REQUEST_INTERVAL_SEC` | 핫딜 Gemini 호출 간격. 기본 5초 |
-| `AI_NEWS_CLASSIFIER_MODEL` | 후보·중복 분류 모델 |
-| `AI_NEWS_WRITER_MODEL` | 최종 근거 검증·한국어 원고 모델 |
-| `AI_NEWS_IMAGE_MODEL` | 팁/정보 글 대표 이미지 모델 |
-| `AI_NEWS_IMAGE_GENERATION_ENABLED` | AI 이미지 API 호출 여부. 요금제 활성화 전 기본값 `false` |
-| `AI_NEWS_GEMINI_FREE_TIER` | 텍스트 무료 티어 사용 여부. 기본 `true` |
+| `AI_NEWS_CLASSIFIER_MODEL` | AI 소식이 쓰는 **유일한** 모델. 소재 선별·제목·요약. 기본 `gemini-3.1-flash-lite` |
+| `AI_NEWS_MAX_LEADS_PER_RUN` | 실행당 저장 소재 상한. 기본 3 |
+| `AI_NEWS_SEARCH_RESULTS_PER_QUERY` | 검색어당 Tavily 결과 수. 기본 10 |
+| `AI_NEWS_GEMINI_FREE_TIER` | 텍스트 무료 티어 사용 여부. 기본 `true`(예상 비용을 0으로 집계) |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_USD` | 관리자 DB 설정과 별개의 절대 안전상한. `0`이면 비활성 |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 안전상한. `0`이면 비활성 |
-| `AI_NEWS_GEMINI_HARD_MONTHLY_IMAGES` | 월 생성 이미지 절대 안전상한. `0`이면 비활성 |
 
 배포 및 확인:
 
@@ -965,23 +967,29 @@ crontab -l | grep caskbycask-crawler
 tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 ```
 
-- `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식·팁은 핫딜 17분 후(`17 */2 * * *`)에 실행한다.
-- `AI_NEWS_IMAGE_GENERATION_ENABLED=false`이면 Gemini 이미지 API를 호출하지 않는다. 승인 공식 이미지가 없는 원고는 이미지 없이 검토 대기로 보존한다.
-- AI 원고의 HTML 태그·공백 제외 본문이 1,000자 미만이면 실제 측정 길이와 부족한 글자 수를 넣어 한 번만 재작성한다.
-  첫 응답의 Gemini `finishReason`이 `MAX_TOKENS`일 때만 재작성 출력 상한을 8,192토큰으로 명시한다.
-- 재작성 후에도 1,000자 미만인 신규 출시·팁·관리자 요청 원고는 폐기하거나 자동 발행하지 않고 이미지 생성 없이
-  `PENDING_REVIEW`로 보존한다. 기존 원고 재작성은 짧은 결과로 원문을 덮어쓰지 않고 실패 처리한다.
-- 분량 미달 로그에는 `plainTextLength`, `finishReason`, `responseTextLength`, `evidenceSourceCount`,
-  `evidenceTextLength`가 기록된다. 검토 대기로 보존된 원고는 Slack `AI 소식 분량 미달 원고 검토 대기`
-  경고에서 1·2차 길이와 근거 분량을 확인한다.
+- `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식은
+  `current/run-news.sh`를 핫딜 17분 후(`17 */2 * * *`)에 실행한다.
+- 실행마다 주종 하나(`whiskyRatio`·`wineRatio`·`cognacRatio` 비율로 회전)에 집중하고, 근거는 관리자가
+  등록한 출처 허용목록에서만 모은다. 일일 상한(`dailyReleaseLimit`, 기본 3)은 발행이 아니라
+  **소재 생성** 기준이다.
 - 코드 배포는 `.env`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다. `.venv`는 각
   릴리스 안에서 hash lock으로 새로 설치되며 `current`/`previous`와 함께 전환된다.
 - 배포는 핫딜·AI 소식·와인 수집의 세 `flock`을 획득한 뒤 cron을 갱신하고 링크를 교체한다. 실행 중 작업이
   120초 안에 끝나지 않거나 cron 갱신이 실패하면 기존 `current`를 유지한다.
-- 관리자 화면 기본값은 자동화 OFF·자동발행 OFF·드라이런 ON이다.
-- 드라이런 3회와 원고 10건 확인 후 `자동화 → 조건부 자동발행 → 드라이런 해제` 순으로 켠다.
-- Tavily 기본 월 한도는 900크레딧이다. Gemini는 토큰/이미지/예상비용을 화면에서 확인하고 필요할 때 월 상한을 입력한다. 텍스트 무료 티어에서도 대표 이미지 생성은 유료다.
-- 관리자 비용·토큰·이미지 상한은 80%에서 경고하고 100%에서 신규 호출을 중단한다. 환경변수 절대 상한도 별도로 적용된다.
+- 관리자 화면 기본값은 **자동화 OFF**다. 켜기 전까지 크롤러는 설정만 읽고 바로 종료한다.
+  자동발행·드라이런·신뢰도 임계값 설정은 `V93`에서 삭제됐으므로 켜고 끌 대상이 아니다.
+- Tavily 기본 월 한도는 900크레딧이다. Gemini는 토큰·예상비용을 관리자 화면에서 확인하고 필요할 때 월
+  상한을 입력한다. `AI_NEWS_GEMINI_FREE_TIER=true`면 예상 비용이 0으로 집계된다.
+- 관리자 비용·토큰 상한은 80%에서 Slack 경고를 보내고 100%에서 그 실행을 중단한다. 환경변수 절대 상한도
+  별도로 적용된다.
+- Slack 알림은 `SLACK_WEBHOOK_URL`이 있고 `SLACK_ALERTS_ENABLED=true`일 때만 나간다. 같은 종류는 실행당
+  1회, 전체 `SLACK_MAX_ALERTS_PER_RUN`(기본 10)건까지다. 실제로 보내는 알림은 다음뿐이다.
+  - 한도 80% 경고(실행은 계속): `AI 소식 Tavily 한도 80% 도달`, `AI 소식 Gemini 관리자 한도 80% 도달`,
+    `AI 소식 Gemini 토큰 한도 80% 도달`
+  - 한도 도달로 실행 중단: `AI 소식 Tavily 한도 도달`, `AI 소식 Gemini 관리자 한도 도달`,
+    `AI 소식 Gemini 토큰 한도 도달`, `AI 소식 Gemini 절대 한도 도달`, `AI 소식 Gemini 절대 토큰 한도 도달`
+  - 실패: `AI 소식 자동화 실행 실패`, `AI 소식 시작 실패`, `AI 소식 사용량 기록 실패`,
+    `AI 소식 일부 처리 실패`(실패 단계·예외와 후보/저장/중복/오류 건수 포함)
 - 수동 롤백도 세 crawler `flock`을 획득한 뒤 `previous`의 `.venv/bin/python`을 확인하고
   `current` 링크를 교체한다. 정확한 명령은 [`../caskbycask-crawler/DEPLOY.md`](../caskbycask-crawler/DEPLOY.md)를 따른다.
 
@@ -1060,7 +1068,7 @@ Vivino가 429나 bot challenge로 응답하기 시작하면 우회하지 말고 
 | **SNS 토큰 만료** | Instagram/Threads 장기 토큰 자동 갱신 실패 후 만료 | `SocialTokenRefreshScheduler` ERROR 로그 → `SlackErrorAppender` | 서버(매일 03:20) |
 | **크롤러 장애** | 네이버 카페 쿠키/인증, 내부 API 토큰, Gemini 인증·quota, 게시글 처리 오류 | `caskbycask-crawler/alerts/slack_notifier.py` | 서버(cron) |
 | **와인 수집 실패** | 후보 부족, 필수 필드 누락, 저장 오류 (와이너리 미확인은 실패가 아님) | 영문 와인명·Vivino 링크·사유를 `alerts/slack_notifier.py`로 전송 | 서버(매시 37분) |
-| **AI 원고 분량 미달** | 1회 재작성 후에도 HTML·공백 제외 본문이 1,000자 미만 | 원고 자동 발행 차단·이미지 생성 생략·관리자 검토 대기 저장 후 Slack 경고 | 서버(cron) |
+| **AI 소식 한도·실행 실패** | Tavily·Gemini 월 한도 80%/100% 도달, 실행 실패·일부 소재 저장 실패·사용량 기록 실패 | `news_main.py` → `alerts/slack_notifier.py` | 서버(짝수 시각 17분) |
 | ~~서비스 다운~~ ⏸️보류 | `/healthz` 무응답 = VM 통째 다운 | `synology/healthcheck.sh` | 시놀로지 |
 
 > ⏸️ **서비스 다운(외부 헬스체크)은 현재 보류.** 이 알람은 크롤러용 시놀로지 DS220+ 가 상시 켜져 있다는 전제인데, `caskbycask-crawler` 가 아직 운영에 반영되지 않았다. 크롤러를 운영에 올릴 때 함께 활성화한다(5번 절차). 그 전까지 **VM 통째 다운 감지는 공백** — 서버 내부 알람(ERROR·종료·디스크)은 VM 이 죽으면 못 뜨므로, 필요하면 임시로 UptimeRobot 등 무료 외부 모니터로 메울 수 있다.
