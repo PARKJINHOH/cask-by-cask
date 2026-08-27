@@ -7,6 +7,7 @@ import com.caskbycask.domain.score.service.ScoreService;
 import com.caskbycask.domain.community.entity.enums.NotificationType;
 import com.caskbycask.domain.community.service.NotificationService;
 import com.caskbycask.domain.review.dto.ModerationRequest;
+import com.caskbycask.domain.seo.service.ProducerIndexingEventPublisher;
 import com.caskbycask.domain.seo.service.SpiritIndexingEventPublisher;
 import com.caskbycask.domain.spirit.dto.*;
 import com.caskbycask.domain.spirit.entity.Spirit;
@@ -55,6 +56,7 @@ import java.nio.file.Paths;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -96,6 +98,14 @@ public class SpiritService {
     /** Optional field injection keeps domain unit tests and IndexNow-disabled environments isolated. */
     @Autowired(required = false)
     private SpiritIndexingEventPublisher spiritIndexingEventPublisher;
+
+    /**
+     * 생산자 페이지는 소속 주류 목록이 곧 본문이라, 주류가 바뀌면 생산자 페이지도 바뀐다.
+     * 무엇보다 생산자가 <b>색인 대상이 되는 시점</b>이 첫 활성 주류가 붙는 순간이므로,
+     * 이 통지가 없으면 새 생산자는 sitemap 이 다시 크롤될 때까지 알려지지 않는다.
+     */
+    @Autowired(required = false)
+    private ProducerIndexingEventPublisher producerIndexingEventPublisher;
 
     // ── 공개 조회 ──────────────────────────────────────────
 
@@ -1903,9 +1913,24 @@ public class SpiritService {
     }
 
     private void notifyIndexing(List<Spirit> spirits) {
-        if (spiritIndexingEventPublisher != null && spirits != null && !spirits.isEmpty()) {
+        if (spirits == null || spirits.isEmpty()) return;
+        if (spiritIndexingEventPublisher != null) {
             spiritIndexingEventPublisher.publish(spirits);
         }
+        notifyProducerIndexing(spirits);
+    }
+
+    /** 영향을 받은 생산자를 중복 없이 한 번씩만 통지한다. */
+    private void notifyProducerIndexing(List<Spirit> spirits) {
+        if (producerIndexingEventPublisher == null) return;
+        Set<Long> producerIds = new LinkedHashSet<>();
+        for (Spirit spirit : spirits) {
+            if (spirit == null || spirit.getProducer() == null) continue;
+            // 지연 로딩 프록시라도 식별자 접근은 추가 조회를 일으키지 않는다.
+            Long producerId = spirit.getProducer().getId();
+            if (producerId != null) producerIds.add(producerId);
+        }
+        producerIds.forEach(producerIndexingEventPublisher::publish);
     }
 
     private void notifyIndexing(Spirit... spirits) {

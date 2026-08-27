@@ -45,6 +45,14 @@ public interface SpiritRepository extends JpaRepository<Spirit, Long>, SpiritQue
     @Query("select s.parent.id from Spirit s where s.id = :id")
     Long findParentIdById(@Param("id") Long id);
 
+    /**
+     * 생산자가 색인 대상인지 판정할 때 쓴다.
+     * <p>
+     * 조건은 {@code SitemapService} 의 {@code PRODUCER_HAS_ACTIVE_SPIRIT} 와 <b>같아야 한다</b> —
+     * 한쪽만 바뀌면 sitemap 에서 뺀 주소를 IndexNow 로는 크롤해 달라고 조르는 상태가 된다.
+     */
+    boolean existsByProducerIdAndStatus(Long producerId, SpiritStatus status);
+
     @Query("""
             SELECT s.producer.id, COUNT(s) FROM Spirit s
             WHERE s.producer.id IN :producerIds
