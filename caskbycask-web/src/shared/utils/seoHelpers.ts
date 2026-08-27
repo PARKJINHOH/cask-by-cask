@@ -14,7 +14,13 @@ import {
   type MetadataSearchParams,
 } from '@/shared/utils/seoIndexing'
 import { appendWineVintageDisplay } from '@/domain/spirit/utils/spiritDisplayName'
-import { buildHomeJsonLdGraph, DEFAULT_SEO_TEXT } from '@/shared/utils/seoSchema'
+import {
+  buildHomeJsonLdGraph,
+  buildSpiritBreadcrumbSchema,
+  buildSpiritProductSchema,
+  DEFAULT_SEO_TEXT,
+  SPIRITS_CRUMB_LABEL,
+} from '@/shared/utils/seoSchema'
 // 생산자 폴백은 화면과 같은 라벨·같은 지역명을 써야 한다. 다른 문자열을 쓰면 크롤러 전용 텍스트가 된다.
 import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import { localizeCountry } from '@/shared/utils/countryName'
@@ -73,6 +79,8 @@ interface SpiritDetailResponse {
   nameKo: string
   nameEn: string | null
   category: string | null
+  /** 에디션이면 마스터 주류 id. 화면 평점이 마스터 기준이라 스키마도 이 값을 따라간다. */
+  parentId?: number | null
   producerId?: number | null
   producerNameKo: string | null
   producerNameEn: string | null
@@ -2913,7 +2921,9 @@ export async function getSpiritsListJsonLd(
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: isEn ? 'Home' : '홈', item: `${SITE_URL}/${state.lang}` },
-          { '@type': 'ListItem', position: 2, name: isEn ? 'Spirits' : '주류 카탈로그', item: state.canonical },
+          // 주류 상세의 빵부스러기가 같은 URL 을 가리키므로 라벨이 같아야 한다.
+          // 둘 다 화면 PageIndicator 의 nav.spirits 를 따른다.
+          { '@type': 'ListItem', position: 2, name: SPIRITS_CRUMB_LABEL[state.lang], item: state.canonical },
         ],
       },
       {
@@ -3085,10 +3095,16 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
     || (primaryImage
       ? (primaryImage.startsWith('http') ? primaryImage : `https://www.caskbycask.net${primaryImage}`)
       : 'https://www.caskbycask.net/og-image.png')
-  const reviewCount = spirit.reviewCount ?? 0
-  const avgScore = spirit.avgScore == null ? null : Number(spirit.avgScore)
+  // 평점의 출처는 화면 StarScore 와 같아야 한다. 화면은 에디션 페이지에서 마스터(부모) 평균을
+  // 쓰는데(바로 아래 리뷰 목록이 마스터 기준이라), 서버가 에디션 자체 평균을 마크업하면
+  // 페이지 어디에도 없는 수가 색인된다. 실측 예: 883 은 자체 86.4/1건, 마스터 144 는 86.3/3건.
+  const ratingSource = spirit.parentId != null
+    ? (await fetchApiData<SpiritDetailResponse>(`/api/spirits/${spirit.parentId}`)) ?? spirit
+    : spirit
+  const avgScore = ratingSource.avgScore == null ? null : Number(ratingSource.avgScore)
   // aggregateRating 의 개수는 실제 평점 수여야 한다 — 점수 없는 리뷰까지 세면 구조화 데이터가 틀린다.
-  const ratedCount = spirit.scoredReviewCount ?? reviewCount
+  // 구버전 응답 폴백으로 reviewCount 를 쓰면 점수 없는 리뷰가 섞이므로 0 으로 떨어뜨린다.
+  const ratedCount = ratingSource.scoredReviewCount ?? 0
   const labels = localLabels(isEn ? 'en' : 'ko')
   const additionalProperties = compactDetails([
     { label: labels.abv, value: formatAbvValue(spirit.abv, spirit.abvMin, spirit.abvMax) },
@@ -3099,11 +3115,7 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
     { label: labels.cask, value: spirit.whiskyDetail?.caskTypes?.filter(Boolean).join(', ') },
     { label: labels.wineType, value: spirit.wineDetail?.wineType },
     { label: labels.cognacGrade, value: spirit.cognacDetail?.grade },
-  ]).map((property) => ({
-    '@type': 'PropertyValue',
-    name: property.label,
-    value: property.value,
-  }))
+  ]).map((property) => ({ name: property.label, value: property.value }))
   const reviews = (reviewsPage?.content ?? [])
     .filter((review) => review.totalScore != null)
     .map((review) => ({
@@ -3121,85 +3133,37 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
         worstRating: 0,
       },
     }))
-  const hasProductSnippetData = (avgScore != null && ratedCount > 0) || reviews.length > 0
-
-  if (!hasProductSnippetData) {
-    return buildSpiritRouteGraph({
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
-      name: primaryName,
-      alternateName: secondaryName !== primaryName ? secondaryName : undefined,
-      description: isEn
-        ? `${primaryName} specs, tasting notes, and detailed liquor information on CaskByCask.`
-        : `${primaryName} 상세 주류 정보와 시음 노트를 CaskByCask에서 확인하세요.`,
-      url: canonical,
-      image,
-      about: {
-        '@type': 'Thing',
-        name: primaryName,
-        alternateName: secondaryName !== primaryName ? secondaryName : undefined,
-        additionalType: spirit.category || undefined,
-      },
-    }, canonical, primaryName, resolvedLanguage(lang))
-  }
-
-  return buildSpiritRouteGraph({
+  const resolvedLang = resolvedLanguage(lang)
+  return {
     '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: primaryName,
-    alternateName: secondaryName !== primaryName ? secondaryName : undefined,
-    description: isEn
-      ? `${primaryName} specs, tasting notes, ratings and reviews on CaskByCask.`
-      : `${primaryName} 상세 주류 정보, 시음 노트, 평점과 리뷰를 CaskByCask에서 확인하세요.`,
-    url: canonical,
-    image,
-    category: spirit.category || undefined,
-    countryOfOrigin: spirit.country || undefined,
-    brand: primaryProducer ? {
-      '@type': 'Brand',
-      name: primaryProducer,
-      alternateName: secondaryProducer || undefined,
-    } : undefined,
-    additionalProperty: additionalProperties.length > 0 ? additionalProperties : undefined,
-    aggregateRating: avgScore != null && ratedCount > 0 ? {
-      '@type': 'AggregateRating',
-      ratingValue: avgScore,
-      ratingCount: ratedCount,
-      reviewCount: ratedCount,
-      bestRating: 100,
-      worstRating: 0,
-    } : undefined,
-    review: reviews.length > 0 ? reviews : undefined,
-  }, canonical, primaryName, resolvedLanguage(lang))
+    '@graph': [
+      buildSpiritProductSchema({
+        lang: resolvedLang,
+        primaryName,
+        secondaryName,
+        canonicalUrl: canonical,
+        image,
+        category: spirit.category,
+        // 화면은 localizeCountry 를 거친 라벨을 쓴다. 원본 값(한국어)을 그대로 실으면
+        // /en 페이지의 스키마만 한국어가 되어 화면과 어긋난다.
+        countryOfOrigin: localizeCountry(spirit.country, resolvedLang),
+        producerPrimary: primaryProducer,
+        producerSecondary: secondaryProducer,
+        additionalProperty: additionalProperties,
+        rating: avgScore != null && ratedCount > 0 ? { value: avgScore, count: ratedCount } : null,
+        reviews,
+      }),
+      buildSpiritBreadcrumbSchema({
+        lang: resolvedLang,
+        spiritName: primaryName,
+        canonicalUrl: canonical,
+      }),
+    ],
+  }
 }
 
 function resolvedLanguage(lang: 'ko' | 'en' | null): 'ko' | 'en' {
   return lang === 'en' ? 'en' : 'ko'
-}
-
-function buildSpiritRouteGraph(
-  primarySchema: Record<string, unknown>,
-  canonical: string,
-  spiritName: string,
-  lang: 'ko' | 'en',
-): object {
-  const { '@context': _context, ...primary } = primarySchema
-  const home = `${SITE_URL}/${lang}`
-  const spirits = `${home}/spirits`
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      primary,
-      {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: lang === 'en' ? 'Home' : '홈', item: home },
-          { '@type': 'ListItem', position: 2, name: lang === 'en' ? 'Spirits' : '주류', item: spirits },
-          { '@type': 'ListItem', position: 3, name: spiritName, item: canonical },
-        ],
-      },
-    ],
-  }
 }
 
 function formatEditionDisplayName(
