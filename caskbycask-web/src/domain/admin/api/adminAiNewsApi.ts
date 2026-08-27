@@ -4,7 +4,7 @@ import type {
   AiNewsArticleCreateRequest, AiNewsArticleDetail, AiNewsArticleStatus,
   AiNewsArticleSummary, AiNewsArticleType, AiNewsArticleUpdateRequest,
   AiNewsCategory, AiNewsRun, AiNewsSettings, AiNewsSourceConfig,
-  AiNewsSourceConfigRequest, AiNewsSourceType, AiNewsTopic, AiNewsTopicRequest,
+  AiNewsSourceConfigRequest, AiNewsSourceCrawlStatus, AiNewsTopic, AiNewsTopicRequest,
   AiNewsTopicStatus, AiNewsUsageSummary, AiNewsBulkDeleteResult,
 } from '../types/aiNews.types'
 import type { SocialPublishSelection } from '@/domain/social/types/social.types'
@@ -81,7 +81,7 @@ export const adminAiNewsApi = {
   },
 
   sources: async (params?: {
-    sourceType?: AiNewsSourceType
+    crawlStatus?: AiNewsSourceCrawlStatus
     enabled?: boolean
     autoDiscovered?: boolean
     keyword?: string

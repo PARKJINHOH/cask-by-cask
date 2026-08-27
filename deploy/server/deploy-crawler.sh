@@ -131,7 +131,9 @@ fi
   echo '# BEGIN CASKBYCASK CRAWLER'
   echo 'CRON_TZ=Asia/Seoul'
   echo "0 */2 * * * $CURRENT_LINK/run.sh >> $BASE_DIR/logs/cron.log 2>&1"
-  echo "17 */2 * * * $CURRENT_LINK/run-news.sh >> $BASE_DIR/logs/ai-news-cron.log 2>&1"
+  # AI 소식은 매시간 확인만 하고, 실제 수집 주기는 관리자 설정(수집 주기(시간))이 정한다.
+  # 차례가 아니면 크롤러가 API 응답을 보고 곧바로 종료한다.
+  echo "17 * * * * $CURRENT_LINK/run-news.sh >> $BASE_DIR/logs/ai-news-cron.log 2>&1"
   echo "37 * * * * $CURRENT_LINK/run-wine.sh >> $BASE_DIR/logs/wine-cron.log 2>&1"
   echo '# END CASKBYCASK CRAWLER'
 ) > "$CRONTAB_NEXT"

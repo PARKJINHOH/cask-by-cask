@@ -324,10 +324,10 @@ public class AiNewsService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AiNewsDtos.SourceConfigResponse> sourceConfigs(AiNewsSourceType sourceType, Boolean enabled,
+    public Page<AiNewsDtos.SourceConfigResponse> sourceConfigs(AiNewsSourceCrawlStatus crawlStatus, Boolean enabled,
                                                                 Boolean autoDiscovered, String keyword,
                                                                 int page, int size) {
-        return sourceConfigRepository.search(sourceType, enabled, autoDiscovered, likeKeyword(keyword),
+        return sourceConfigRepository.search(crawlStatus, enabled, autoDiscovered, likeKeyword(keyword),
                         PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))))
                 .map(AiNewsDtos.SourceConfigResponse::from);
     }
@@ -343,7 +343,6 @@ public class AiNewsService {
         AiNewsSourceConfig source = sourceConfigRepository.save(AiNewsSourceConfig.builder()
                 .sourceName(request.sourceName().trim()).sourceUrl(sourceUrl)
                 .domain(scope.domain).pathPrefix(scope.pathPrefix)
-                .sourceType(request.sourceType())
                 .enabled(request.enabled() == null || request.enabled())
                 .autoDiscovered(false).build());
         log(actorId, source.getId(), "AI 소식 출처 추가", scope.display());
@@ -361,7 +360,7 @@ public class AiNewsService {
         if (sourceConfigRepository.existsByDomainAndPathPrefixAndIdNot(scope.domain, scope.pathPrefix, id)) {
             throw new CustomException(ErrorCode.AI_NEWS_DUPLICATE);
         }
-        source.update(request.sourceName().trim(), sourceUrl, scope.domain, scope.pathPrefix, request.sourceType(),
+        source.update(request.sourceName().trim(), sourceUrl, scope.domain, scope.pathPrefix,
                 request.enabled() == null || request.enabled());
         log(actorId, source.getId(), "AI 소식 출처 수정",
                 new SourceScope(source.getDomain(), source.getPathPrefix()).display());
@@ -369,7 +368,7 @@ public class AiNewsService {
     }
 
     /**
-     * 출처는 그냥 지운다. {@code resolveSource} 가 더 이상 행을 만들지 않으므로 되살아날 경로가 없다
+     * 출처는 그냥 지운다. {@code resolveSourceScopeKey} 가 행을 만들지 않으므로 되살아날 경로가 없다
      * (예전에는 자동 등록이 삭제를 되돌려서 차단으로 남겨야 했다).
      */
     @Transactional
@@ -454,11 +453,27 @@ public class AiNewsService {
     @Transactional(readOnly = true)
     public AiNewsDtos.InternalConfigResponse internalConfig() {
         LocalDateTime today = LocalDate.now(SERVICE_ZONE).atStartOfDay();
+        AiNewsSettings settings = getSettingsEntity();
+        LocalDateTime nextCollectionAt = nextCollectionAt(settings);
         return new AiNewsDtos.InternalConfigResponse(
-                AiNewsDtos.SettingsResponse.from(getSettingsEntity()), usageSummary(),
+                AiNewsDtos.SettingsResponse.from(settings), usageSummary(),
                 sourceConfigRepository.findByEnabledTrueOrderBySourceNameAsc().stream()
                         .map(AiNewsDtos.SourceConfigResponse::from).toList(),
-                articleRepository.countCreatedSince(AiNewsArticleType.RELEASE_NEWS, today));
+                articleRepository.countCreatedSince(AiNewsArticleType.RELEASE_NEWS, today),
+                nextCollectionAt == null || !LocalDateTime.now(SERVICE_ZONE).isBefore(nextCollectionAt),
+                nextCollectionAt);
+    }
+
+    /**
+     * 다음 수집이 허용되는 시각. 실행 이력이 없으면 {@code null} 이고, 그때는 곧바로 수집한다.
+     *
+     * <p>cron 은 매시간 돌지만 실제 주기는 관리자 설정이 정한다. 주기가 아직 지나지 않았으면 크롤러가
+     * {@code ai_news_runs} 행을 만들기 전에 종료하므로 실행 이력이 건너뛴 기록으로 오염되지 않는다.
+     */
+    private LocalDateTime nextCollectionAt(AiNewsSettings settings) {
+        return runRepository.findFirstByOrderByStartedAtDesc()
+                .map(run -> run.getStartedAt().plusHours(Math.max(1, settings.getCollectionIntervalHours())))
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -487,7 +502,8 @@ public class AiNewsService {
                 ? request.openaiMonthlyBudgetUsd() : null;
         Long tokenLimit = request.openaiMonthlyTokenLimit() != null && request.openaiMonthlyTokenLimit() > 0
                 ? request.openaiMonthlyTokenLimit() : null;
-        settings.update(request.automationEnabled(), request.dailyReleaseLimit(),
+        settings.update(request.automationEnabled(), request.collectionIntervalHours(),
+                request.dailyReleaseLimit(),
                 request.tavilyMonthlyCreditLimit(), budget, tokenLimit,
                 request.whiskyRatio(), request.wineRatio(), request.cognacRatio());
         log(actorId, AiNewsSettings.SINGLETON_ID, "AI 소식 설정 변경", null);
@@ -532,7 +548,8 @@ public class AiNewsService {
                 .runKey(request.runKey())
                 .runType(request.runType())
                 .status(AiNewsRunStatus.RUNNING)
-                .startedAt(LocalDateTime.now())
+                // 수집 주기 판정이 이 값을 기준으로 하므로, 같은 서비스의 다른 시각 계산과 시계를 맞춘다.
+                .startedAt(LocalDateTime.now(SERVICE_ZONE))
                 .build());
         return AiNewsDtos.RunResponse.from(run);
     }
@@ -612,48 +629,43 @@ public class AiNewsService {
                 .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_TOPIC_NOT_FOUND));
     }
 
-    private List<ResolvedSource> addResolvedSources(AiNewsArticle article,
-                                                     List<AiNewsDtos.SourceEvidenceRequest> sources) {
-        if (sources == null) return List.of();
-        List<ResolvedSource> resolved = new ArrayList<>();
+    private void addResolvedSources(AiNewsArticle article,
+                                    List<AiNewsDtos.SourceEvidenceRequest> sources) {
+        if (sources == null) return;
         Set<String> scopes = new HashSet<>();
         for (AiNewsDtos.SourceEvidenceRequest source : sources) {
             String domain = verifiedSourceDomain(source.sourceUrl(), source.domain());
-            ResolvedSource trust = resolveSource(source.sourceUrl(), domain, source.sourceType());
-            if (!scopes.add(trust.scopeKey)) continue;
-            resolved.add(trust);
+            if (!scopes.add(resolveSourceScopeKey(source.sourceUrl(), domain))) continue;
             article.addSource(AiNewsArticleSource.builder()
                     .sourceUrl(source.sourceUrl().trim())
                     .canonicalUrl(normalizeCanonicalUrl(source.canonicalUrl()))
                     .domain(domain)
                     .sourceTitle(trimToNull(source.sourceTitle()))
-                    .sourceType(trust.type)
                     .evidenceSummary(trimToNull(source.evidenceSummary()))
                     .contentHash(trimToNull(source.contentHash()))
                     .publishedAt(source.publishedAt())
                     .retrievedAt(source.retrievedAt() != null ? source.retrievedAt() : LocalDateTime.now())
                     .build());
         }
-        return resolved;
     }
 
     private void mergeNewSources(AiNewsArticle article, List<AiNewsDtos.SourceEvidenceRequest> sources) {
         if (sources == null || sources.isEmpty()) return;
         Set<String> existing = article.getSources().stream()
-                .map(source -> resolveSource(source.getSourceUrl(), source.getDomain(), source.getSourceType()).scopeKey)
+                .map(source -> resolveSourceScopeKey(source.getSourceUrl(), source.getDomain()))
                 .collect(java.util.stream.Collectors.toSet());
         for (AiNewsDtos.SourceEvidenceRequest source : sources) {
             String domain = verifiedSourceDomain(source.sourceUrl(), source.domain());
-            ResolvedSource trust = resolveSource(source.sourceUrl(), domain, source.sourceType());
-            if (existing.contains(trust.scopeKey)) continue;
+            String scopeKey = resolveSourceScopeKey(source.sourceUrl(), domain);
+            if (existing.contains(scopeKey)) continue;
             article.addSource(AiNewsArticleSource.builder()
                     .sourceUrl(source.sourceUrl().trim()).canonicalUrl(normalizeCanonicalUrl(source.canonicalUrl()))
-                    .domain(domain).sourceTitle(trimToNull(source.sourceTitle())).sourceType(trust.type)
+                    .domain(domain).sourceTitle(trimToNull(source.sourceTitle()))
                     .evidenceSummary(trimToNull(source.evidenceSummary())).contentHash(trimToNull(source.contentHash()))
                     .publishedAt(source.publishedAt())
                     .retrievedAt(source.retrievedAt() != null ? source.retrievedAt() : LocalDateTime.now())
                     .build());
-            existing.add(trust.scopeKey);
+            existing.add(scopeKey);
         }
     }
 
@@ -665,9 +677,7 @@ public class AiNewsService {
         for (String rawUrl : sourceUrls) {
             String canonicalUrl = normalizeAdminSourceUrl(rawUrl);
             String domain = verifiedSourceDomain(canonicalUrl, URI.create(canonicalUrl).getHost());
-            ResolvedSource trust = resolveSource(canonicalUrl, domain, AiNewsSourceType.UNAPPROVED);
-            if (requestedByDomain.putIfAbsent(domain,
-                    new AdminSourceUrl(canonicalUrl, domain, trust.type)) != null) {
+            if (requestedByDomain.putIfAbsent(domain, new AdminSourceUrl(canonicalUrl, domain)) != null) {
                 throw new CustomException(ErrorCode.INVALID_INPUT);
             }
         }
@@ -684,11 +694,10 @@ public class AiNewsService {
                         .sourceUrl(requested.url)
                         .canonicalUrl(requested.url)
                         .domain(requested.domain)
-                        .sourceType(requested.type)
                         .retrievedAt(LocalDateTime.now())
                         .build());
             } else if (!requested.url.equals(existing.getCanonicalUrl())) {
-                existing.updateUrl(requested.url, requested.url, requested.type, LocalDateTime.now());
+                existing.updateUrl(requested.url, requested.url, LocalDateTime.now());
             }
         }
     }
@@ -709,23 +718,18 @@ public class AiNewsService {
     }
 
     /**
-     * 출처 URL 의 신뢰 등급을 판정한다. <b>행을 만들지 않는다</b> — 판정 전용이다.
+     * 근거 URL 이 어느 출처 범위에 속하는지 판정해 중복 판정용 키를 돌려준다.
+     * <b>행을 만들지 않는다</b> — 판정 전용이다.
      *
      * <p>출처 목록은 관리자가 등록한 허용목록이다. 예전에는 처음 보는 도메인마다 여기서 행을 만들어
      * 목록이 끝없이 불어났고(주류와 무관한 도메인 포함), 그걸 사후에 차단으로 걷어내야 했다.
-     * 이제 미등록 도메인은 등급만 미승인으로 내려가고 근거 이력은 {@code ai_news_article_sources}
-     * 에만 남는다 — 공개 글 하단 출처 표시에 필요한 정보는 그쪽이 이미 전부 갖고 있다.
+     * 미등록 도메인은 도메인 전체를 한 범위로 보고, 근거 이력은 {@code ai_news_article_sources} 에만
+     * 남는다 — 공개 글 하단 출처 표시에 필요한 정보는 그쪽이 이미 전부 갖고 있다.
      */
-    private ResolvedSource resolveSource(String sourceUrl, String domain, AiNewsSourceType claimedType) {
+    private String resolveSourceScopeKey(String sourceUrl, String domain) {
         String path = sourceUrlPath(sourceUrl);
         AiNewsSourceConfig configured = findBestSourceConfig(sourceConfigRepository.findByDomain(domain), path);
-        if (configured != null) {
-            return new ResolvedSource(domain, scopeKey(domain, configured.getPathPrefix()),
-                    configured.isEnabled() ? configured.getSourceType() : AiNewsSourceType.UNAPPROVED);
-        }
-        AiNewsSourceType initialType = claimedType == AiNewsSourceType.COMMUNITY
-                ? AiNewsSourceType.COMMUNITY : AiNewsSourceType.UNAPPROVED;
-        return new ResolvedSource(domain, scopeKey(domain, ""), initialType);
+        return scopeKey(domain, configured != null ? configured.getPathPrefix() : "");
     }
 
     private AiNewsArticle findArticleDetail(Long id) {
@@ -938,7 +942,5 @@ public class AiNewsService {
         }
     }
 
-    private record ResolvedSource(String domain, String scopeKey, AiNewsSourceType type) {}
-
-    private record AdminSourceUrl(String url, String domain, AiNewsSourceType type) {}
+    private record AdminSourceUrl(String url, String domain) {}
 }

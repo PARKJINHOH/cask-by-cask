@@ -173,12 +173,10 @@ class NewsModelTest(unittest.TestCase):
             url="https://example.com/a",
             domain="example.com",
             content="x" * 2500,
-            source_type="OFFICIAL",
         )
 
         payload = source.evidence_payload()
 
-        self.assertEqual("OFFICIAL", payload["sourceType"])
         self.assertEqual(2000, len(payload["evidenceSummary"]))
         self.assertEqual(64, len(payload["contentHash"]))
         self.assertIsNotNone(payload["retrievedAt"])
@@ -272,7 +270,6 @@ class NewsSourceConfigTest(unittest.TestCase):
             "sourceUrl": "https://example.com/news",
             "sourceName": "Example",
             "domain": "example.com",
-            "sourceType": "OFFICIAL",
         }, 15)
 
         self.assertEqual("example.com", source.domain)
@@ -284,23 +281,23 @@ class NewsSourceConfigTest(unittest.TestCase):
 
     def test_account_rule_wins_over_domain_rule_only_for_matching_path(self) -> None:
         configs = [
-            {"domain": "instagram.com", "pathPrefix": "", "sourceType": "UNAPPROVED"},
-            {"domain": "instagram.com", "pathPrefix": "/metabevkorea", "sourceType": "OFFICIAL"},
+            {"domain": "instagram.com", "pathPrefix": ""},
+            {"domain": "instagram.com", "pathPrefix": "/metabevkorea"},
         ]
 
-        official = matching_source_config(
+        account = matching_source_config(
             "https://www.instagram.com/metabevkorea/news", "instagram.com", configs
         )
         other = matching_source_config(
             "https://www.instagram.com/another_account", "instagram.com", configs
         )
 
-        self.assertEqual("OFFICIAL", official["sourceType"])
-        self.assertEqual("UNAPPROVED", other["sourceType"])
+        self.assertEqual("/metabevkorea", account["pathPrefix"])
+        self.assertEqual("", other["pathPrefix"])
 
     def test_similar_account_name_does_not_match_prefix(self) -> None:
         configs = [
-            {"domain": "instagram.com", "pathPrefix": "/metabevkorea", "sourceType": "OFFICIAL"},
+            {"domain": "instagram.com", "pathPrefix": "/metabevkorea"},
         ]
 
         matched = matching_source_config(
@@ -327,8 +324,7 @@ class NewsSourceConfigTest(unittest.TestCase):
         """허용목록 밖 도메인은 검색 대상이 아니다 — 출처 목록이 불어나던 통로를 막은 부분이다."""
         config = {"sources": [{
             "id": 1, "sourceName": "공식", "sourceUrl": "https://whiskymag.example/news",
-            "domain": "whiskymag.example", "pathPrefix": "/news",
-            "sourceType": "TRUSTED_MEDIA", "enabled": True,
+            "domain": "whiskymag.example", "pathPrefix": "/news", "enabled": True,
         }]}
         search = Mock()
         search.search.return_value = []
@@ -346,7 +342,6 @@ class NewsSourceConfigTest(unittest.TestCase):
             "id": 1,
             "domain": "instagram.com",
             "pathPrefix": "/metabevkorea",
-            "sourceType": "OFFICIAL",
         }]
         source = SearchSource(
             title="MetaBevKorea 신제품 소식",
@@ -367,7 +362,6 @@ class NewsSourceConfigTest(unittest.TestCase):
             "sourceUrl": "https://www.instagram.com/metabevkorea",
             "domain": "instagram.com",
             "pathPrefix": "/metabevkorea",
-            "sourceType": "OFFICIAL",
             "enabled": True,
         }]}
         search = Mock()
@@ -382,17 +376,24 @@ class NewsSourceConfigTest(unittest.TestCase):
         query = search.search.call_args.args[0]
         self.assertIn("메타베브코리아", query)
         self.assertIn("metabevkorea", query)
-        api.record_source_crawl_result.assert_called_once_with(1, "SUCCESS")
+        # 검색으로만 확인하는 출처는 결과가 없으면 '성공'이 아니다 —
+        # 예전에는 여기서도 SUCCESS 로 찍혀서 계정이 바뀌어도 아무도 몰랐다.
+        api.record_source_crawl_result.assert_called_once_with(1, "NO_RESULT", None)
 
     @patch("news_official._direct_source")
-    def test_successful_empty_fallback_clears_transient_direct_failure(self, direct_source: Mock) -> None:
+    def test_empty_search_no_longer_hides_a_direct_failure(self, direct_source: Mock) -> None:
+        """제한 검색이 정상 완료돼도 직접 확인 실패를 덮지 않는다.
+
+        예전에는 검색만 성공하면 모든 출처를 SUCCESS 로 찍었다. 그래서 등록 URL 이 깨져도
+        출처 목록은 늘 '수집 성공'이었고, 관리자는 고칠 수 있는 문제를 볼 수 없었다.
+        일시적 실패는 다음 실행에서 성공으로 덮이므로 사유를 남기는 쪽이 안전하다.
+        """
         config = {"sources": [{
             "id": 2,
             "sourceName": "Whisky Advocate News",
             "sourceUrl": "https://whiskyadvocate.com/Tag/news",
             "domain": "whiskyadvocate.com",
             "pathPrefix": "/Tag/news",
-            "sourceType": "TRUSTED_MEDIA",
             "enabled": True,
         }]}
         direct_source.side_effect = TimeoutError("connect timeout")
@@ -403,7 +404,7 @@ class NewsSourceConfigTest(unittest.TestCase):
         sources = collect_registered_sources(config, search, api, Mock(), timeout=15)
 
         self.assertEqual([], sources)
-        api.record_source_crawl_result.assert_called_once_with(2, "SUCCESS")
+        api.record_source_crawl_result.assert_called_once_with(2, "ERROR", "connect timeout")
 
     @patch("news_official._direct_source")
     def test_failed_fallback_keeps_direct_failure(self, direct_source: Mock) -> None:
@@ -413,7 +414,6 @@ class NewsSourceConfigTest(unittest.TestCase):
             "sourceUrl": "https://whiskyadvocate.com/Tag/news",
             "domain": "whiskyadvocate.com",
             "pathPrefix": "/Tag/news",
-            "sourceType": "TRUSTED_MEDIA",
             "enabled": True,
         }]}
         direct_source.side_effect = TimeoutError("connect timeout")
@@ -424,6 +424,57 @@ class NewsSourceConfigTest(unittest.TestCase):
         collect_registered_sources(config, search, api, Mock(), timeout=15)
 
         api.record_source_crawl_result.assert_called_once_with(2, "ERROR", "connect timeout")
+
+    @patch("news_official._direct_source")
+    def test_one_source_failing_does_not_change_the_others(self, direct_source: Mock) -> None:
+        """실패는 실패한 출처에만 남는다 — 사유도 그 출처의 것이어야 한다."""
+        config = {"sources": [
+            {"id": 1, "sourceName": "정상", "sourceUrl": "https://ok.example/news",
+             "domain": "ok.example", "pathPrefix": "/news", "enabled": True},
+            {"id": 2, "sourceName": "깨진 출처", "sourceUrl": "https://broken.example/news",
+             "domain": "broken.example", "pathPrefix": "/news", "enabled": True},
+        ]}
+        direct_source.side_effect = [
+            SearchSource(title="정상", url="https://ok.example/news/1",
+                         domain="ok.example", content="본문"),
+            ValueError("HTTP 404"),
+        ]
+        search = Mock()
+        search.search.return_value = []
+        api = Mock()
+
+        collect_registered_sources(config, search, api, Mock(), timeout=15)
+
+        reported = {call.args[0]: call.args[1:] for call
+                    in api.record_source_crawl_result.call_args_list}
+        self.assertEqual(("SUCCESS", None), reported[1])
+        self.assertEqual(("ERROR", "HTTP 404"), reported[2])
+
+    @patch("news_official._direct_source")
+    def test_disabled_source_is_not_collected_and_grade_no_longer_matters(
+        self, direct_source: Mock
+    ) -> None:
+        """수집 대상 판단은 '수집 활성' 하나뿐이다.
+
+        예전에는 등급까지 봐서, 활성이어도 등급이 커뮤니티면 조용히 빠졌다.
+        """
+        config = {"sources": [
+            {"id": 1, "sourceName": "커뮤니티였던 출처", "sourceUrl": "https://forum.example/news",
+             "domain": "forum.example", "pathPrefix": "/news", "enabled": True},
+            {"id": 2, "sourceName": "꺼 둔 출처", "sourceUrl": "https://off.example/news",
+             "domain": "off.example", "pathPrefix": "/news", "enabled": False},
+        ]}
+        direct_source.return_value = SearchSource(
+            title="글", url="https://forum.example/news/1", domain="forum.example", content="본문")
+        search = Mock()
+        search.search.return_value = []
+        api = Mock()
+
+        collect_registered_sources(config, search, api, Mock(), timeout=15)
+
+        self.assertEqual(["forum.example"], search.search.call_args.kwargs["include_domains"])
+        reported = [call.args[0] for call in api.record_source_crawl_result.call_args_list]
+        self.assertEqual([1], reported)
 
 
 class GeminiDealAnalyzerTest(unittest.TestCase):

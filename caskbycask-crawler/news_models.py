@@ -73,7 +73,6 @@ class SearchSource:
     content: str
     score: float = 0.0
     published_at: str | None = None
-    source_type: str = "UNAPPROVED"
 
     def evidence_payload(self) -> dict[str, Any]:
         canonical_url = canonicalize_url(self.url)
@@ -82,7 +81,6 @@ class SearchSource:
             "canonicalUrl": truncate_utf16(canonical_url, 1500),
             "domain": truncate_utf16(self.domain, 255),
             "sourceTitle": truncate_utf16(self.title, 500),
-            "sourceType": self.source_type,
             "evidenceSummary": truncate_utf16(self.content, 2000) or None,
             "contentHash": hashlib.sha256(self.content.encode("utf-8")).hexdigest(),
             "publishedAt": local_datetime_string(self.published_at) if self.published_at else None,

@@ -11,7 +11,6 @@ from alerts.slack_notifier import SlackNotifier
 from logger import setup_logging
 from news_config import NewsSettings
 from news_models import NewsLead, SearchSource, canonicalize_url, local_datetime_string
-from news_source_config import matching_source_config
 from news_official import collect_registered_sources, rotation_category
 from news_gemini import GeminiLeadFinder
 from news_tavily import TavilyNewsSearch
@@ -31,13 +30,6 @@ def _dedupe_sources(sources: list[SearchSource]) -> list[SearchSource]:
         seen.add(key)
         result.append(source)
     return result
-
-
-def _apply_source_trust(sources: list[SearchSource], config: dict) -> None:
-    for source in sources:
-        matched = matching_source_config(source.url, source.domain, config.get("sources", []))
-        source.source_type = (matched.get("sourceType", "UNAPPROVED")
-                              if matched and matched.get("enabled") else "UNAPPROVED")
 
 
 def _lead_payload(lead: NewsLead, sources: list[SearchSource]) -> dict:
@@ -119,6 +111,14 @@ def run() -> int:
         log.info("AI 소식 자동화가 관리자 설정에서 비활성화되어 있습니다.")
         return 0
 
+    # cron 은 매시간 돌지만 실제 수집 주기는 관리자 설정이 정한다. 판단은 서버가 한다 —
+    # 마지막 실행 시각이 DB 에만 있어서, 양쪽이 각자 계산하면 주기가 조용히 어긋난다.
+    # 차례가 아니면 실행 행(ai_news_runs)을 만들기 전에 끝내야 이력이 건너뛴 기록으로 더럽혀지지 않는다.
+    # 기본값 True 는 이 필드를 모르는 옛 API 와 붙어도 지금까지처럼 동작하게 하려는 것이다.
+    if not config.get("collectionDue", True):
+        log.info("수집 주기가 아직 지나지 않아 건너뜁니다. 다음 예정=%s", config.get("nextCollectionAt"))
+        return 0
+
     usage = config["usage"]
     tavily_limit = int(remote_settings.get("tavilyMonthlyCreditLimit", 900))
     tavily_used = int(usage.get("tavilyCredits", 0))
@@ -184,7 +184,6 @@ def run() -> int:
             ))
         else:
             found_sources = []
-        _apply_source_trust(found_sources, config)
 
         # 일일 한도는 발행이 아니라 소재 생성 기준이다 — 발행은 관리자가 나중에 한다.
         remaining_daily = max(0, int(remote_settings.get("dailyReleaseLimit", 3))

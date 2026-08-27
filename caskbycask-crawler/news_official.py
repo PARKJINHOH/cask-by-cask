@@ -11,7 +11,7 @@ from news_source_config import matching_source_config, normalized_path
 from safe_http import get_public_response, new_public_session, read_limited_body
 
 
-ELIGIBLE_TYPES = {"OFFICIAL", "TRUSTED_MEDIA"}
+#: 직접 요청으로는 공개 콘텐츠를 읽을 수 없어 검색으로만 확인하는 플랫폼.
 SEARCH_ONLY_DOMAINS = {"instagram.com"}
 DIRECT_REQUEST_ATTEMPTS = 2
 
@@ -108,7 +108,6 @@ def _direct_source(config: dict, timeout: int) -> SearchSource:
         domain=configured_domain,
         content=content,
         score=0.5,
-        source_type=str(config.get("sourceType") or "UNAPPROVED"),
     )
 
 
@@ -134,16 +133,23 @@ def collect_registered_sources(config: dict, search, api, log, timeout: int,
     예전에는 이 함수 밖에서 도메인 무제한 일반 검색을 함께 돌렸는데, 거기서 물어온 도메인이
     출처 목록에 자동 등록되면서 주류와 무관한 URL 이 끝없이 쌓였다. 지금은 이 함수가 유일한
     발견 경로다 — 관리자가 등록하지 않은 도메인은 애초에 검색 대상이 아니다.
+
+    수집 대상 판단은 ``enabled`` 하나뿐이다. 예전에는 출처 등급까지 봤는데, 스위치가 둘이라
+    '수집 활성'을 켜 둔 출처가 등급 때문에 조용히 빠지는 일이 생겼다.
     """
     configs = [item for item in config.get("sources", [])
-               if item.get("enabled") and item.get("sourceType") in ELIGIBLE_TYPES
-               and item.get("sourceUrl")]
+               if item.get("enabled") and item.get("sourceUrl")]
     if not configs:
         return []
 
     collected: list[SearchSource] = []
+    #: 이번 실행에서 근거를 실제로 가져온 출처. 여기 없으면 성공이 아니다.
+    fetched: set[int] = set()
+    #: 출처별 직접 확인 실패 사유.
     errors: dict[int, str] = {}
-    successful: set[int] = set()
+    #: 제한 검색 자체가 실패한 사유(전체 공통).
+    search_error: str | None = None
+
     for item in configs:
         source_id = int(item["id"])
         domain = str(item.get("domain") or "").lower().removeprefix("www.")
@@ -153,7 +159,7 @@ def collect_registered_sources(config: dict, search, api, log, timeout: int,
             continue
         try:
             collected.append(_direct_source(item, timeout))
-            successful.add(source_id)
+            fetched.add(source_id)
         except Exception as error:  # noqa: BLE001
             errors[source_id] = str(error)[:1000]
             log.warning("공식 출처 직접 확인 실패 source=%s: %s", item.get("sourceName"), error)
@@ -176,25 +182,40 @@ def collect_registered_sources(config: dict, search, api, log, timeout: int,
                 matched = _targeted_match(source, configs)
                 if not matched:
                     continue
-                source.source_type = str(matched.get("sourceType") or "UNAPPROVED")
                 collected.append(source)
-                successful.add(int(matched["id"]))
-            # 제한 검색이 정상 완료되면 신규 결과가 없어도 출처 확인 작업 자체는 성공이다.
-            successful.update(int(item["id"]) for item in configs)
+                fetched.add(int(matched["id"]))
         except Exception as error:  # noqa: BLE001
+            search_error = f"Tavily 제한 검색 실패: {error}"[:1000]
             log.warning("등록 공식 출처 Tavily 제한 검색 실패: %s", error)
-            for item in configs:
-                errors.setdefault(int(item["id"]), f"Tavily 제한 검색 실패: {error}"[:1000])
 
+    _report_crawl_results(configs, fetched, errors, search_error, api, log)
+    return collected
+
+
+def _report_crawl_results(configs: list[dict], fetched: set[int], errors: dict[int, str],
+                          search_error: str | None, api, log) -> None:
+    """출처별 수집 결과를 관리자 화면이 읽을 수 있게 서버에 남긴다.
+
+    예전에는 제한 검색이 정상 완료되기만 하면 모든 출처를 SUCCESS 로 덮어썼다. 그래서 직접 확인이
+    깨진 출처도 화면에는 늘 '수집 성공'이었고, 검색으로만 확인하는 인스타그램 출처는 결과가 없어도
+    성공으로 찍혔다 — 관리자가 고칠 수 있는 문제를 아무도 볼 수 없었다.
+
+    지금은 셋으로 나눈다.
+      SUCCESS   : 이번 실행에서 이 출처에서 근거를 실제로 가져왔다.
+      NO_RESULT : 확인은 정상이었지만 이번 실행에 새 소식이 없었다. 실패가 아니다.
+      ERROR     : 확인 자체가 실패했다. 사유를 함께 남긴다.
+    """
     for item in configs:
         source_id = int(item["id"])
+        if source_id in fetched:
+            status, reason = "SUCCESS", None
+        elif errors.get(source_id):
+            status, reason = "ERROR", errors[source_id]
+        elif search_error:
+            status, reason = "ERROR", search_error
+        else:
+            status, reason = "NO_RESULT", None
         try:
-            if source_id in successful:
-                api.record_source_crawl_result(source_id, "SUCCESS")
-            else:
-                api.record_source_crawl_result(
-                    source_id, "ERROR", errors.get(source_id) or "공개 콘텐츠를 수집하지 못했습니다."
-                )
+            api.record_source_crawl_result(source_id, status, reason)
         except Exception as error:  # noqa: BLE001
             log.warning("공식 출처 수집 상태 보고 실패 source=%s: %s", item.get("sourceName"), error)
-    return collected

@@ -146,14 +146,14 @@ public class AiNewsAdminController {
 
     @GetMapping("/sources")
     public ResponseEntity<ApiResponse<PageResponse<AiNewsDtos.SourceConfigResponse>>> sources(
-            @RequestParam(required = false) AiNewsSourceType sourceType,
+            @RequestParam(required = false) AiNewsSourceCrawlStatus crawlStatus,
             @RequestParam(required = false) Boolean enabled,
             @RequestParam(required = false) Boolean autoDiscovered,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
-                aiNewsService.sourceConfigs(sourceType, enabled, autoDiscovered, keyword, page, size))));
+                aiNewsService.sourceConfigs(crawlStatus, enabled, autoDiscovered, keyword, page, size))));
     }
 
     @PostMapping("/sources")

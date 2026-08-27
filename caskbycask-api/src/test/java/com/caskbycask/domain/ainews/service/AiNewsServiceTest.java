@@ -4,6 +4,7 @@ import com.caskbycask.admin.service.AdminLogService;
 import com.caskbycask.domain.ainews.dto.AiNewsDtos;
 import com.caskbycask.domain.ainews.entity.AiNewsArticle;
 import com.caskbycask.domain.ainews.entity.AiNewsArticleSource;
+import com.caskbycask.domain.ainews.entity.AiNewsRun;
 import com.caskbycask.domain.ainews.entity.AiNewsSettings;
 import com.caskbycask.domain.ainews.entity.AiNewsSourceConfig;
 import com.caskbycask.domain.ainews.entity.AiNewsTopic;
@@ -202,7 +203,6 @@ class AiNewsServiceTest {
                 .canonicalUrl("https://example.com/original")
                 .domain("example.com")
                 .sourceTitle("기존 근거")
-                .sourceType(AiNewsSourceType.TRUSTED_MEDIA)
                 .evidenceSummary("보존할 근거")
                 .retrievedAt(LocalDateTime.now())
                 .build());
@@ -210,19 +210,11 @@ class AiNewsServiceTest {
                 .sourceUrl("https://removed.example/news")
                 .canonicalUrl("https://removed.example/news")
                 .domain("removed.example")
-                .sourceType(AiNewsSourceType.UNAPPROVED)
                 .retrievedAt(LocalDateTime.now())
                 .build());
 
+        // 관리자 URL 반영은 출처 설정을 읽지 않는다 — 도메인 하나당 하나로 추리고 그대로 저장한다.
         given(articleRepository.findDetailById(12L)).willReturn(Optional.of(article));
-        given(sourceConfigRepository.findByDomain("example.com")).willReturn(List.of(
-                AiNewsSourceConfig.builder()
-                        .sourceName("전문 매체").sourceUrl("https://example.com")
-                        .domain("example.com").sourceType(AiNewsSourceType.TRUSTED_MEDIA).build()));
-        given(sourceConfigRepository.findByDomain("new.example")).willReturn(List.of(
-                AiNewsSourceConfig.builder()
-                        .sourceName("공식 사이트").sourceUrl("https://new.example")
-                        .domain("new.example").sourceType(AiNewsSourceType.OFFICIAL).build()));
         doAnswer(invocation -> {
             assertThat(article.getHashtags()).isEmpty();
             return null;
@@ -275,10 +267,52 @@ class AiNewsServiceTest {
     @Test
     void categoryRatiosMustSumToOneHundred() {
         AiNewsDtos.SettingsUpdateRequest request = new AiNewsDtos.SettingsUpdateRequest(
-                false, 3, 900, null, null, 60, 30, 30);
+                false, 2, 3, 900, null, null, 60, 30, 30);
 
         assertThatThrownBy(() -> service.updateSettings(request, 1L))
                 .isInstanceOf(CustomException.class);
+    }
+
+    @Test
+    void crawlerIsToldToCollectWhenThereIsNoRunHistoryYet() {
+        given(settingsRepository.findById(1L)).willReturn(Optional.of(defaultSettings()));
+        given(runRepository.findFirstByOrderByStartedAtDesc()).willReturn(Optional.empty());
+
+        AiNewsDtos.InternalConfigResponse config = service.internalConfig();
+
+        assertThat(config.collectionDue()).isTrue();
+        assertThat(config.nextCollectionAt()).isNull();
+    }
+
+    @Test
+    void crawlerIsToldToWaitUntilTheConfiguredIntervalHasPassed() {
+        // cron 은 매시간 돌지만 주기는 관리자 설정이 정한다. 아직 차례가 아니면 실행 행조차 만들지 않는다.
+        given(settingsRepository.findById(1L)).willReturn(Optional.of(defaultSettings()));
+        LocalDateTime justRan = LocalDateTime.now().minusMinutes(10);
+        given(runRepository.findFirstByOrderByStartedAtDesc())
+                .willReturn(Optional.of(runStartedAt(justRan)));
+
+        AiNewsDtos.InternalConfigResponse config = service.internalConfig();
+
+        assertThat(config.collectionDue()).isFalse();
+        assertThat(config.nextCollectionAt()).isEqualTo(justRan.plusHours(2));
+    }
+
+    @Test
+    void crawlerCollectsAgainOnceTheIntervalHasPassed() {
+        given(settingsRepository.findById(1L)).willReturn(Optional.of(defaultSettings()));
+        given(runRepository.findFirstByOrderByStartedAtDesc())
+                .willReturn(Optional.of(runStartedAt(LocalDateTime.now().minusHours(3))));
+
+        AiNewsDtos.InternalConfigResponse config = service.internalConfig();
+
+        assertThat(config.collectionDue()).isTrue();
+    }
+
+    private AiNewsRun runStartedAt(LocalDateTime startedAt) {
+        return AiNewsRun.builder()
+                .id(1L).runKey("ai-news-test").runType(AiNewsRunType.SCHEDULED)
+                .status(AiNewsRunStatus.SUCCEEDED).startedAt(startedAt).build();
     }
 
     @Test
@@ -290,7 +324,6 @@ class AiNewsServiceTest {
         AiNewsDtos.SourceConfigUpsertRequest request = new AiNewsDtos.SourceConfigUpsertRequest(
                 "메타베브코리아 공식 인스타그램",
                 "https://www.instagram.com/metabevkorea/",
-                AiNewsSourceType.OFFICIAL,
                 true);
 
         AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
@@ -308,7 +341,7 @@ class AiNewsServiceTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
         AiNewsDtos.SourceConfigUpsertRequest request = new AiNewsDtos.SourceConfigUpsertRequest(
                 "다른 공식 계정", "https://instagram.com/another_account",
-                AiNewsSourceType.OFFICIAL, true);
+                true);
 
         AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
 
@@ -324,7 +357,7 @@ class AiNewsServiceTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
         AiNewsDtos.SourceConfigUpsertRequest request = new AiNewsDtos.SourceConfigUpsertRequest(
                 "Wine21", "https://www.wine21.com/11_news/news_list.html",
-                AiNewsSourceType.TRUSTED_MEDIA, true);
+                true);
 
         AiNewsDtos.SourceConfigResponse result = service.createSourceConfig(request, null);
 
@@ -338,11 +371,11 @@ class AiNewsServiceTest {
         AiNewsSourceConfig domainRule = AiNewsSourceConfig.builder()
                 .sourceName("인스타그램 기본").sourceUrl("https://instagram.com")
                 .domain("instagram.com").pathPrefix("")
-                .sourceType(AiNewsSourceType.UNAPPROVED).build();
+                .build();
         AiNewsSourceConfig accountRule = AiNewsSourceConfig.builder()
                 .sourceName("메타베브코리아").sourceUrl("https://instagram.com/metabevkorea")
                 .domain("instagram.com").pathPrefix("/metabevkorea")
-                .sourceType(AiNewsSourceType.OFFICIAL).build();
+                .build();
 
         AiNewsSourceConfig matching = AiNewsService.findBestSourceConfig(
                 List.of(domainRule, accountRule), "/metabevkorea/news");
@@ -357,8 +390,7 @@ class AiNewsServiceTest {
     void crawlerErrorIsStoredWithCheckedTimeAndMessage() {
         AiNewsSourceConfig source = AiNewsSourceConfig.builder()
                 .id(3L).sourceName("공식 뉴스룸").sourceUrl("https://example.com/news")
-                .domain("example.com").pathPrefix("/news").sourceType(AiNewsSourceType.OFFICIAL)
-                .build();
+                .domain("example.com").pathPrefix("/news").build();
         given(sourceConfigRepository.findById(3L)).willReturn(Optional.of(source));
         LocalDateTime checkedAt = LocalDateTime.of(2026, 7, 13, 12, 30);
 
@@ -387,7 +419,8 @@ class AiNewsServiceTest {
 
     @Test
     void unregisteredEvidenceDomainDoesNotCreateASourceConfigRow() {
-        // 출처 목록이 끝없이 불어나던 원인. 미등록 도메인은 등급만 미승인으로 매기고 행은 만들지 않는다.
+        // 출처 목록이 끝없이 불어나던 원인. 미등록 도메인이어도 출처 설정 행은 만들지 않는다 —
+        // 근거 이력은 ai_news_article_sources 에만 남는다.
         AtomicReference<AiNewsArticle> saved = new AtomicReference<>();
         given(articleRepository.findByDedupeKey("release:new-domain")).willReturn(Optional.empty());
         given(sourceConfigRepository.findByDomain("unknown-blog.example")).willReturn(List.of());
@@ -404,13 +437,13 @@ class AiNewsServiceTest {
                 null, new BigDecimal("0.9"), "gemini-test",
                 List.of(new AiNewsDtos.SourceEvidenceRequest(
                         "https://unknown-blog.example/post", "https://unknown-blog.example/post",
-                        "unknown-blog.example", "낯선 블로그", AiNewsSourceType.UNAPPROVED,
+                        "unknown-blog.example", "낯선 블로그",
                         null, null, null, null))));
 
         verify(sourceConfigRepository, never()).save(any(AiNewsSourceConfig.class));
         assertThat(saved.get().getSources()).singleElement()
-                .extracting(AiNewsArticleSource::getSourceType)
-                .isEqualTo(AiNewsSourceType.UNAPPROVED);
+                .extracting(AiNewsArticleSource::getDomain)
+                .isEqualTo("unknown-blog.example");
     }
 
     @Test
@@ -463,7 +496,7 @@ class AiNewsServiceTest {
                 "release:balvenie-14-caribbean", null, new BigDecimal("0.9"), "gemini-test",
                 List.of(new AiNewsDtos.SourceEvidenceRequest(
                         "https://whiskymag.example/news/1", "https://whiskymag.example/news/1",
-                        "whiskymag.example", "Balvenie 14", AiNewsSourceType.TRUSTED_MEDIA,
+                        "whiskymag.example", "Balvenie 14",
                         null, null, null, null))));
 
         assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
@@ -517,7 +550,7 @@ class AiNewsServiceTest {
                 null, new BigDecimal("0.9"), "gemini-test",
                 List.of(new AiNewsDtos.SourceEvidenceRequest(
                         "https://whiskymag.example/news/1", "https://whiskymag.example/news/1",
-                        "whiskymag.example", "같은 근거", AiNewsSourceType.TRUSTED_MEDIA,
+                        "whiskymag.example", "같은 근거",
                         null, null, null, null))));
 
         assertThat(result.id()).isEqualTo(61L);
@@ -528,6 +561,7 @@ class AiNewsServiceTest {
         return AiNewsSettings.builder()
                 .id(1L)
                 .automationEnabled(false)
+                .collectionIntervalHours(2)
                 .dailyReleaseLimit(3)
                 .tavilyMonthlyCreditLimit(900)
                 .whiskyRatio(60)

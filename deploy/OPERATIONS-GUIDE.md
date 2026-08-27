@@ -968,10 +968,13 @@ tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 ```
 
 - `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식은
-  `current/run-news.sh`를 핫딜 17분 후(`17 */2 * * *`)에 실행한다.
-- 실행마다 주종 하나(`whiskyRatio`·`wineRatio`·`cognacRatio` 비율로 회전)에 집중하고, 근거는 관리자가
-  등록한 출처 허용목록에서만 모은다. 일일 상한(`dailyReleaseLimit`, 기본 3)은 발행이 아니라
-  **소재 생성** 기준이다.
+  `current/run-news.sh`를 매시간 17분(`17 * * * *`)에 실행한다.
+- AI 소식의 cron 은 확인만 한다. 실제 수집 주기는 `관리자 > 커뮤니티 > 소식(AI) > 설정·사용량`의
+  **수집 주기(시간)** 가 정하며(기본 2), 크롤러는 `/api/internal/ai-news/config` 의 `collectionDue` 가
+  거짓이면 `ai_news_runs` 행을 만들지 않고 종료한다. 즉 실행 이력 표의 간격이 곧 실제 수집 주기다.
+- 수집 차례인 실행마다 주종 하나(`whiskyRatio`·`wineRatio`·`cognacRatio` 비율로 회전)에 집중하고,
+  근거는 관리자가 등록한 출처 허용목록에서만 모은다. 일일 상한(`dailyReleaseLimit`, 기본 3)은
+  발행이 아니라 **소재 생성** 기준이다.
 - 코드 배포는 `.env`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다. `.venv`는 각
   릴리스 안에서 hash lock으로 새로 설치되며 `current`/`previous`와 함께 전환된다.
 - 배포는 핫딜·AI 소식·와인 수집의 세 `flock`을 획득한 뒤 cron을 갱신하고 링크를 교체한다. 실행 중 작업이

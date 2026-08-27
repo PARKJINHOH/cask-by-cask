@@ -1,7 +1,8 @@
 # Oracle Cloud Ubuntu 24.04 배포 가이드
 
 Oracle Cloud (Ubuntu 24.04 LTS, aarch64 또는 x86_64) 운영 서버 기준.
-핫딜과 AI 소식 크롤러를 KST 기준 2시간마다 시차를 두고 실행하도록 cron 스케줄러로 설정한다.
+핫딜 크롤러는 KST 기준 2시간마다, AI 소식 크롤러는 매시간 시차를 두고 실행하도록 cron 스케줄러로 설정한다.
+AI 소식의 실제 수집 주기는 관리자 화면 설정이 정하고, cron 은 "지금 차례인가"를 확인하는 역할만 한다.
 
 ---
 
@@ -184,7 +185,7 @@ Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 운영 가�
 
 ---
 
-## 10. cron 스케줄러 등록 (2시간마다)
+## 10. cron 스케줄러 등록 (핫딜 2시간마다 · AI 소식 매시간)
 1. `run.sh` 실행권한 부여:
    ```bash
    chmod +x /app/caskbycask-crawler/run.sh
@@ -203,12 +204,17 @@ Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 운영 가�
 ### AI 소식 작업 추가
 
 `.env`에 `TAVILY_API_KEY`와 `AI_NEWS_*` 모델/비용 설정을 추가한 뒤 별도 잠금 파일을 사용하는
-`run-news.sh`는 핫딜 실행 17분 후에 시작하도록 KST 기준 2시간마다 실행합니다. 두 작업은 서로 다른 잠금 파일을 사용하지만 Gemini 무료 한도의 순간 중첩을 피하기 위해 시차를 둡니다.
+`run-news.sh`는 핫딜 실행 17분 후에 시작하도록 **매시간** 실행합니다. 두 작업은 서로 다른 잠금 파일을 사용하지만 Gemini 무료 한도의 순간 중첩을 피하기 위해 시차를 둡니다.
 
 ```cron
 CRON_TZ=Asia/Seoul
-17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1
+17 * * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1
 ```
+
+**cron 주기와 수집 주기는 다릅니다.** cron 은 매시간 깨어나기만 하고, 실제로 수집할지는
+`관리자 > 커뮤니티 > 소식(AI) > 설정·사용량`의 **수집 주기(시간)** 가 정합니다(기본 2시간).
+크롤러는 `/api/internal/ai-news/config` 의 `collectionDue` 를 보고 차례가 아니면 실행 이력을 만들지 않고
+그대로 종료합니다 — 그래서 주기를 바꾸려고 서버에 접속할 필요가 없습니다.
 
 AI 소식은 **소재만 모읍니다.** 크롤러는 제목·요약·근거 URL 까지만 저장하고, 본문과 대표 이미지는
 관리자가 에디터에서 직접 만들어 발행합니다. AI 본문 작성과 Gemini 이미지 API 는 호출하지 않습니다.
@@ -252,7 +258,7 @@ GitHub Actions의 `target=crawler` 또는 `target=all`은 새 릴리스를 `/app
 | 같은 딜이 여러 건 올라옴 | `DUPLICATE_LOOKBACK_HOURS` 상향 또는 `DUPLICATE_JACCARD_THRESHOLD`, `DUPLICATE_NGRAM_THRESHOLD` 하향 |
 | 핫딜 AI 429 | `GEMINI_REQUEST_INTERVAL_SEC` 확인 또는 상향 (기본 5초) |
 | AI 소식 Gemini 429 | Google AI Studio 프로젝트의 무료 티어 rate limit 확인. 다음 2시간 실행을 기다리거나 후보 수를 낮춤 |
-| AI 소식 소재가 안 쌓임 | 관리자 `소식(AI) > 설정`의 자동화 ON 여부부터 확인. OFF면 `ai-news.log`에 `AI 소식 자동화가 관리자 설정에서 비활성화` 만 남고 즉시 종료한다. 그 다음 일일 상한 소진과 Tavily·Gemini 월 한도 도달 Slack 경고를 본다 |
+| AI 소식 소재가 안 쌓임 | ① 관리자 `소식(AI) > 설정`의 자동화 ON 여부 — OFF면 `ai-news.log`에 `AI 소식 자동화가 관리자 설정에서 비활성화` 만 남고 즉시 종료한다. ② **수집 주기(시간)** 차례가 아니면(`collectionDue=false`) 실행 이력조차 남기지 않으므로 cron 이 매시간 돌아도 정상이다. ③ 일일 상한 소진과 Tavily·Gemini 월 한도 도달 Slack 경고 |
 | 크롤링 차단/429 | `REQUEST_DELAY_SEC` 상향 (예: 2.0~3.0) |
 | 로그 위치 | `/app/caskbycask-crawler/logs/crawler.log` |
 
