@@ -17,7 +17,11 @@ import ImageLightbox from '@/shared/components/ImageLightbox'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import ReviewList from '@/domain/review/components/ReviewList'
 import { useReviews } from '@/domain/review/hooks/useReviews'
-import { buildBreadcrumbSchema, buildReviewSchema } from '@/shared/utils/seoSchema'
+import {
+  buildReviewSchema,
+  buildSpiritBreadcrumbSchema,
+  buildSpiritProductSchema,
+} from '@/shared/utils/seoSchema'
 import CommentList from '@/domain/comment/components/CommentList'
 import { useComments } from '@/domain/comment/hooks/useComments'
 import WishlistButtons from '@/domain/wishlist/components/WishlistButtons'
@@ -1113,69 +1117,35 @@ export default function SpiritDetailPage() {
     }),
   )
 
-  const langPrefix = isEn ? '/en' : '/ko'
   // 평점을 낸 모수는 점수를 남긴 리뷰뿐이다 — reviewCount(총 리뷰 수)를 쓰면
   // aggregateRating 의 개수가 실제 평점 수와 어긋나 구조화 데이터가 틀린 값이 된다.
   const ratedReviewCount = scoreSource?.scoredReviewCount ?? 0
-  const hasProductSnippetData = (spirit.avgScore != null && ratedReviewCount > 0) || reviewSchemas.length > 0
 
-  const spiritJsonLd = hasProductSnippetData ? {
-    '@type': 'Product',
-    name: primaryName,
-    alternateName: secondaryName || undefined,
-    description: isEn
-      ? `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · Liquor specifications, tasting notes & user reviews on CaskByCask.`
-      : `${primaryName} — ${primaryProducer || ''} ${countryLabel ? `· ${countryLabel}` : ''} · 원산지, 도수 등 상세 주류 정보와 테이스팅 노트 및 사용자 리뷰.`,
-    url: canonicalUrl,
+  // 스키마는 서버(seoHelpers.getSpiritDetailJsonLd)와 **같은 빌더**를 쓴다. 예전에는 양쪽이
+  // 각자 리터럴을 만들어, 같은 페이지인데 JS 실행 여부에 따라 구글이 다른 평점을 봤다.
+  // 평점 출처는 바로 아래 StarScore 와 같은 scoreSource(에디션이면 마스터)여야 한다 —
+  // 예전 게이트는 spirit.avgScore 를 봐서, 부모에만 평점이 있는 에디션에서 평점이 통째로 빠졌다.
+  const spiritJsonLd = buildSpiritProductSchema({
+    lang: isEn ? 'en' : 'ko',
+    primaryName,
+    secondaryName,
+    canonicalUrl,
     image: heroImage,
-    brand: primaryProducer ? {
-      '@type': 'Brand',
-      name: primaryProducer,
-      ...(secondaryProducer ? { alternateName: secondaryProducer } : {}),
-    } : undefined,
-    manufacturer: primaryProducer ? {
-      '@type': 'Organization',
-      name: primaryProducer,
-      ...(secondaryProducer ? { alternateName: secondaryProducer } : {}),
-      address: spirit.country ? {
-        '@type': 'PostalAddress',
-        addressCountry: spirit.country,
-      } : undefined,
-    } : undefined,
-    countryOfOrigin: countryLabel || undefined,
     category: displaySpirit.category,
-    aggregateRating: (scoreSource?.avgScore != null && ratedReviewCount > 0) ? {
-      '@type': 'AggregateRating',
-      ratingValue: scoreSource.avgScore,
-      reviewCount: ratedReviewCount,
-      bestRating: 100,
-      worstRating: 0,
-    } : undefined,
-    ...(reviewSchemas.length > 0 ? { review: reviewSchemas } : {}),
-  } : {
-    '@type': 'WebPage',
-    name: primaryName,
-    alternateName: secondaryName || undefined,
-    description: isEn
-      ? `${primaryName} specs, tasting notes, and detailed liquor information on CaskByCask.`
-      : `${primaryName} 상세 주류 정보와 시음 노트를 CaskByCask에서 확인하세요.`,
-    url: canonicalUrl,
-    image: heroImage,
-    about: {
-      '@type': 'Thing',
-      name: primaryName,
-      alternateName: secondaryName || undefined,
-      additionalType: displaySpirit.category || undefined,
-    },
-  }
+    countryOfOrigin: countryLabel,
+    producerPrimary: primaryProducer,
+    producerSecondary: secondaryProducer,
+    rating: (scoreSource?.avgScore != null && ratedReviewCount > 0)
+      ? { value: scoreSource.avgScore, count: ratedReviewCount }
+      : null,
+    reviews: reviewSchemas,
+  })
 
-  // BreadcrumbList — 홈 / 카탈로그 / 카테고리 / 현재 spirit
-  const breadcrumbJsonLd = buildBreadcrumbSchema([
-    { name: isEn ? 'Home' : '홈', path: langPrefix },
-    { name: isEn ? 'Spirits' : '주류 카탈로그', path: `${langPrefix}/spirits` },
-    { name: t(`spirit.category.${displaySpirit.category}`), path: `${langPrefix}/spirits?category=${displaySpirit.category}` },
-    { name: primaryName ?? '', path: canonicalUrl },
-  ])
+  const breadcrumbJsonLd = buildSpiritBreadcrumbSchema({
+    lang: isEn ? 'en' : 'ko',
+    spiritName: primaryName ?? '',
+    canonicalUrl,
+  })
   const seoTitle = isEn ? spiritSeo?.titleEn : spiritSeo?.titleKo
   const seoDescription = isEn ? spiritSeo?.descriptionEn : spiritSeo?.descriptionKo
 
@@ -1195,6 +1165,10 @@ export default function SpiritDetailPage() {
         alternateEn={spiritSeo?.canonicalUrlEn}
         alternateDefault={spiritSeo?.canonicalUrlKo}
         jsonLd={[spiritJsonLd, breadcrumbJsonLd]}
+        // 서버가 실은 그래프를 그대로 둔다. 서버는 additionalProperty 까지 싣는데
+        // 클라이언트가 덮어쓰면 하이드레이션 뒤 그게 사라진다(커뮤니티 상세와 같은 처리).
+        // 다른 주류로 SPA 이동하면 canonical 이 안 맞아 위 jsonLd 로 정상 교체된다.
+        preferExistingJsonLd
       />
 
       {/* Back */}

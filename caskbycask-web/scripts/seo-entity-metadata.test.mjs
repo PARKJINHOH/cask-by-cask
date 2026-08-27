@@ -105,6 +105,54 @@ const FIXTURES = {
     avgScore: 92,
     reviewCount: 3,
   },
+  // ── 에디션/마스터 관계 — aggregateRating 출처 검증용 ──────────────────
+  // 900 은 배치(에디션), 901 이 마스터. 화면 StarScore 와 리뷰 목록이 마스터 기준이므로
+  // 스키마의 평점도 901 값이어야 한다. 900 자체 값(88.0/1)이 나오면 회귀다.
+  '/api/seo/spirits/900': {
+    canonicalId: 900,
+    canonicalPathKo: '/ko/spirits/900-edition',
+    canonicalPathEn: '/en/spirits/900-edition',
+    canonicalUrlKo: `${SITE}/ko/spirits/900-edition`,
+    canonicalUrlEn: `${SITE}/en/spirits/900-edition`,
+    titleKo: '테스트 배치 12 주류 정보 & 리뷰 | CaskByCask',
+    titleEn: 'Test Batch 12 Specs & Reviews | CaskByCask',
+    descriptionKo: '테스트 배치 12 정보.',
+    descriptionEn: 'Test Batch 12 specs.',
+    primaryImageUrl: `${SITE}/og-image.png`,
+    updatedAt: null,
+    relationType: 'EDITION',
+  },
+  '/api/spirits/900': {
+    id: 900, parentId: 901,
+    nameKo: '테스트 배치 12', nameEn: 'Test Batch 12',
+    category: 'WHISKY', variantType: 'NONE', country: '스코틀랜드',
+    avgScore: 88.0, reviewCount: 1, scoredReviewCount: 1,
+  },
+  '/api/spirits/901': {
+    id: 901, parentId: null,
+    nameKo: '테스트 마스터', nameEn: 'Test Master',
+    category: 'WHISKY', variantType: 'NONE', country: '스코틀랜드',
+    avgScore: 90.5, reviewCount: 4, scoredReviewCount: 4,
+  },
+  // 평점도 리뷰도 없는 주류 — Product 가 아니라 WebPage 로 떨어져야 한다.
+  '/api/seo/spirits/902': {
+    canonicalId: 902,
+    canonicalPathKo: '/ko/spirits/902-empty',
+    canonicalPathEn: '/en/spirits/902-empty',
+    canonicalUrlKo: `${SITE}/ko/spirits/902-empty`,
+    canonicalUrlEn: `${SITE}/en/spirits/902-empty`,
+    titleKo: '무평점 주류 | CaskByCask', titleEn: 'Unrated Spirit | CaskByCask',
+    descriptionKo: '무평점 주류.', descriptionEn: 'Unrated spirit.',
+    primaryImageUrl: `${SITE}/og-image.png`,
+    updatedAt: null, relationType: 'STANDALONE',
+  },
+  '/api/spirits/902': {
+    id: 902, parentId: null,
+    nameKo: '무평점 주류', nameEn: 'Unrated Spirit',
+    category: 'WHISKY', variantType: 'NONE', country: '스코틀랜드',
+    avgScore: null, reviewCount: 0, scoredReviewCount: 0,
+  },
+
   // 가짜 서버는 쿼리스트링을 버리므로(`req.url.split('?')[0]`) 생산자 주류 목록의 키는
   // `/api/spirits?producerId=7...` 이 아니라 `/api/spirits` 다.
   '/api/spirits': {
@@ -252,6 +300,20 @@ async function readHead(path) {
     hreflangEn: links('alternate', 'en'),
   }
 }
+
+/** 서버가 실은 라우트 JSON-LD 그래프. */
+async function readRouteJsonLd(path) {
+  const res = await fetch(`${BASE}${path}`, { redirect: 'manual' })
+  const html = await res.text()
+  const blocks = [...html.matchAll(
+    /<script[^>]*data-cbc-route-jsonld[^>]*>([\s\S]*?)<\/script>/gi,
+  )].map((match) => match[1])
+  if (blocks.length === 0) return { status: res.status, graph: [] }
+  const parsed = JSON.parse(blocks[0].replace(/\\u003c/g, '<'))
+  return { status: res.status, graph: parsed['@graph'] ?? [parsed] }
+}
+
+const nodeOfType = (graph, ...types) => graph.find((node) => types.includes(node['@type']))
 
 /**
  * 서버가 크롤러에게 실제로 준 <body> 를 본다.
@@ -441,6 +503,42 @@ test('엔티티별 metadata', async (t) => {
   await t.test('유튜브 허브: 색인 대상으로 남는다', async () => {
     const head = await readHead('/ko/youtube')
     assert.deepEqual(head.robots, ['index, follow'])
+  })
+
+  // 화면 StarScore 와 리뷰 목록은 마스터(부모) 기준이다. 에디션 자체 평균을 마크업하면
+  // 페이지 어디에도 없는 수가 색인된다 — 구글 구조화 데이터 정책 위반이다.
+  await t.test('에디션 주류: aggregateRating 이 마스터 값을 따른다', async () => {
+    const { graph } = await readRouteJsonLd('/ko/spirits/900-edition')
+    const product = nodeOfType(graph, 'Product')
+    assert.ok(product, `Product 노드가 없다: ${JSON.stringify(graph.map((n) => n['@type']))}`)
+    assert.equal(product.aggregateRating.ratingValue, 90.5, '에디션 자체 값(88.0)이 나오면 회귀')
+    assert.equal(product.aggregateRating.ratingCount, 4)
+    assert.equal(product.aggregateRating.reviewCount, 4)
+  })
+
+  await t.test('평점 없는 주류: Product 대신 WebPage — aggregateRating 을 만들지 않는다', async () => {
+    const { graph } = await readRouteJsonLd('/ko/spirits/902-empty')
+    assert.equal(nodeOfType(graph, 'Product'), undefined, '리뷰 0건에 Product 를 붙이면 정책 위반')
+    const page = nodeOfType(graph, 'WebPage')
+    assert.ok(page)
+    assert.equal(page.aggregateRating, undefined)
+    assert.equal(page.about['@type'], 'Thing')
+  })
+
+  // 목록과 상세가 같은 URL 을 서로 다른 이름으로 부르면 빵부스러기가 어긋난다.
+  await t.test('빵부스러기: 3단계이고 목록 라벨이 화면(nav.spirits)과 같다', async () => {
+    const detail = await readRouteJsonLd('/ko/spirits/900-edition')
+    const crumbs = nodeOfType(detail.graph, 'BreadcrumbList').itemListElement
+    assert.equal(crumbs.length, 3)
+    assert.deepEqual(crumbs.map((c) => c.name), ['홈', '주류 탐색', '테스트 배치 12'])
+
+    const list = await readRouteJsonLd('/ko/spirits')
+    const listCrumbs = nodeOfType(list.graph, 'BreadcrumbList').itemListElement
+    assert.equal(listCrumbs[1].name, '주류 탐색', '목록과 상세의 2단계 라벨이 달라졌다')
+
+    const en = await readRouteJsonLd('/en/spirits/900-edition')
+    const enCrumbs = nodeOfType(en.graph, 'BreadcrumbList').itemListElement
+    assert.deepEqual(enCrumbs.map((c) => c.name), ['Home', 'Browse', 'Test Batch 12'])
   })
 
   await t.test('어떤 엔티티 페이지도 홈과 title 이 같지 않다', async () => {
