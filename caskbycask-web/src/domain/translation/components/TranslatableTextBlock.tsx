@@ -21,13 +21,15 @@ export default function TranslatableTextBlock({
 }: TranslatableTextBlockProps) {
   const translation = useContentTranslation(resourceType, resourceId)
   const displayedText = translation.fields?.[field] ?? text
+  const shouldShowTranslation = text.trim().length > 0
+    && (resourceType !== 'SPIRIT_NOTES' || translation.targetLanguage !== 'ko')
 
   return (
     <div className={className}>
       <p className={textClassName}>
         {displayedText.trimEnd()}
         <TranslationAction
-          hasContent={text.trim().length > 0}
+          hasContent={shouldShowTranslation}
           showTranslated={translation.showTranslated}
           isLoading={translation.isLoading}
           error={translation.error}

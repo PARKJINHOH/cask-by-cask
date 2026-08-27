@@ -17,6 +17,7 @@ import { formatDate, formatScore, optionalScoreColor, NO_SCORE_TEXT } from '@/sh
 import type { ReviewItem, VariantReviewRequestItem } from '../types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
+import { reviewCommentToText } from '../utils/reviewRichText'
 import { reviewSpiritLabel, variantRequestSpiritLabel } from '../utils/reviewDisplay'
 import { myReviewEditPath, myReviewRequestEditPath } from '../utils/reviewRoutes'
 import ReviewImageStrip from './ReviewImageStrip'
@@ -237,9 +238,9 @@ export default function MyReviewList() {
                       <ScoreBar label="피니시" value={review.finishScore} />
                     </div>
 
-                    {review.comment && (
+                    {reviewCommentToText(review.comment) && (
                       <p className="text-xs text-neutral-600 line-clamp-2 border-t border-neutral-50 pt-2 leading-relaxed">
-                        {review.comment}
+                        {reviewCommentToText(review.comment)}
                       </p>
                     )}
 
@@ -319,9 +320,9 @@ export default function MyReviewList() {
                         <ScoreBar label="피니시" value={request.finishScore} />
                       </div>
 
-                      {request.comment && (
+                      {reviewCommentToText(request.comment) && (
                         <p className="mt-3 text-xs text-neutral-600 line-clamp-2 leading-relaxed">
-                          {request.comment}
+                          {reviewCommentToText(request.comment)}
                         </p>
                       )}
 
@@ -428,9 +429,9 @@ export default function MyReviewList() {
                       <ScoreBar label="피니시" value={request.finishScore} />
                     </div>
 
-                    {request.comment && (
+                    {reviewCommentToText(request.comment) && (
                       <p className="mt-3 text-xs text-neutral-600 line-clamp-2 leading-relaxed">
-                        {request.comment}
+                        {reviewCommentToText(request.comment)}
                       </p>
                     )}
 

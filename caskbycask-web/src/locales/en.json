@@ -1241,6 +1241,7 @@
       "scoreAllOrNone": "Enter all three scores, or leave all three blank.",
       "noteMin": "Please write at least {{min}} characters.",
       "noteMax": "Please keep it under {{max}} characters.",
+      "commentTooComplex": "The overall comment uses too much formatting. Please reduce color and size changes.",
       "checkFields": "Some fields are missing or invalid. Please check the highlighted items."
     },
     "noReview": "No reviews yet.",

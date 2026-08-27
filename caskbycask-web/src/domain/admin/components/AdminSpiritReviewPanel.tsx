@@ -12,6 +12,7 @@ import {
   useUnhideAdminReview,
 } from '../hooks/useAdminContent'
 import type { AdminReview, AdminVariantReviewRequest, ModerationPayload } from '../types/admin.types'
+import ReviewCommentContent from '@/domain/review/components/ReviewCommentContent'
 import { RequiredMark } from '@/shared/components/FormFieldLabel'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
@@ -269,9 +270,13 @@ export default function AdminSpiritReviewPanel({
                 )}
               </div>
               {pendingVariantReview.comment && (
-                <p className="mt-2 whitespace-pre-wrap rounded-lg border border-white bg-white p-2 text-xs leading-relaxed text-neutral-600">
-                  <span className="font-semibold text-neutral-800">종합평가</span> {pendingVariantReview.comment}
-                </p>
+                <div className="mt-2 rounded-lg border border-white bg-white p-2 text-xs leading-relaxed text-neutral-600">
+                  <span className="font-semibold text-neutral-800">종합평가</span>
+                  <ReviewCommentContent
+                    value={pendingVariantReview.comment}
+                    className="mt-1 text-xs leading-relaxed text-neutral-600"
+                  />
+                </div>
               )}
             </div>
             <div className="w-full rounded-xl border border-amber-100 bg-white p-3 lg:w-56">
@@ -342,9 +347,13 @@ export default function AdminSpiritReviewPanel({
                     )}
                   </div>
                   {review.comment && (
-                    <p className="mt-2 whitespace-pre-wrap rounded-lg border border-neutral-100 bg-white p-2 text-xs leading-relaxed text-neutral-600">
-                      <span className="font-semibold text-neutral-800">종합평가</span> {review.comment}
-                    </p>
+                    <div className="mt-2 rounded-lg border border-neutral-100 bg-white p-2 text-xs leading-relaxed text-neutral-600">
+                      <span className="font-semibold text-neutral-800">종합평가</span>
+                      <ReviewCommentContent
+                        value={review.comment}
+                        className="mt-1 text-xs leading-relaxed text-neutral-600"
+                      />
+                    </div>
                   )}
                 </div>
                 <div className="w-full space-y-3 lg:w-56">

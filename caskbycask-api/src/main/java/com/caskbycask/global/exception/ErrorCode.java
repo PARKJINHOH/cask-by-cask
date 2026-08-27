@@ -112,6 +112,9 @@ public enum ErrorCode {
             "TIFF 사진은 등록할 수 없습니다. JPG 또는 PNG 로 저장한 뒤 올려주세요."),
     REVIEW_IMAGE_AVIF_UNSUPPORTED(HttpStatus.BAD_REQUEST, "REVIEW_019",
             "AVIF 사진은 등록할 수 없습니다. JPG 또는 PNG 로 저장한 뒤 올려주세요."),
+    // 태그를 걷어 낸 본문 기준 길이 — 서식이 붙은 HTML 문자열 길이가 아니다.
+    REVIEW_COMMENT_TOO_LONG(HttpStatus.BAD_REQUEST, "REVIEW_020",
+            "종합평가는 600자 이내여야 합니다."),
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "댓글을 찾을 수 없습니다."),

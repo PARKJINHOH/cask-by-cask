@@ -3,6 +3,7 @@ import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import { reviewApi } from '@/domain/review/api/reviewApi'
 import type { ReviewEmbedItem } from '@/domain/review/types/review.types'
+import { reviewCommentToText } from '@/domain/review/utils/reviewRichText'
 import type { ReviewEmbedAttrs } from './ReviewEmbed'
 import { formatScore } from '@/shared/utils/format'
 
@@ -101,7 +102,8 @@ export default function ReviewEmbedDialog({ open, onClose, onSelect }: Props) {
       noseNote: review.noseNote || '',
       tasteNote: review.tasteNote || '',
       finishNote: review.finishNote || '',
-      comment: review.comment || '',
+      // 카드는 data 속성 값을 textContent 로 그린다 — 태그가 글자로 보이지 않게 본문만 담는다.
+      comment: reviewCommentToText(review.comment),
       width: 100,
     })
     onClose()
@@ -196,7 +198,7 @@ export default function ReviewEmbedDialog({ open, onClose, onSelect }: Props) {
                         <span>{t('editor.reviewCard.finish')} {displayScore(review.finishScore)}</span>
                       </span>
                       <span className="mt-2 block overflow-hidden text-ellipsis whitespace-nowrap text-xs text-neutral-600">
-                        {review.comment || review.noseNote || t('editor.reviewCard.noNote')}
+                        {reviewCommentToText(review.comment) || review.noseNote || t('editor.reviewCard.noNote')}
                       </span>
                     </button>
                   )

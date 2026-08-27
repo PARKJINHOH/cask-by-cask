@@ -8,6 +8,8 @@ import type { ReviewItem as ReviewItemType } from '../types/review.types'
 import UserBadge from '@/shared/components/UserBadge'
 import type { UserRole } from '@/domain/auth/types/auth.types'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
+import ReviewCommentContent from './ReviewCommentContent'
+import { reviewCommentToText } from '../utils/reviewRichText'
 import ReviewImageStrip from './ReviewImageStrip'
 import AromaProfileChartPanel from './AromaProfileChartPanel'
 import AromaProfilePreviewButton from './AromaProfilePreviewButton'
@@ -114,7 +116,10 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
     spiritCanonicalPathEn: review.spiritCanonicalPathEn,
   }, i18n.language)
   const translated = contentTranslation.fields
-  const sourceReviewTexts = [review.noseNote, review.tasteNote, review.finishNote, review.comment]
+  // 번역 제안 여부는 원문 언어로 판단한다 — 태그가 섞이면 판별이 흔들린다.
+  const sourceReviewTexts = [
+    review.noseNote, review.tasteNote, review.finishNote, reviewCommentToText(review.comment),
+  ]
   const hasTranslatableText = sourceReviewTexts
     .some((value) => !!value?.trim())
   const shouldShowTranslation = hasTranslatableText && shouldOfferContentTranslation(
@@ -297,9 +302,10 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
       {review.comment && (
         <div className="border-t border-neutral-100 pt-4">
           <p className="text-base font-bold text-neutral-900 mb-1.5">{t('review.overall')}</p>
-          <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
-            {translated?.comment ?? review.comment}
-          </p>
+          <ReviewCommentContent
+            value={translated?.comment ?? review.comment}
+            className="text-sm text-neutral-700 leading-relaxed"
+          />
         </div>
       )}
 

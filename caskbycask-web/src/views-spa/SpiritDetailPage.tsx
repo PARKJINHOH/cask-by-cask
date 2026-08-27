@@ -43,6 +43,7 @@ import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 import { compareVariantDisplayOrder, findLastDisplayedVariant } from '@/domain/spirit/utils/variantDisplayOrder'
 import SpiritYoutubeSection from '@/domain/youtube/components/SpiritYoutubeSection'
 import TranslatableTextBlock from '@/domain/translation/components/TranslatableTextBlock'
+import { reviewCommentToText } from '@/domain/review/utils/reviewRichText'
 
 // 가격 차트는 recharts(약 313KB)를 끌어오지만 기본 탭이 '리뷰'라 첫 화면에서는 쓰이지 않는다.
 // 가격 탭을 열 때만 내려받도록 지연 로드한다.
@@ -1113,7 +1114,8 @@ export default function SpiritDetailPage() {
       bestRating: 100,
       worstRating: 0,
       datePublished: r.createdAt,
-      reviewBody: r.comment ?? r.tasteNote ?? r.noseNote ?? r.finishNote,
+      // 총평은 서식 있는 HTML 로 저장된다 — 구조화 데이터에는 태그 없는 본문만 넣는다.
+      reviewBody: reviewCommentToText(r.comment) || r.tasteNote || r.noseNote || r.finishNote,
     }),
   )
 

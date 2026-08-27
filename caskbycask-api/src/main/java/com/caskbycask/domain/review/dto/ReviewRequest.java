@@ -1,5 +1,6 @@
 package com.caskbycask.domain.review.dto;
 
+import com.caskbycask.domain.review.constant.ReviewCommentLimits;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -38,8 +39,9 @@ public record ReviewRequest(
         @Size(max = 600, message = "피니시 노트는 600자 이내여야 합니다.")
         String finishNote,
 
-        @Schema(description = "기타 텍스트 코멘트 (600자 이내, 선택)")
-        @Size(max = 600, message = "코멘트는 600자 이내여야 합니다.")
+        @Schema(description = "종합평가 (제한형 에디터 HTML, 본문 600자 이내, 선택)")
+        @Size(max = ReviewCommentLimits.MAX_HTML_LENGTH,
+                message = "종합평가에 사용한 서식이 너무 많습니다.")
         String comment,
 
         @Schema(description = "향 아로마 휠 (800자 이내, 선택)")

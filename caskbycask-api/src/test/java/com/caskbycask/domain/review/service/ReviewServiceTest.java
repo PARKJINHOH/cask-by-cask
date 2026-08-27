@@ -19,7 +19,6 @@ import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
-import com.caskbycask.global.util.BadWordFilter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,7 +49,7 @@ class ReviewServiceTest {
     @Mock private ReviewImageService reviewImageService;
     @Mock private ReviewAromaProfileService reviewAromaProfileService;
     @Mock private TranslationCacheInvalidator translationCacheInvalidator;
-    @Mock private BadWordFilter badWordFilter; // [패치 5] 리뷰 욕설 필터 의존성
+    @Mock private ReviewCommentSanitizer reviewCommentSanitizer; // 종합평가 HTML 정제·욕설 검사
 
     @InjectMocks
     private ReviewService reviewService;

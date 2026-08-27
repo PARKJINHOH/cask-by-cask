@@ -90,17 +90,33 @@ interface Props {
   enableImages?: boolean
   /** 비교적 짧은 입력 폼에서 사용하는 낮은 편집 영역 */
   compactHeight?: boolean
+  /**
+   * 'basic' 은 굵기·밑줄·글자색·형광펜·글자크기만 남긴 제한형 에디터다.
+   * 이미지·영상·링크·표·목록·제목·카드 임베드는 호출부 설정과 무관하게 전부 닫힌다.
+   * (리뷰 종합평가처럼 본문이 짧고 다른 화면에서 순수 텍스트로도 쓰이는 입력칸용)
+   */
+  variant?: 'full' | 'basic'
 }
 
 export default function RichTextEditor({
   value, onChange, placeholder, maxChars = 100000,
-  uploadImage, uploadVideo, onImageError, onVideoError,
-  enableSpiritEmbed = true,
-  enableReviewEmbed = false,
-  enableVideoEmbed = true,
-  enableImages = true,
+  uploadImage: uploadImageProp, uploadVideo: uploadVideoProp, onImageError, onVideoError,
+  enableSpiritEmbed: enableSpiritEmbedProp = true,
+  enableReviewEmbed: enableReviewEmbedProp = false,
+  enableVideoEmbed: enableVideoEmbedProp = true,
+  enableImages: enableImagesProp = true,
   compactHeight = false,
+  variant = 'full',
 }: Props) {
+  // 제한형은 문자 서식만 연다. 호출부가 업로더나 임베드를 넘기더라도 여기서 끊어
+  // "basic 인데 이미지가 들어가는" 조합이 생기지 않게 한다.
+  const isBasic = variant === 'basic'
+  const uploadImage = isBasic ? undefined : uploadImageProp
+  const uploadVideo = isBasic ? undefined : uploadVideoProp
+  const enableSpiritEmbed = enableSpiritEmbedProp && !isBasic
+  const enableReviewEmbed = enableReviewEmbedProp && !isBasic
+  const enableVideoEmbed = enableVideoEmbedProp && !isBasic
+  const enableImages = enableImagesProp && !isBasic
   const { t } = useTranslation()
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   // 라벨은 번역해서 보여 주므로 상태에는 종류만 담는다.
@@ -165,7 +181,20 @@ export default function RichTextEditor({
   }, [uploadImage, onImageError, reportImageFailure, t])
 
   const editor = useEditor({
-    extensions: [
+    extensions: isBasic ? [
+      // StarterKit v3 는 underline 을 이미 품고 있어 따로 더하지 않는다.
+      StarterKit.configure({
+        heading: false, codeBlock: false, blockquote: false, horizontalRule: false,
+        bulletList: false, orderedList: false, listItem: false, listKeymap: false,
+        code: false, italic: false, strike: false, link: false,
+      }),
+      TextStyle,
+      Color,
+      FontSize,
+      Highlight.configure({ multicolor: true }),
+      Placeholder.configure({ placeholder: placeholder ?? '내용을 입력하세요...' }),
+      CharacterCount.configure({ limit: maxChars }),
+    ] : [
       StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
       Underline,
       TextStyle,
@@ -489,6 +518,7 @@ export default function RichTextEditor({
       {editor && (
         <RichTextToolbar
           editor={editor}
+          variant={variant}
           onImageUpload={uploadImage ? () => {
             pendingImageInsertionPosRef.current = editor.state.selection.from
             imageInputRef.current?.click()
@@ -518,7 +548,11 @@ export default function RichTextEditor({
 
       <EditorContent
         editor={editor}
-        className={`di-richtext notice-content${compactHeight ? ' di-richtext--compact' : ''}`}
+        className={[
+          'di-richtext notice-content',
+          compactHeight ? 'di-richtext--compact' : '',
+          isBasic ? 'di-richtext--basic' : '',
+        ].filter(Boolean).join(' ')}
       />
 
       {/* 글자수 — neutral-400/amber-600 은 밝은 배경 대비가 2~3:1 이라 neutral-500/amber-700 사용 */}

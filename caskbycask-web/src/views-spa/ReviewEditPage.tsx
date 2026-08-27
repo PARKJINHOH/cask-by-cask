@@ -38,8 +38,18 @@ import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type { AromaProfile } from '@/domain/review/types/review.types'
-import { REVIEW_NOTE_MIN_LENGTH, REVIEW_TEXT_MAX_LENGTH } from '@/domain/review/constants/reviewLimits'
+import {
+  REVIEW_COMMENT_HTML_MAX_LENGTH,
+  REVIEW_NOTE_MIN_LENGTH,
+  REVIEW_TEXT_MAX_LENGTH,
+} from '@/domain/review/constants/reviewLimits'
+import {
+  isBlankReviewComment,
+  reviewCommentLength,
+  reviewCommentToHtml,
+} from '@/domain/review/utils/reviewRichText'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import RichTextEditor from '@/shared/tiptap/RichTextEditor'
 import NumberInput from '@/shared/components/NumberInput'
 
 const MY_REVIEWS_PATH = '/mypage?tab=reviews'
@@ -47,7 +57,7 @@ const NOTE_MIN_LENGTH = REVIEW_NOTE_MIN_LENGTH
 
 type FieldErrorKey =
   | 'variantValue' | 'abv' | 'volumeMl'
-  | 'noseNote' | 'tasteNote' | 'finishNote'
+  | 'noseNote' | 'tasteNote' | 'finishNote' | 'comment'
   | 'noseScore' | 'tasteScore' | 'finishScore'
 type FieldErrors = Partial<Record<FieldErrorKey, string>>
 
@@ -143,7 +153,7 @@ export default function ReviewEditPage() {
     setNoseNote(source.noseNote ?? '')
     setTasteNote(source.tasteNote ?? '')
     setFinishNote(source.finishNote ?? '')
-    setComment(source.comment ?? '')
+    setComment(reviewCommentToHtml(source.comment))
     setNoseAromas(parseAromaNotes(source.noseAromaWheelNotes))
     setTasteAromas(parseAromaNotes(source.tasteAromaWheelNotes))
     setFinishAromas(parseAromaNotes(source.finishAromaWheelNotes))
@@ -205,6 +215,13 @@ export default function ReviewEditPage() {
     if (noseNote.trim().length < NOTE_MIN_LENGTH) next.noseNote = t('mypage.reviews.pendingRequiredNote')
     if (tasteNote.trim().length < NOTE_MIN_LENGTH) next.tasteNote = t('mypage.reviews.pendingRequiredNote')
     if (finishNote.trim().length < NOTE_MIN_LENGTH) next.finishNote = t('mypage.reviews.pendingRequiredNote')
+    // 총평은 서식 있는 HTML 이라 문자열 길이가 곧 본문 길이가 아니다 —
+    // 에디터 하단 글자수와 같은 기준으로 잰다.
+    if (reviewCommentLength(comment) > REVIEW_TEXT_MAX_LENGTH) {
+      next.comment = t('review.error.noteMax', { max: REVIEW_TEXT_MAX_LENGTH })
+    } else if (comment.length > REVIEW_COMMENT_HTML_MAX_LENGTH) {
+      next.comment = t('review.error.commentTooComplex')
+    }
     if (!canEditEdition) return next
 
     const abvValue = Number(abv)
@@ -247,7 +264,8 @@ export default function ReviewEditPage() {
       noseNote: noseNote.trim(),
       tasteNote: tasteNote.trim(),
       finishNote: finishNote.trim(),
-      comment: comment.trim(),
+      // 빈 에디터는 <p></p> 를 내보낸다 — 그대로 저장하면 "총평 없음" 분기가 깨진다.
+      comment: isBlankReviewComment(comment) ? '' : comment.trim(),
       noseAromaWheelNotes: showAroma ? (serializeAromaNotes(noseAromas) ?? '') : undefined,
       tasteAromaWheelNotes: showAroma ? (serializeAromaNotes(tasteAromas) ?? '') : undefined,
       finishAromaWheelNotes: showAroma ? (serializeAromaNotes(finishAromas) ?? '') : undefined,
@@ -607,15 +625,15 @@ export default function ReviewEditPage() {
                 {t('review.overall')}{' '}
                 <span className="text-xs font-normal text-neutral-400">({t('review.overallHint')})</span>
               </label>
-              <AutoGrowTextarea
+              {/* 글자수는 에디터가 하단에 직접 표시한다(태그를 뺀 본문 기준) */}
+              <RichTextEditor
+                variant="basic"
                 value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                rows={4}
-                maxLength={REVIEW_TEXT_MAX_LENGTH}
+                onChange={setComment}
                 placeholder={t('review.overallPlaceholder')}
-                className="min-h-[5rem] w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm
-                  placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                maxChars={REVIEW_TEXT_MAX_LENGTH}
               />
+              <p className="mt-1 min-h-[1rem] text-xs text-red-500">{errors.comment ?? ''}</p>
             </div>
           </div>
 

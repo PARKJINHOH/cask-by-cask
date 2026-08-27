@@ -6,6 +6,7 @@ import { formatScore, optionalScoreColor } from '@/shared/utils/format'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { useMyReviews } from '../hooks/useReviews'
 import type { ReviewItem } from '../types/review.types'
+import { reviewCommentToText } from '../utils/reviewRichText'
 import { reviewSpiritLabel } from '../utils/reviewDisplay'
 import MyPastReviewDetailModal from './MyPastReviewDetailModal'
 
@@ -33,7 +34,8 @@ function PastReviewRow({
   onSelect: (review: ReviewItem) => void
 }) {
   const { title, editionValue } = reviewSpiritLabel(review, isEn)
-  const snippet = review.comment?.trim()
+  // 한 줄 미리보기라 서식을 살릴 자리가 없다 — 본문만 뽑아 쓴다.
+  const snippet = reviewCommentToText(review.comment).trim()
     || review.tasteNote
     || review.noseNote
     || review.finishNote

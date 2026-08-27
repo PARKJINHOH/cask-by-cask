@@ -1,5 +1,6 @@
 package com.caskbycask.domain.review.dto;
 
+import com.caskbycask.domain.review.constant.ReviewCommentLimits;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -70,8 +71,9 @@ public record CreateVariantReviewRequest(
         @Size(max = 600, message = "Finish note must be 600 characters or less.")
         String finishNote,
 
-        @Schema(description = "Overall comment")
-        @Size(max = 600, message = "Comment must be 600 characters or less.")
+        @Schema(description = "Overall comment (restricted-editor HTML, 600 characters of body text)")
+        @Size(max = ReviewCommentLimits.MAX_HTML_LENGTH,
+                message = "The overall comment uses too much formatting.")
         String comment,
 
         @Schema(description = "Nose aroma wheel notes")

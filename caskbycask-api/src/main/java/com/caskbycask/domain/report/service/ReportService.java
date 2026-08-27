@@ -19,6 +19,7 @@ import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.constants.ReportConstants;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
+import com.caskbycask.global.util.HtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +39,7 @@ public class ReportService {
     private final UserRepository userRepository;
     private final ReviewService reviewService;
     private final TranslationCacheInvalidator translationCacheInvalidator;
+    private final HtmlSanitizer htmlSanitizer;
 
     // ── 신고 생성 ──────────────────────────────────────────
 
@@ -176,7 +178,10 @@ public class ReportService {
     private String fetchTargetContent(Report report) {
         return switch (report.getTargetType()) {
             case REVIEW -> reviewRepository.findById(report.getTargetId())
-                    .map(r -> r.getComment() != null ? r.getComment() : "(점수만 작성된 리뷰)")
+                    // 종합평가는 서식 있는 HTML 이다 — 신고 처리 화면·메일은 본문만 보여 준다.
+                    .map(r -> r.getComment() != null
+                            ? htmlSanitizer.sanitizeToPlainText(r.getComment())
+                            : "(점수만 작성된 리뷰)")
                     .orElse("[삭제된 리뷰]");
             case COMMENT -> commentRepository.findById(report.getTargetId())
                     .map(CommunityComment::getContent)

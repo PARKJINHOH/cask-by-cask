@@ -3,6 +3,7 @@ import Modal from '@/shared/components/Modal'
 import { formatDate, formatScore, optionalScoreColor } from '@/shared/utils/format'
 import type { ReviewItem } from '../types/review.types'
 import { reviewSpiritLabel } from '../utils/reviewDisplay'
+import ReviewCommentContent from './ReviewCommentContent'
 
 export interface MyPastReviewDetailModalProps {
   /** null 이면 닫힌 상태 */
@@ -131,9 +132,10 @@ export default function MyPastReviewDetailModal({
         {review.comment && (
           <div className="border-t border-neutral-100 pt-4">
             <p className="mb-1.5 text-sm font-bold text-neutral-900">{t('review.overall')}</p>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
-              {review.comment}
-            </p>
+            <ReviewCommentContent
+              value={review.comment}
+              className="text-sm leading-relaxed text-neutral-700"
+            />
           </div>
         )}
 

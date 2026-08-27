@@ -88,7 +88,8 @@ public class SpiritVariantReviewRequest extends BaseTimeEntity {
     @Column(length = 600)
     private String finishNote;
 
-    @Column(length = 600)
+    /** 제한형 에디터가 만든 HTML. 서식 태그가 붙어 본문 600자만으로도 VARCHAR(600) 을 넘긴다. */
+    @Column(columnDefinition = "TEXT")
     private String comment;
 
     @Column(length = 800)

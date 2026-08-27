@@ -11,6 +11,8 @@ import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 import ShareUrlButton from '@/shared/components/ShareUrlButton'
 import { useContentTranslation } from '@/domain/translation/hooks/useContentTranslation'
 import TranslationAction from '@/domain/translation/components/TranslationAction'
+import ReviewCommentContent from '@/domain/review/components/ReviewCommentContent'
+import { reviewCommentToText } from '@/domain/review/utils/reviewRichText'
 import { shouldOfferContentTranslation } from '@/domain/translation/utils/contentLanguage'
 
 function score(value: number | null) {
@@ -56,7 +58,10 @@ export default function PublicReviewPage() {
     ['taste', data.tasteScore, translated?.tasteNote ?? data.tasteNote],
     ['finish', data.finishScore, translated?.finishNote ?? data.finishNote],
   ] as const
-  const sourceReviewTexts = [data.noseNote, data.tasteNote, data.finishNote, data.comment]
+  // 번역 제안 여부는 원문 언어로 판단한다 — 태그가 섞이면 판별이 흔들린다.
+  const sourceReviewTexts = [
+    data.noseNote, data.tasteNote, data.finishNote, reviewCommentToText(data.comment),
+  ]
   const hasTranslatableText = sourceReviewTexts
     .some((value) => !!value?.trim())
   const shouldShowTranslation = hasTranslatableText && shouldOfferContentTranslation(
@@ -68,7 +73,7 @@ export default function PublicReviewPage() {
     <>
       <SeoMeta
         title={t('social.publicReviewSeoTitle', { name: title })}
-        description={data.comment || t('social.publicReviewSeoDescription', { name: title })}
+        description={reviewCommentToText(data.comment) || t('social.publicReviewSeoDescription', { name: title })}
         canonical={buildCanonical(canonicalPath)}
         ogImage={data.imageUrl || undefined}
         noindex
@@ -151,9 +156,14 @@ export default function PublicReviewPage() {
                 ))}
                 <section className="rounded-2xl border border-neutral-200 p-4">
                   <h2 className="font-bold text-neutral-900">{t('social.reviewField.overall')}</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">
-                    {translated?.comment || data.comment || t('social.noReviewText')}
-                  </p>
+                  {translated?.comment || data.comment ? (
+                    <ReviewCommentContent
+                      value={translated?.comment || data.comment}
+                      className="mt-2 text-sm leading-6 text-neutral-700"
+                    />
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-neutral-700">{t('social.noReviewText')}</p>
+                  )}
                 </section>
                 <TranslationAction
                   hasContent={shouldShowTranslation}

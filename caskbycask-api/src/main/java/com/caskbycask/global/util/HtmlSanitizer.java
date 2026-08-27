@@ -3,10 +3,13 @@ package com.caskbycask.global.util;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 // [보안] XSS 방어 핵심 클래스.
 //   TipTap 에디터가 생성한 HTML을 서버에서 재검증.
@@ -18,6 +21,13 @@ public class HtmlSanitizer {
 
     private static final Safelist NOTICE_SAFELIST = buildNoticeSafelist();
     private static final Safelist LEGAL_SAFELIST  = buildLegalSafelist();
+    private static final Safelist REVIEW_COMMENT_SAFELIST = buildReviewCommentSafelist();
+
+    // [보안] 리뷰 종합평가의 style 은 아래 선언만 남긴다. jsoup Safelist 는 속성 존재 여부만 보고
+    //   CSS 내용을 검사하지 않아, position/display 같은 선언으로 주류 상세 화면을 덮을 수 있다.
+    private static final List<String> ALLOWED_REVIEW_STYLE_PROPS = List.of(
+            "color", "font-size", "background-color"
+    );
 
     // [보안] iframe 임베드는 영상 플랫폼만 허용. jsoup Safelist는 호스트 단위 제한이 불가하므로
     //   Jsoup.clean 후 src 가 아래 prefix 로 시작하지 않는 iframe 은 후처리로 제거한다.
@@ -121,6 +131,55 @@ public class HtmlSanitizer {
     }
 
     /**
+     * 리뷰 종합평가 전용 최소 허용 규격.
+     *
+     * <p>제한형 에디터(RichTextEditor variant="basic")가 만드는 서식만 남긴다 —
+     * 굵기(strong/b), 밑줄(u), 글자색(span[style]), 형광펜(mark[style]), 글자 크기(span[style]).
+     * 이미지·링크·목록·제목·표·임베드는 애초에 입력할 수 없으므로 허용하지 않는다.
+     */
+    private static Safelist buildReviewCommentSafelist() {
+        return new Safelist()
+                .addTags("p", "br", "strong", "b", "u", "span", "mark")
+                .addAttributes("span", "style")
+                .addAttributes("mark", "style", "data-color");
+    }
+
+    /**
+     * 리뷰 종합평가 정제.
+     *
+     * <p>공지/커뮤니티와 달리 일반 사용자가 주류 상세 화면에 직접 쓰는 자리라
+     * 허용 태그를 최소로 줄이고 style 선언까지 화이트리스트로 거른다.
+     */
+    public String sanitizeReviewComment(String rawHtml) {
+        if (rawHtml == null || rawHtml.isBlank()) {
+            return "";
+        }
+        // prettyPrint 를 끈다 — 기본값이면 jsoup 이 <br> 앞뒤로 줄바꿈과 들여쓰기를 넣는데,
+        // 화면(.notice-content p)이 white-space: pre-wrap 이라 그게 그대로 공백으로 보인다.
+        String cleaned = Jsoup.clean(
+                rawHtml, "", REVIEW_COMMENT_SAFELIST,
+                new Document.OutputSettings().prettyPrint(false));
+        if (!cleaned.contains("style=")) {
+            return cleaned;
+        }
+        Document doc = Jsoup.parseBodyFragment(cleaned);
+        doc.outputSettings().prettyPrint(false);
+        for (Element element : doc.select("[style]")) {
+            String kept = Arrays.stream(element.attr("style").split(";"))
+                    .map(String::trim)
+                    .filter(declaration -> {
+                        int colon = declaration.indexOf(':');
+                        return colon > 0 && ALLOWED_REVIEW_STYLE_PROPS.contains(
+                                declaration.substring(0, colon).trim().toLowerCase());
+                    })
+                    .collect(Collectors.joining("; "));
+            if (kept.isEmpty()) element.removeAttr("style");
+            else element.attr("style", kept);
+        }
+        return doc.body().html();
+    }
+
+    /**
      * TipTap HTML을 화이트리스트 기반으로 Sanitize (기본: 일반 사용자 수준)
      */
     public String sanitize(String rawHtml) {
@@ -194,6 +253,28 @@ public class HtmlSanitizer {
             }
         }
         return doc.body().html();
+    }
+
+    /**
+     * 에디터 하단에 표시되는 글자수와 같은 기준으로 본문 길이를 센다.
+     *
+     * <p>TipTap CharacterCount 는 {@code doc.textBetween(0, size, undefined, " ")} 를 센다 —
+     * 줄바꿈({@code <br>})은 한 칸으로 세고 문단 경계에는 아무것도 넣지 않는다.
+     * {@link #sanitizeToPlainText}(jsoup {@code text()})는 문단 경계마다 공백을 넣어
+     * 문단 수만큼 더 세므로, 길이 검증에 쓰면 화면에 600/600 이 뜬 글이 서버에서 반려된다.
+     *
+     * <p>프론트 {@code reviewRichText.reviewCommentLength} 와 같은 규칙을 유지한다.
+     */
+    public int countCharactersAsEditor(String html) {
+        if (html == null || html.isBlank()) {
+            return 0;
+        }
+        Document doc = Jsoup.parseBodyFragment(html);
+        for (Element br : doc.select("br")) {
+            br.replaceWith(new TextNode(" "));
+        }
+        // wholeText() 는 블록 경계에 구분자를 넣지 않고 텍스트 노드만 이어 붙인다.
+        return doc.body().wholeText().length();
     }
 
     /**

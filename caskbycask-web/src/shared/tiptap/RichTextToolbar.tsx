@@ -28,6 +28,13 @@ const FONT_SIZES: SelectOption[] = [
   { value: '24px', label: '24' },
 ]
 
+// 제한형(basic) 툴바용 3단계 — 리뷰 카드 레이아웃이 깨지지 않는 범위로 좁힌다.
+const BASIC_FONT_SIZES: SelectOption[] = [
+  { value: '14px', label: '14' },
+  { value: '', label: '기본' },
+  { value: '18px', label: '18' },
+]
+
 const LINE_HEIGHTS: SelectOption[] = [
   { value: '', label: '기본' },
   { value: '1', label: '1.0' },
@@ -98,6 +105,11 @@ function ToolbarGroup({ label, children, className = '' }: ToolbarGroupProps) {
 
 interface Props {
   editor: Editor
+  /**
+   * 'basic' 은 굵기·밑줄·글자색·형광펜·글자크기만 남긴 한 줄 툴바.
+   * (리뷰 종합평가처럼 서식을 최소로 열어 두는 입력칸용)
+   */
+  variant?: 'full' | 'basic'
   /** 이미지 파일 선택 열기 (없으면 이미지 버튼 숨김) */
   onImageUpload?: () => void
   /** 동영상 파일 업로드 열기 (없으면 동영상 업로드 버튼 숨김) */
@@ -111,9 +123,10 @@ interface Props {
 }
 
 export default function RichTextToolbar({
-  editor, onImageUpload, onVideoUpload, onVideoEmbed, onSpiritEmbed, onReviewEmbed,
+  editor, variant = 'full', onImageUpload, onVideoUpload, onVideoEmbed, onSpiritEmbed, onReviewEmbed,
 }: Props) {
   const { t } = useTranslation()
+  const isBasic = variant === 'basic'
   // 터치 기기에서 숨기는 도구 — 셀 단위 커서 이동이 필요한 표, 드래그로 폭을 잡는 이미지 크기.
   // (이미지 모서리 핸들·2단 분할 divider 는 ResizableImage 가 DOM 에서 제거한다)
   const isTouch = useTouchInput()
@@ -129,7 +142,7 @@ export default function RichTextToolbar({
           ? t('editor.fontSans')
           : t('editor.fontMono'),
   }))
-  const localizedFontSizes = FONT_SIZES.map((option) => option.value === ''
+  const localizedFontSizes = (isBasic ? BASIC_FONT_SIZES : FONT_SIZES).map((option) => option.value === ''
     ? { ...option, label: t('editor.fontSize16Default') }
     : { ...option, label: `${option.label}px` })
   const localizedLineHeights = LINE_HEIGHTS.map((option) => option.value === ''
@@ -143,28 +156,34 @@ export default function RichTextToolbar({
       // editor.view.state 접근으로 throw 할 수 있어, 안전 기본값으로 방어한다.
       try {
         if (!e || !e.view) return DEFAULT_TOOLBAR_STATE
-        const ts = e.getAttributes('textStyle')
+        // variant 에 따라 확장이 통째로 빠진다 — 스키마에 없는 이름으로 isActive 를 부르면
+        // throw 해서 아래 catch 가 전부 false 인 기본값을 돌려주고, 남아 있는 버튼의
+        // 활성 표시까지 함께 죽는다. 이름이 스키마에 있을 때만 묻는다.
+        const mark = (name: string) => !!e.schema.marks[name] && e.isActive(name)
+        const node = (name: string, attrs?: Record<string, unknown>) =>
+          !!e.schema.nodes[name] && e.isActive(name, attrs)
+        const ts = e.schema.marks.textStyle ? e.getAttributes('textStyle') : {}
         return {
-          isBold: e.isActive('bold'),
-          isItalic: e.isActive('italic'),
-          isUnderline: e.isActive('underline'),
-          isStrike: e.isActive('strike'),
-          isCode: e.isActive('code'),
-          isH1: e.isActive('heading', { level: 1 }),
-          isH2: e.isActive('heading', { level: 2 }),
-          isH3: e.isActive('heading', { level: 3 }),
-          isBulletList: e.isActive('bulletList'),
-          isOrderedList: e.isActive('orderedList'),
-          isTaskList: e.isActive('taskList'),
-          isBlockquote: e.isActive('blockquote'),
-          isCodeBlock: e.isActive('codeBlock'),
-          isLink: e.isActive('link'),
+          isBold: mark('bold'),
+          isItalic: mark('italic'),
+          isUnderline: mark('underline'),
+          isStrike: mark('strike'),
+          isCode: mark('code'),
+          isH1: node('heading', { level: 1 }),
+          isH2: node('heading', { level: 2 }),
+          isH3: node('heading', { level: 3 }),
+          isBulletList: node('bulletList'),
+          isOrderedList: node('orderedList'),
+          isTaskList: node('taskList'),
+          isBlockquote: node('blockquote'),
+          isCodeBlock: node('codeBlock'),
+          isLink: mark('link'),
           isAlignLeft: e.isActive({ textAlign: 'left' }),
           isAlignCenter: e.isActive({ textAlign: 'center' }),
           isAlignRight: e.isActive({ textAlign: 'right' }),
           isAlignJustify: e.isActive({ textAlign: 'justify' }),
-          isTable: e.isActive('table'),
-          isImage: e.isActive('image'),
+          isTable: node('table'),
+          isImage: node('image'),
           fontFamily: (ts.fontFamily as string) ?? '',
           fontSize: (ts.fontSize as string) ?? '',
           lineHeight: (ts.lineHeight as string) ?? '',
@@ -261,6 +280,54 @@ export default function RichTextToolbar({
   const lineLabel = s.lineHeight
     ? (localizedLineHeights.find((f) => f.value === s.lineHeight)?.label ?? s.lineHeight)
     : t('editor.toolbar.lineHeightLabel')
+
+  // 제한형 툴바 — 실행 이력 / 글자 크기 / 문자 서식만 한 줄에 둔다.
+  if (isBasic) {
+    return (
+      <div
+        ref={toolbarRef}
+        role="toolbar"
+        aria-label={t('editor.toolbar.label')}
+        aria-orientation="horizontal"
+        onFocus={handleToolbarFocus}
+        onKeyDown={handleToolbarKeyDown}
+        className="rich-text-toolbar border-b border-neutral-200 bg-neutral-50"
+      >
+        <div className="di-toolbar-row flex flex-wrap items-center gap-1 px-1.5 py-1.5">
+          <ToolbarGroup label={t('editor.toolbar.groups.history')}>
+            <ToolbarButton title={t('editor.toolbar.undo')} onClick={() => editor.chain().focus().undo().run()} disabled={!s.canUndo}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+              </svg>
+            </ToolbarButton>
+            <ToolbarButton title={t('editor.toolbar.redo')} onClick={() => editor.chain().focus().redo().run()} disabled={!s.canRedo}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+              </svg>
+            </ToolbarButton>
+          </ToolbarGroup>
+
+          <ToolbarGroup label={t('editor.toolbar.groups.font')}>
+            <EditorSelectMenu
+              title={t('editor.toolbar.fontSize')} current={sizeLabel} options={localizedFontSizes}
+              activeValue={normalizedFontSize} onSelect={setFontSize} width={74}
+            />
+          </ToolbarGroup>
+
+          <ToolbarGroup label={t('editor.toolbar.groups.textStyle')}>
+            <ToolbarButton title={t('editor.toolbar.bold')} onClick={() => editor.chain().focus().toggleBold().run()} isActive={s.isBold}>
+              <strong className="font-bold text-xs">B</strong>
+            </ToolbarButton>
+            <ToolbarButton title={t('editor.toolbar.underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={s.isUnderline}>
+              <span className="underline text-xs">U</span>
+            </ToolbarButton>
+            <EditorColorPicker editor={editor} />
+            <EditorHighlightPicker editor={editor} />
+          </ToolbarGroup>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

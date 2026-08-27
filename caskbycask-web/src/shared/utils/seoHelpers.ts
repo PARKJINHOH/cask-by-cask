@@ -23,6 +23,7 @@ import {
 } from '@/shared/utils/seoSchema'
 // 생산자 폴백은 화면과 같은 라벨·같은 지역명을 써야 한다. 다른 문자열을 쓰면 크롤러 전용 텍스트가 된다.
 import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
+import { reviewCommentToText } from '@/domain/review/utils/reviewRichText'
 import { localizeCountry } from '@/shared/utils/countryName'
 import { localizeRegion } from '@/shared/utils/regionName'
 
@@ -3125,7 +3126,9 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
         name: review.nickname || 'CaskByCask user',
       },
       datePublished: review.createdAt || undefined,
-      reviewBody: review.comment || review.tasteNote || review.noseNote || review.finishNote || undefined,
+      // 총평은 서식 있는 HTML 로 저장된다 — 구조화 데이터에는 태그 없는 본문만 넣는다.
+      reviewBody: reviewCommentToText(review.comment) || review.tasteNote || review.noseNote
+        || review.finishNote || undefined,
       reviewRating: {
         '@type': 'Rating',
         ratingValue: Number(review.totalScore),

@@ -141,3 +141,39 @@ function decorateImageSources(html: string): string {
 
   return template.innerHTML
 }
+
+// [보안] 리뷰 종합평가 전용 정제 — 제한형 에디터가 만드는 서식만 남긴다.
+//   sanitizeHtml 은 이미지·링크·표·iframe 까지 허용하므로 리뷰에는 과하다.
+//   서버 HtmlSanitizer.sanitizeReviewComment 와 같은 목록을 유지한다.
+const REVIEW_COMMENT_TAGS = ['p', 'br', 'strong', 'b', 'u', 'span', 'mark']
+const REVIEW_COMMENT_ATTR = ['style', 'data-color']
+
+// style 은 DOMPurify 가 내용을 검사하지 않는다. 글자색/크기/배경색 외의 선언
+// (position, display 등)은 화면을 덮는 데 쓰일 수 있어 여기서 걷어 낸다.
+const REVIEW_COMMENT_STYLE_PROPS = ['color', 'font-size', 'background-color']
+
+export function sanitizeReviewComment(dirty: string): string {
+  if (!dirty) return ''
+  if (typeof window === 'undefined') return dirty
+
+  const sanitized = DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: REVIEW_COMMENT_TAGS,
+    ALLOWED_ATTR: REVIEW_COMMENT_ATTR,
+    FORBID_TAGS: ['script', 'style', 'object', 'embed', 'form', 'input', 'iframe', 'video', 'img', 'a'],
+    FORBID_ATTR: [
+      'onerror', 'onclick', 'onload', 'onmouseover', 'onfocus', 'onblur',
+      'onchange', 'onsubmit', 'onkeydown', 'onkeyup', 'onkeypress',
+    ],
+  })
+
+  const template = document.createElement('template')
+  template.innerHTML = sanitized
+  template.content.querySelectorAll<HTMLElement>('[style]').forEach((element) => {
+    const kept = Array.from(element.style)
+      .filter((prop) => REVIEW_COMMENT_STYLE_PROPS.includes(prop))
+      .map((prop) => `${prop}: ${element.style.getPropertyValue(prop)}`)
+    if (kept.length === 0) element.removeAttribute('style')
+    else element.setAttribute('style', kept.join('; '))
+  })
+  return template.innerHTML
+}

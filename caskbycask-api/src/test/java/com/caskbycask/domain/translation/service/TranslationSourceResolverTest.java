@@ -9,6 +9,7 @@ import com.caskbycask.domain.spirit.service.SpiritDetailService;
 import com.caskbycask.domain.translation.entity.enums.TranslationResourceType;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
+import com.caskbycask.global.util.HtmlSanitizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -49,6 +50,23 @@ class TranslationSourceResolverTest {
     }
 
     @Test
+    void richTextCommentGoesToTranslationAsPlainTextAndLegacyTextIsUntouched() {
+        given(reviewRepository.findPublicById(10L)).willReturn(Optional.of(review));
+        given(review.getNoseNote()).willReturn("줄1\n줄2");
+        given(review.getTasteNote()).willReturn(null);
+        given(review.getFinishNote()).willReturn(null);
+        given(review.getComment()).willReturn("<p><strong>깊은</strong> 여운</p>");
+
+        Map<String, String> fields = resolver().resolve(TranslationResourceType.REVIEW, 10L);
+
+        // Google 호출이 format=text 라 태그를 그대로 보내면 번역문에 태그가 글자로 남는다.
+        assertThat(fields.get("comment")).isEqualTo("깊은 여운");
+        // 에디터 도입 이전의 순수 텍스트는 손대지 않는다 — 건드리면 sourceHash 가 바뀌어
+        // 이미 채워 둔 번역 캐시가 통째로 무효가 된다.
+        assertThat(fields.get("noseNote")).isEqualTo("줄1\n줄2");
+    }
+
+    @Test
     void spiritUsesActiveLookupAndCategoryNotesExtractor() {
         given(spiritRepository.findByIdWithAllDetails(20L, SpiritStatus.ACTIVE))
                 .willReturn(Optional.of(spirit));
@@ -70,6 +88,8 @@ class TranslationSourceResolverTest {
     }
 
     private TranslationSourceResolver resolver() {
-        return new TranslationSourceResolver(spiritRepository, spiritDetailService, reviewRepository);
+        // HtmlSanitizer 는 상태가 없는 순수 변환기라 실제 구현을 그대로 쓴다.
+        return new TranslationSourceResolver(
+                spiritRepository, spiritDetailService, reviewRepository, new HtmlSanitizer());
     }
 }

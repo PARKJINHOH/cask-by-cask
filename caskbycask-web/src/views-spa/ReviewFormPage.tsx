@@ -32,7 +32,16 @@ import {
 } from '@/domain/review/utils/aroma'
 import type { AromaNotes } from '@/domain/review/utils/aroma'
 import type { AromaProfile, ReviewItem } from '@/domain/review/types/review.types'
-import { REVIEW_NOTE_MIN_LENGTH, REVIEW_TEXT_MAX_LENGTH } from '@/domain/review/constants/reviewLimits'
+import {
+  REVIEW_COMMENT_HTML_MAX_LENGTH,
+  REVIEW_NOTE_MIN_LENGTH,
+  REVIEW_TEXT_MAX_LENGTH,
+} from '@/domain/review/constants/reviewLimits'
+import {
+  isBlankReviewComment,
+  reviewCommentLength,
+  reviewCommentToHtml,
+} from '@/domain/review/utils/reviewRichText'
 import { reviewApi } from '@/domain/review/api/reviewApi'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
@@ -50,7 +59,7 @@ import UnsavedChangesDialog from '@/shared/components/UnsavedChangesDialog'
 import { useToast } from '@/shared/hooks/useToast'
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { focusFirstError } from '@/shared/utils/focusFirstError'
-import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
+import RichTextEditor from '@/shared/tiptap/RichTextEditor'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
 
@@ -87,7 +96,7 @@ const buildReviewSchema = (t: TFunction) => z.object({
   noseNote:    noteSchema(t),
   tasteNote:   noteSchema(t),
   finishNote:  noteSchema(t),
-  comment:     z.string().max(NOTE_MAX, t('review.error.noteMax', { max: NOTE_MAX })).optional(),
+  comment:     commentSchema(t),
 }).superRefine((values, ctx) => {
   // 일부만 채우면 총점을 낼 수 없다 — 서버도 같은 규칙으로 막는다(REVIEW_013).
   const entered = SCORE_FIELDS.filter((field) => values[field] != null)
@@ -104,6 +113,18 @@ const SCORE_FIELDS = ['noseScore', 'tasteScore', 'finishScore'] as const
 const noteSchema = (t: TFunction) => z.string()
   .min(NOTE_MIN, t('review.error.noteMin', { min: NOTE_MIN }))
   .max(NOTE_MAX, t('review.error.noteMax', { max: NOTE_MAX }))
+
+/**
+ * 총평은 제한형 에디터가 만든 HTML 이라 문자열 길이가 곧 본문 길이가 아니다.
+ * 사용자에게 보이는 기준(600자)은 에디터 하단 글자수와 같은 방식으로 재고, HTML 자체에는
+ * 서식을 과하게 중첩한 입력을 걸러 내는 상한만 따로 둔다. 서버도 같은 규칙으로 막는다.
+ */
+const commentSchema = (t: TFunction) => z.string()
+  .refine((value) => reviewCommentLength(value) <= NOTE_MAX,
+    t('review.error.noteMax', { max: NOTE_MAX }))
+  .refine((value) => value.length <= REVIEW_COMMENT_HTML_MAX_LENGTH,
+    t('review.error.commentTooComplex'))
+  .optional()
 
 /**
  * 에디션 선택 항목의 표시 문구.
@@ -220,7 +241,7 @@ export default function ReviewFormPage() {
       noseNote:    editingReview?.noseNote    ?? '',
       tasteNote:   editingReview?.tasteNote   ?? '',
       finishNote:  editingReview?.finishNote  ?? '',
-      comment:     editingReview?.comment     ?? '',
+      comment:     reviewCommentToHtml(editingReview?.comment),
     },
   })
 
@@ -239,7 +260,7 @@ export default function ReviewFormPage() {
         noseNote:    editingReview.noseNote    ?? '',
         tasteNote:   editingReview.tasteNote   ?? '',
         finishNote:  editingReview.finishNote  ?? '',
-        comment:     editingReview.comment     ?? '',
+        comment:     reviewCommentToHtml(editingReview.comment),
       })
       setNoseAromas(parseAromaNotes(editingReview.noseAromaWheelNotes))
       setTasteAromas(parseAromaNotes(editingReview.tasteAromaWheelNotes))
@@ -249,8 +270,8 @@ export default function ReviewFormPage() {
     }
   }, [editingReview, reset])
 
-  const [nose, taste, finish, commentValue, noseNote, tasteNote, finishNote] = watch([
-    'noseScore', 'tasteScore', 'finishScore', 'comment',
+  const [nose, taste, finish, noseNote, tasteNote, finishNote] = watch([
+    'noseScore', 'tasteScore', 'finishScore',
     'noseNote', 'tasteNote', 'finishNote',
   ])
   const hasAllScores = nose != null && taste != null && finish != null
@@ -271,6 +292,9 @@ export default function ReviewFormPage() {
       return
     }
 
+    // 빈 에디터는 <p></p> 를 내보낸다 — 그대로 저장하면 "총평 없음" 분기가 깨진다.
+    const comment = isBlankReviewComment(values.comment) ? '' : (values.comment ?? '').trim()
+
     const payload = {
       noseScore:             values.noseScore ?? null,
       tasteScore:            values.tasteScore ?? null,
@@ -278,7 +302,7 @@ export default function ReviewFormPage() {
       noseNote:              values.noseNote.trim(),
       tasteNote:             values.tasteNote.trim(),
       finishNote:            values.finishNote.trim(),
-      comment:               isEdit ? (values.comment?.trim() ?? '') : (values.comment?.trim() || undefined),
+      comment:               isEdit ? comment : (comment || undefined),
       noseAromaWheelNotes:   showAroma ? (serializeAromaNotes(noseAromas)   ?? (isEdit ? '' : undefined)) : undefined,
       tasteAromaWheelNotes:  showAroma ? (serializeAromaNotes(tasteAromas)  ?? (isEdit ? '' : undefined)) : undefined,
       finishAromaWheelNotes: showAroma ? (serializeAromaNotes(finishAromas) ?? (isEdit ? '' : undefined)) : undefined,
@@ -594,21 +618,15 @@ export default function ReviewFormPage() {
                   {t('review.overall')}{' '}
                   <span className="text-neutral-400 font-normal text-xs">({t('review.overallHint')})</span>
                 </label>
-                <AutoGrowTextarea
-                  {...field}
-                  rows={4}
-                  maxLength={REVIEW_TEXT_MAX_LENGTH}
+                {/* 글자수는 에디터가 하단에 직접 표시한다(태그를 뺀 본문 기준) */}
+                <RichTextEditor
+                  variant="basic"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
                   placeholder={t('review.overallPlaceholder')}
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-300 rounded-xl
-                    focus:outline-none focus:ring-2 focus:ring-primary-400
-                    placeholder:text-neutral-400 min-h-[5rem]"
+                  maxChars={REVIEW_TEXT_MAX_LENGTH}
                 />
-                <div className="flex items-start justify-between mt-1">
-                  <p className="text-xs text-red-500 min-h-[1rem]">{errors.comment?.message ?? ''}</p>
-                  <p className="text-xs text-neutral-400 tabular-nums flex-shrink-0 ml-2">
-                    {commentValue?.length ?? 0}/{REVIEW_TEXT_MAX_LENGTH}
-                  </p>
-                </div>
+                <p className="mt-1 text-xs text-red-500 min-h-[1rem]">{errors.comment?.message ?? ''}</p>
               </div>
             )}
           />

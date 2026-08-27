@@ -23,6 +23,7 @@ import type {
 import type { PhotoCardDraft } from '@/domain/photo-card/utils/photoCardDraft'
 import { IDENTITY_PHOTO_TRANSFORM } from '@/domain/photo-card/utils/photoCardRender'
 import type { AromaProfile } from '../types/review.types'
+import { reviewCommentToText } from '../utils/reviewRichText'
 import {
   buildReviewPhotoCardLayout,
   isReviewShareCardAlreadyTall,
@@ -262,7 +263,7 @@ export default function ReviewShareModal({ review, className = '' }: Props) {
       finishNote: review.finishNote?.trim() ?? '',
       tastingNotesTitle: t('review.share.tastingNotes'),
       overallTitle: t('review.overall'),
-      overall: review.comment?.trim() ?? '',
+      overall: reviewCommentToText(review.comment),
       aromaNose: aromaNose ? `${t('review.share.noseShort')} · ${aromaNose}` : '',
       aromaTaste: aromaTaste ? `${t('review.share.tasteShort')} · ${aromaTaste}` : '',
       aromaFinish: aromaFinish ? `${t('review.share.finishShort')} · ${aromaFinish}` : '',
@@ -273,7 +274,7 @@ export default function ReviewShareModal({ review, className = '' }: Props) {
   }, [i18n.language, isEn, review, spirit, t])
 
   const htmlCode = useMemo(() => {
-    const summary = review.comment || review.noseNote || review.tasteNote || ''
+    const summary = reviewCommentToText(review.comment) || review.noseNote || review.tasteNote || ''
     return `<div style="border:1px solid #e7c98d;padding:16px;border-radius:12px;color:#262626;background:#fffdf8"><a href="${reviewUrl}" style="display:block;text-decoration:none;color:inherit"><strong>${escapeHtml(localizedName)} · ${score(review.totalScore)}</strong><br>${escapeHtml(content.noseLabel)} ${escapeHtml(content.nose)} · ${escapeHtml(content.tasteLabel)} ${escapeHtml(content.taste)} · ${escapeHtml(content.finishLabel)} ${escapeHtml(content.finish)}<br>${escapeHtml(summary)} · @${escapeHtml(review.nickname)}</a><a href="${homeUrl}" style="display:block;margin-top:10px;text-align:right;font-size:11px;letter-spacing:.04em;opacity:.45;text-decoration:none;color:inherit">${SITE_NAME} · caskbycask.net</a></div>`
   }, [content, homeUrl, localizedName, review, reviewUrl])
 
@@ -311,7 +312,7 @@ export default function ReviewShareModal({ review, className = '' }: Props) {
       exif: null,
       spirit: spiritInfoOf(spirit, selectedImageUrl, content),
       review: reviewInfoOf(content, editorAromaProfiles),
-      user: { place: '', memo: review.comment ?? '', date: review.createdAt.slice(0, 10) },
+      user: { place: '', memo: reviewCommentToText(review.comment), date: review.createdAt.slice(0, 10) },
     } : null
   ), [content, editorAromaProfiles, review.comment, review.createdAt, selectedImageUrl, spirit])
   const recommendedImage = useMemo(
@@ -694,7 +695,7 @@ export default function ReviewShareModal({ review, className = '' }: Props) {
               <a href={reviewUrl} className="block text-inherit no-underline">
                 <strong className="text-neutral-900">{localizedName} · {score(review.totalScore)}</strong>
                 <p className="mt-2">{content.noseLabel} {content.nose} · {content.tasteLabel} {content.taste} · {content.finishLabel} {content.finish}</p>
-                <p className="mt-1 text-neutral-500">{review.comment || review.noseNote || t('review.share.noNote')} · @{review.nickname}</p>
+                <p className="mt-1 text-neutral-500">{reviewCommentToText(review.comment) || review.noseNote || t('review.share.noNote')} · @{review.nickname}</p>
               </a>
               <a href={homeUrl} className="mt-2 ml-auto block w-max text-[11px] text-neutral-500 no-underline opacity-[0.45]">{SITE_NAME} · caskbycask.net</a>
             </div>

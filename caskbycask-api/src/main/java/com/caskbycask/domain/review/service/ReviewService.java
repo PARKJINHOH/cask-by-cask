@@ -19,7 +19,6 @@ import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
-import com.caskbycask.global.util.BadWordFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,7 +41,7 @@ public class ReviewService {
     private final SpiritRepository spiritRepository;
     private final UserRepository userRepository;
     private final ScoreService scoreService;
-    private final BadWordFilter badWordFilter;
+    private final ReviewCommentSanitizer reviewCommentSanitizer;
     private final SocialPublishRequestService socialPublishRequestService;
     private final ReviewImageService reviewImageService;
     private final ReviewAromaProfileService reviewAromaProfileService;
@@ -120,8 +119,8 @@ public class ReviewService {
 
         User user = getUser(userId);
 
-        // [패치 5] 리뷰 코멘트 욕설 필터 (기존 누락 영역)
-        badWordFilter.validate(request.comment());
+        // 종합평가는 제한형 에디터의 HTML 이다 — 허용 서식만 남기고 본문 길이·욕설을 함께 검사한다.
+        String comment = reviewCommentSanitizer.sanitize(request.comment());
         rejectPartialScore(request.noseScore(), request.tasteScore(), request.finishScore());
 
         Review review = Review.builder()
@@ -133,7 +132,7 @@ public class ReviewService {
                 .noseNote(request.noseNote())
                 .tasteNote(request.tasteNote())
                 .finishNote(request.finishNote())
-                .comment(request.comment())
+                .comment(comment)
                 .noseAromaWheelNotes(request.noseAromaWheelNotes())
                 .tasteAromaWheelNotes(request.tasteAromaWheelNotes())
                 .finishAromaWheelNotes(request.finishAromaWheelNotes())
@@ -172,10 +171,8 @@ public class ReviewService {
         Review review = getReview(spiritId, reviewId);
         checkOwnership(review, userId);
 
-        // [패치 5] 리뷰 수정 시 코멘트 욕설 필터 (기존 누락 영역)
-        if (request.comment() != null) {
-            badWordFilter.validate(request.comment());
-        }
+        // null 은 "변경 안 함" 이라 정제 결과도 null 로 남는다.
+        String comment = reviewCommentSanitizer.sanitize(request.comment());
 
         rejectPartialScore(request.noseScore(), request.tasteScore(), request.finishScore());
 
@@ -189,7 +186,7 @@ public class ReviewService {
                 request.noseNote()             != null ? request.noseNote()             : review.getNoseNote(),
                 request.tasteNote()            != null ? request.tasteNote()            : review.getTasteNote(),
                 request.finishNote()           != null ? request.finishNote()           : review.getFinishNote(),
-                request.comment()              != null ? request.comment()              : review.getComment(),
+                comment                        != null ? comment                        : review.getComment(),
                 request.noseAromaWheelNotes()  != null ? request.noseAromaWheelNotes()  : review.getNoseAromaWheelNotes(),
                 request.tasteAromaWheelNotes() != null ? request.tasteAromaWheelNotes() : review.getTasteAromaWheelNotes(),
                 request.finishAromaWheelNotes() != null ? request.finishAromaWheelNotes() : review.getFinishAromaWheelNotes()

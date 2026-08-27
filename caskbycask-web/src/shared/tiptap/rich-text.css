@@ -35,6 +35,15 @@
   height: clamp(220px, 52dvh, 580px);
 }
 
+/* 제한형 에디터(리뷰 종합평가 등) — 본문이 짧고 폼 안에 다른 입력칸이 이어지므로 더 낮게 잡는다.
+   --compact 와 명시도가 같으니 반드시 뒤에 둔다. */
+.di-richtext.di-richtext--basic {
+  /* 공용 계약의 min-height: 220px 까지 함께 덮어야 실제로 낮아진다. */
+  min-height: 150px;
+  height: clamp(150px, 26dvh, 260px);
+  max-height: max(150px, calc(100dvh - 20rem));
+}
+
 .di-richtext .ProseMirror {
   outline: none;
   min-height: 220px;
@@ -70,6 +79,11 @@
   .di-richtext.di-richtext--compact {
     min-height: 260px;
     min-height: clamp(240px, 38svh, 380px);
+  }
+
+  .di-richtext.di-richtext--basic {
+    min-height: 170px;
+    min-height: clamp(160px, 26svh, 240px);
   }
 
   /* 부모 높이가 auto 라 100% 가 잡히지 않는다. inherit 로 같은 높이를 물려받아

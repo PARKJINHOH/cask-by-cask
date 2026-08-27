@@ -21,11 +21,11 @@ const { detectDominantContentLanguage, shouldOfferContentTranslation } =
 
 test('공개 API는 리소스 식별자와 대상 언어만 보내고 임의 원문을 프록시하지 않는다', () => {
   assert.ok(api.includes("axiosInstance.post<ApiResponse<ContentTranslation>>('/api/translations'"))
-  const bodyStart = api.indexOf('{\n      resourceType,')
-  const bodyEnd = api.indexOf('\n    })', bodyStart)
-  assert.notEqual(bodyStart, -1)
-  assert.notEqual(bodyEnd, -1)
-  const body = api.slice(bodyStart, bodyEnd)
+  const bodyMatch = api.match(
+    /axiosInstance\.post<ApiResponse<ContentTranslation>>\('\/api\/translations',\s*\{([\s\S]*?)\}\s*\)/,
+  )
+  assert.ok(bodyMatch)
+  const body = bodyMatch[1]
   assert.match(body, /resourceType[\s\S]*resourceId[\s\S]*targetLanguage/)
   assert.doesNotMatch(body, /\b(text|fields|content)\b/)
 })
@@ -80,8 +80,10 @@ test('모바일 터치 영역·중복 클릭 방지·스크린리더 상태 안�
   assert.equal(en.translation.translate, 'Translate')
 })
 
-test('주류 소개 번역 액션은 텍스트 끝의 작은 배지로 표시되며 터치 영역은 확장된다', () => {
+test('주류 소개 번역 액션은 한국어 UI에서 숨고 그 외에는 텍스트 끝의 작은 배지로 표시된다', () => {
   assert.ok(textBlock.includes('{displayedText.trimEnd()}'))
+  assert.ok(textBlock.includes("resourceType !== 'SPIRIT_NOTES' || translation.targetLanguage !== 'ko'"))
+  assert.ok(textBlock.includes('hasContent={shouldShowTranslation}'))
   assert.match(textBlock, /<TranslationAction[\s\S]*compact/)
   assert.ok(action.includes('rounded-full'))
   assert.ok(action.includes('text-[11px]'))
@@ -115,7 +117,8 @@ test('기계 번역문은 공개 리뷰 SEO 메타데이터에 사용하지 않�
   const seoBlock = publicReview.slice(start, end)
   assert.notEqual(start, -1)
   assert.notEqual(end, -1)
-  assert.ok(seoBlock.includes('description={data.comment'))
+  // 총평은 서식 있는 HTML 이라 태그를 걷어 낸 뒤 쓴다 — 출처가 원문(data.comment)인 점이 핵심이다.
+  assert.ok(seoBlock.includes('description={reviewCommentToText(data.comment)'))
   assert.doesNotMatch(seoBlock, /translated|contentTranslation/)
 })
 

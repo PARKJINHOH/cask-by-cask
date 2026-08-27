@@ -25,7 +25,6 @@ import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.global.email.EmailSender;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
-import com.caskbycask.global.util.BadWordFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -57,7 +56,7 @@ public class VariantReviewRequestService {
     private final ReviewService reviewService;
     private final ScoreService scoreService;
     private final SpiritDetailService spiritDetailService;
-    private final BadWordFilter badWordFilter;
+    private final ReviewCommentSanitizer reviewCommentSanitizer;
     private final EmailSender emailSender;
     private final NotificationService notificationService;
     private final SocialPublishRequestService socialPublishRequestService;
@@ -85,7 +84,8 @@ public class VariantReviewRequestService {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
-        badWordFilter.validate(request.comment());
+        // 종합평가는 제한형 에디터의 HTML 이다 — 승인 시 리뷰로 그대로 복사되므로 여기서 정제한다.
+        String comment = reviewCommentSanitizer.sanitize(request.comment());
         rejectPartialScore(request.noseScore(), request.tasteScore(), request.finishScore());
 
         SpiritVariantReviewRequest saved = requestRepository.save(SpiritVariantReviewRequest.builder()
@@ -105,7 +105,7 @@ public class VariantReviewRequestService {
                 .noseNote(normalize(request.noseNote()))
                 .tasteNote(normalize(request.tasteNote()))
                 .finishNote(normalize(request.finishNote()))
-                .comment(normalize(request.comment()))
+                .comment(normalize(comment))
                 .noseAromaWheelNotes(normalize(request.noseAromaWheelNotes()))
                 .tasteAromaWheelNotes(normalize(request.tasteAromaWheelNotes()))
                 .finishAromaWheelNotes(normalize(request.finishAromaWheelNotes()))
@@ -185,7 +185,7 @@ public class VariantReviewRequestService {
             Long requestId, Long userId, CreateVariantReviewRequest update,
             List<ReviewImagePlanItem> imagePlan, List<MultipartFile> images) {
         SpiritVariantReviewRequest request = getEditableMyRequest(requestId, userId);
-        badWordFilter.validate(update.comment());
+        String comment = reviewCommentSanitizer.sanitize(update.comment());
         rejectPartialScore(update.noseScore(), update.tasteScore(), update.finishScore());
         request.updatePending(
                 update.variantValue().trim(),
@@ -199,7 +199,7 @@ public class VariantReviewRequestService {
                 normalize(update.noseNote()),
                 normalize(update.tasteNote()),
                 normalize(update.finishNote()),
-                normalize(update.comment()),
+                normalize(comment),
                 normalize(update.noseAromaWheelNotes()),
                 normalize(update.tasteAromaWheelNotes()),
                 normalize(update.finishAromaWheelNotes())
@@ -238,7 +238,7 @@ public class VariantReviewRequestService {
         SpiritVariantReviewRequest request = getReviewOnlyRejectedMyRequest(requestId, userId);
         Spirit linkedVariant = request.getLinkedVariant();
 
-        badWordFilter.validate(update.comment());
+        String comment = reviewCommentSanitizer.sanitize(update.comment());
         rejectPartialScore(update.noseScore(), update.tasteScore(), update.finishScore());
         request.resubmitReview(
                 linkedVariant.getVariantValue(),
@@ -252,7 +252,7 @@ public class VariantReviewRequestService {
                 normalize(update.noseNote()),
                 normalize(update.tasteNote()),
                 normalize(update.finishNote()),
-                normalize(update.comment()),
+                normalize(comment),
                 normalize(update.noseAromaWheelNotes()),
                 normalize(update.tasteAromaWheelNotes()),
                 normalize(update.finishAromaWheelNotes())
