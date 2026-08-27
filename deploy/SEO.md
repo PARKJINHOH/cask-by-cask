@@ -115,8 +115,17 @@ OG 메타가 바뀌어도 메신저/SNS 는 캐시한 이전 미리보기를 계
 - 검색엔진은 일반적으로 sitemap.xml 을 주기적으로 재크롤링하므로 별도 ping 불필요.
 - 그래도 즉시 재색인이 필요하면:
   - Google: Search Console → 사이트맵 재제출
-  - Naver: `INDEXNOW_ENABLED=true`일 때 주류 공개·수정·비활성화 트랜잭션 커밋 후 KO/EN canonical을 비동기 통지
+  - Naver: `INDEXNOW_ENABLED=true`일 때 트랜잭션 커밋 후 KO/EN canonical을 비동기 통지. 통지 대상은 셋이다.
+    - 주류(`SpiritIndexingEventPublisher`) — 공개·수정·비활성화
+    - 게시글(`PostIndexingEventPublisher`) — 공개 글만(성인 전용·숨김·삭제 제외), `/ko` 만
+    - 생산자(`ProducerIndexingEventPublisher`) — 생산자 정보 수정 시, 그리고 **소속 주류가 바뀔 때**.
+      생산자가 색인 대상이 되는 시점이 첫 활성 주류가 붙는 순간이라 주류 쪽에서도 함께 통지한다.
+      활성 주류가 없는 생산자는 sitemap 과 같은 기준으로 제외한다.
+  - 각 발행자의 대상 판정은 `SitemapService` 의 해당 쿼리와 **같아야 한다** — 어긋나면 sitemap 에서
+    일부러 뺀 주소를 IndexNow 로는 크롤해 달라고 조르는 상태가 된다. 테스트가 이를 고정한다.
   - IndexNow는 sitemap과 수동 URL 검사를 대체하지 않으며 색인을 보장하지 않는다.
+  - **주의**: sitemap 의 `lastmod` 는 데이터 변경 시각(`updatedAt`)에서 온다. 렌더링만 바꾼 배포는
+    lastmod 가 그대로여서 재크롤 신호가 없다 — 그런 배포 뒤에는 Search Console 수동 색인 요청이 필요하다.
 
 IndexNow 키는 8~128자의 `a-f`, `A-F`, `0-9`, `-`로 만들고 `/app/env/api.env`에 설정한다. 활성화 후 `https://www.caskbycask.net/indexnow-key.txt`가 200 및 키 원문을 반환하는지 확인한다. 전송 실패는 콘텐츠 저장을 롤백하지 않고 로그만 남긴다.
 

@@ -10,6 +10,7 @@ import com.caskbycask.domain.producer.entity.ProducerRegisterRequest;
 import com.caskbycask.domain.producer.repository.ProducerLogoImageRepository;
 import com.caskbycask.domain.producer.repository.ProducerRegisterRequestRepository;
 import com.caskbycask.domain.producer.repository.ProducerRepository;
+import com.caskbycask.domain.seo.service.ProducerIndexingEventPublisher;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.WineRegion;
@@ -26,6 +27,7 @@ import com.caskbycask.global.storage.ValidatedImageUploader.StoredImage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -55,6 +57,10 @@ public class ProducerService {
     private final ObjectMapper objectMapper;
     private final LegacyWineRegionResolver legacyWineRegionResolver;
     private final WineRegionService wineRegionService;
+
+    /** Optional field injection keeps domain unit tests and IndexNow-disabled environments isolated. */
+    @Autowired(required = false)
+    private ProducerIndexingEventPublisher producerIndexingEventPublisher;
 
     // ── 공개 조회 ──────────────────────────────────────────────
 
@@ -164,7 +170,16 @@ public class ProducerService {
                 request.descriptionEn() != null ? request.descriptionEn() : producer.getDescriptionEn(),
                 request.searchKeywords() != null ? request.searchKeywords() : producer.getSearchKeywords()
         );
+        // 이름·설명·산지가 바뀌면 화면과 메타데이터가 같이 바뀐다. sitemap 의 lastmod 는 커밋 뒤에야
+        // 갱신되므로, 검색엔진(특히 네이버)에는 여기서 바로 알린다.
+        notifyIndexing(producer.getId());
         return ProducerResponse.from(producer, logosOf(id));
+    }
+
+    private void notifyIndexing(Long producerId) {
+        if (producerIndexingEventPublisher != null) {
+            producerIndexingEventPublisher.publish(producerId);
+        }
     }
 
     @Transactional
