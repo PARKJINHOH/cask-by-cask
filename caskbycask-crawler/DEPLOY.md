@@ -1,7 +1,8 @@
 # Oracle Cloud Ubuntu 24.04 배포 가이드
 
 Oracle Cloud (Ubuntu 24.04 LTS, aarch64 또는 x86_64) 운영 서버 기준.
-핫딜과 AI 소식 크롤러를 KST 기준 2시간마다 시차를 두고 실행하도록 cron 스케줄러로 설정한다.
+핫딜 크롤러는 KST 기준 2시간마다, AI 소식 크롤러는 매시간 시차를 두고 실행하도록 cron 스케줄러로 설정한다.
+AI 소식의 실제 수집 주기는 관리자 화면 설정이 정하고, cron 은 "지금 차례인가"를 확인하는 역할만 한다.
 
 ---
 
@@ -184,7 +185,7 @@ Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 운영 가�
 
 ---
 
-## 10. cron 스케줄러 등록 (2시간마다)
+## 10. cron 스케줄러 등록 (핫딜 2시간마다 · AI 소식 매시간)
 1. `run.sh` 실행권한 부여:
    ```bash
    chmod +x /app/caskbycask-crawler/run.sh
@@ -203,12 +204,17 @@ Gemini SDK import 오류나 `httpx` 의존성 오류가 발생하면 운영 가�
 ### AI 소식 작업 추가
 
 `.env`에 `TAVILY_API_KEY`와 `AI_NEWS_*` 모델/비용 설정을 추가한 뒤 별도 잠금 파일을 사용하는
-`run-news.sh`는 핫딜 실행 17분 후에 시작하도록 KST 기준 2시간마다 실행합니다. 두 작업은 서로 다른 잠금 파일을 사용하지만 Gemini 무료 한도의 순간 중첩을 피하기 위해 시차를 둡니다.
+`run-news.sh`는 핫딜 실행 17분 후에 시작하도록 **매시간** 실행합니다. 두 작업은 서로 다른 잠금 파일을 사용하지만 Gemini 무료 한도의 순간 중첩을 피하기 위해 시차를 둡니다.
 
 ```cron
 CRON_TZ=Asia/Seoul
-17 */2 * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1
+17 * * * * /app/caskbycask-crawler/current/run-news.sh >> /app/caskbycask-crawler/logs/ai-news-cron.log 2>&1
 ```
+
+**cron 주기와 수집 주기는 다릅니다.** cron 은 매시간 깨어나기만 하고, 실제로 수집할지는
+`관리자 > 커뮤니티 > 소식(AI) > 설정·사용량`의 **수집 주기(시간)** 가 정합니다(기본 2시간).
+크롤러는 `/api/internal/ai-news/config` 의 `collectionDue` 를 보고 차례가 아니면 실행 이력을 만들지 않고
+그대로 종료합니다 — 그래서 주기를 바꾸려고 서버에 접속할 필요가 없습니다.
 
 AI 소식은 **소재만 모읍니다.** 크롤러는 제목·요약·근거 URL 까지만 저장하고, 본문과 대표 이미지는
 관리자가 에디터에서 직접 만들어 발행합니다. AI 본문 작성과 Gemini 이미지 API 는 호출하지 않습니다.

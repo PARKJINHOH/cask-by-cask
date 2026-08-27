@@ -3,8 +3,11 @@ export type AiNewsArticleStatus =
   | 'DRAFT' | 'PENDING_REVIEW' | 'SCHEDULED' | 'PUBLISHED' | 'REJECTED'
   | 'SKIPPED_DUPLICATE' | 'FAILED' | 'DELETED'
 export type AiNewsCategory = 'WHISKY' | 'WINE' | 'COGNAC' | 'OTHER'
-export type AiNewsSourceType = 'OFFICIAL' | 'TRUSTED_MEDIA' | 'COMMUNITY' | 'UNAPPROVED'
-export type AiNewsSourceCrawlStatus = 'NOT_CHECKED' | 'SUCCESS' | 'ERROR'
+/**
+ * 출처별 마지막 수집 결과.
+ * SUCCESS 는 근거를 실제로 가져온 경우뿐이고, 정상 확인했지만 새 소식이 없으면 NO_RESULT 다.
+ */
+export type AiNewsSourceCrawlStatus = 'NOT_CHECKED' | 'SUCCESS' | 'NO_RESULT' | 'ERROR'
 export type AiNewsTopicStatus = 'PLANNED' | 'DONE'
 export interface AiNewsArticleSummary {
   id: number
@@ -33,7 +36,6 @@ export interface AiNewsSourceEvidence {
   canonicalUrl: string
   domain: string
   sourceTitle?: string | null
-  sourceType: AiNewsSourceType
   evidenceSummary?: string | null
   contentHash?: string | null
   publishedAt?: string | null
@@ -102,7 +104,6 @@ export interface AiNewsSourceConfig {
   sourceUrl: string
   domain: string
   pathPrefix: string
-  sourceType: AiNewsSourceType
   enabled: boolean
   /** 자동 등록 시절에 생긴 옛 출처. 지금은 아무도 true 로 만들지 않고, 정리 필터용으로만 남아 있다. */
   autoDiscovered: boolean
@@ -114,7 +115,6 @@ export interface AiNewsSourceConfig {
 export interface AiNewsSourceConfigRequest {
   sourceName: string
   sourceUrl: string
-  sourceType: AiNewsSourceType
   enabled: boolean
 }
 
@@ -126,6 +126,8 @@ export interface AiNewsBulkDeleteResult {
 
 export interface AiNewsSettings {
   automationEnabled: boolean
+  /** 수집 실행 간격(시간). cron 은 매시간 돌고 실제 주기는 이 값이 정한다. */
+  collectionIntervalHours: number
   /** 하루에 모을 소재 수. 발행이 아니라 생성 기준이다. */
   dailyReleaseLimit: number
   tavilyMonthlyCreditLimit: number

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminAiNewsApi } from '@/domain/admin/api/adminAiNewsApi'
 import type {
   AiNewsArticleStatus, AiNewsArticleType, AiNewsCategory, AiNewsSettings,
-  AiNewsSourceConfig, AiNewsSourceConfigRequest, AiNewsSourceType,
+  AiNewsSourceConfig, AiNewsSourceConfigRequest, AiNewsSourceCrawlStatus,
   AiNewsTopicRequest, AiNewsTopicStatus,
 } from '@/domain/admin/types/aiNews.types'
 import Spinner from '@/shared/components/Spinner'
@@ -26,8 +26,15 @@ const articleTypeLabels: Record<AiNewsArticleType, string> = {
 const categoryLabels: Record<AiNewsCategory, string> = {
   WHISKY: '위스키', WINE: '와인', COGNAC: '꼬냑', OTHER: '기타',
 }
-const sourceTypeLabels: Record<AiNewsSourceType, string> = {
-  OFFICIAL: '공식', TRUSTED_MEDIA: '전문매체', COMMUNITY: '커뮤니티', UNAPPROVED: '미승인',
+/**
+ * 출처별 마지막 수집 결과. '결과 없음'은 실패가 아니다 —
+ * 정상적으로 확인했지만 그 실행에 새 소식이 없었다는 뜻이다.
+ */
+const crawlStatusLabels: Record<AiNewsSourceCrawlStatus, string> = {
+  NOT_CHECKED: '수집 전', SUCCESS: '수집 성공', NO_RESULT: '결과 없음', ERROR: '수집 실패',
+}
+const crawlStatusDotColors: Record<AiNewsSourceCrawlStatus, string> = {
+  NOT_CHECKED: 'bg-neutral-300', SUCCESS: 'bg-blue-500', NO_RESULT: 'bg-neutral-400', ERROR: 'bg-red-500',
 }
 /** 출처 목록의 수집 활성 여부 필터. */
 type AiNewsSourceState = 'ENABLED' | 'DISABLED'
@@ -349,10 +356,10 @@ function TopicsTab() {
 
 function SourcesTab() {
   const qc = useQueryClient()
-  const empty: AiNewsSourceConfigRequest = { sourceName: '', sourceUrl: '', sourceType: 'OFFICIAL', enabled: true }
+  const empty: AiNewsSourceConfigRequest = { sourceName: '', sourceUrl: '', enabled: true }
   const [form, setForm] = useState<AiNewsSourceConfigRequest>(empty)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [sourceType, setSourceType] = useState<AiNewsSourceType | ''>('')
+  const [crawlStatus, setCrawlStatus] = useState<AiNewsSourceCrawlStatus | ''>('')
   const [state, setState] = useState<AiNewsSourceState | ''>('')
   const [origin, setOrigin] = useState<AiNewsSourceOrigin | ''>('')
   const [keywordInput, setKeywordInput] = useState('')
@@ -360,9 +367,9 @@ function SourcesTab() {
   const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<number[]>([])
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'ai-news', 'sources', sourceType, state, origin, keyword, page],
+    queryKey: ['admin', 'ai-news', 'sources', crawlStatus, state, origin, keyword, page],
     queryFn: () => adminAiNewsApi.sources({
-      sourceType: sourceType || undefined,
+      crawlStatus: crawlStatus || undefined,
       enabled: state === 'ENABLED' ? true : state === 'DISABLED' ? false : undefined,
       autoDiscovered: origin === 'AUTO' ? true : origin === 'MANUAL' ? false : undefined,
       keyword: keyword || undefined, page, size: 20,
@@ -370,7 +377,7 @@ function SourcesTab() {
   })
   useEffect(() => { setPage(0) }, [keyword])
   // 필터나 페이지가 바뀌면 화면에 없는 행이 선택된 채로 남지 않도록 비운다.
-  useEffect(() => { setSelected([]) }, [sourceType, state, origin, keyword, page])
+  useEffect(() => { setSelected([]) }, [crawlStatus, state, origin, keyword, page])
   const invalidate = () => qc.invalidateQueries({ queryKey: ['admin', 'ai-news', 'sources'] })
   const resetForm = () => { setForm(empty); setEditingId(null) }
   const create = useMutation({ mutationFn: adminAiNewsApi.createSource, onSuccess: () => { resetForm(); setPage(0); invalidate() } })
@@ -388,7 +395,7 @@ function SourcesTab() {
   }
   const startEdit = (source: AiNewsSourceConfig) => {
     setEditingId(source.id)
-    setForm({ sourceName: source.sourceName, sourceUrl: source.sourceUrl, sourceType: source.sourceType, enabled: source.enabled })
+    setForm({ sourceName: source.sourceName, sourceUrl: source.sourceUrl, enabled: source.enabled })
   }
   const rows = data?.content ?? []
   const allSelected = rows.length > 0 && rows.every((source) => selected.includes(source.id))
@@ -403,19 +410,15 @@ function SourcesTab() {
           <p className="mt-1 text-xs leading-5 text-neutral-500">
             출시 소식은 <strong>여기 등록된 출처에서만</strong> 수집합니다. 등록하지 않은 도메인은 검색 대상이 아니며,
             수집 과정에서 목록에 자동으로 추가되지도 않습니다.
+            수집 대상 여부는 아래 <strong>수집 활성</strong> 하나로만 정해집니다.
           </p>
         </div>
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-2">
           <SourceField label="출처 이름" required help="관리자가 알아볼 수 있는 공식 명칭입니다. 예: 메타베브코리아 공식 인스타그램">
             <input required maxLength={100} value={form.sourceName} onChange={(e) => setForm({ ...form, sourceName: e.target.value })} placeholder="메타베브코리아 공식 인스타그램" className={`${inputCls} w-full`} />
           </SourceField>
           <SourceField label="공식 출처 URL" required help="홈페이지, 뉴스룸 또는 공식 SNS 계정의 전체 URL을 입력하세요.">
             <input required type="url" maxLength={1500} value={form.sourceUrl} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} placeholder="https://www.instagram.com/metabevkorea" className={`${inputCls} w-full`} />
-          </SourceField>
-          <SourceField label="출처 등급" required help="수집에 실제로 쓰이는 것은 공식·전문매체뿐입니다. 커뮤니티·미승인은 근거 표시용 분류입니다.">
-            <select required value={form.sourceType} onChange={(e) => setForm({ ...form, sourceType: e.target.value as AiNewsSourceType })} className={`${inputCls} w-full`}>
-              {Object.entries(sourceTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
           </SourceField>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4">
@@ -429,12 +432,12 @@ function SourcesTab() {
       </form>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-4 shadow-sm">
-        <select aria-label="등급 필터" value={sourceType} onChange={(e) => { setSourceType(e.target.value as AiNewsSourceType | ''); setPage(0) }} className={inputCls}>
-          <option value="">전체 등급</option>
-          {Object.entries(sourceTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        <select aria-label="수집 상태 필터" value={crawlStatus} onChange={(e) => { setCrawlStatus(e.target.value as AiNewsSourceCrawlStatus | ''); setPage(0) }} className={inputCls}>
+          <option value="">전체 수집 상태</option>
+          {Object.entries(crawlStatusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <select aria-label="수집 상태 필터" value={state} onChange={(e) => { setState(e.target.value as AiNewsSourceState | ''); setPage(0) }} className={inputCls}>
-          <option value="">전체 상태</option>
+        <select aria-label="수집 활성 필터" value={state} onChange={(e) => { setState(e.target.value as AiNewsSourceState | ''); setPage(0) }} className={inputCls}>
+          <option value="">활성·비활성 전체</option>
           {Object.entries(sourceStateLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <select aria-label="등록 경로 필터" value={origin} onChange={(e) => { setOrigin(e.target.value as AiNewsSourceOrigin | ''); setPage(0) }} className={inputCls}>
@@ -443,8 +446,8 @@ function SourcesTab() {
         </select>
         <input aria-label="출처 검색" value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)}
           placeholder="출처 이름 · 도메인 검색" className={`${inputCls} min-w-56 flex-1`} />
-        {(sourceType || state || origin || keywordInput) && (
-          <button type="button" onClick={() => { setSourceType(''); setState(''); setOrigin(''); setKeywordInput(''); setPage(0) }} className={smallBtn}>
+        {(crawlStatus || state || origin || keywordInput) && (
+          <button type="button" onClick={() => { setCrawlStatus(''); setState(''); setOrigin(''); setKeywordInput(''); setPage(0) }} className={smallBtn}>
             필터 초기화
           </button>
         )}
@@ -452,7 +455,7 @@ function SourcesTab() {
       {origin === 'AUTO' && (
         <p className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-xs leading-5 text-neutral-600">
           예전에 수집 과정에서 자동으로 등록된 출처입니다. 지금은 자동 등록을 하지 않으므로 지워도 다시 생기지 않습니다.
-          실제로 수집에 쓰는 공식·전문매체만 남기고 정리하세요.
+          실제로 소식을 낼 만한 곳만 남기고 정리하세요.
         </p>
       )}
 
@@ -471,7 +474,7 @@ function SourcesTab() {
           <thead className="border-b bg-neutral-50 text-left text-xs text-neutral-500"><tr>
             <th className="px-4 py-3"><input type="checkbox" aria-label="전체 선택" checked={allSelected} onChange={toggleAll} /></th>
             <th className="px-4 py-3">수집 상태</th><th className="px-4 py-3">출처</th><th className="px-4 py-3">URL</th>
-            <th className="px-4 py-3">등급</th><th className="px-4 py-3">활성</th><th className="px-4 py-3">관리</th>
+            <th className="px-4 py-3">활성</th><th className="px-4 py-3">관리</th>
           </tr></thead>
           <tbody className="divide-y">{rows.map((source) => (
             <SourceRow key={source.id} source={source}
@@ -493,16 +496,15 @@ function SourceRow({ source, checked, onToggle, onChange, onEdit, onDelete }: {
   onChange: (v: AiNewsSourceConfigRequest) => void; onEdit: () => void; onDelete: () => void
 }) {
   const payload = (patch: Partial<AiNewsSourceConfigRequest>): AiNewsSourceConfigRequest => ({
-    sourceName: source.sourceName, sourceUrl: source.sourceUrl, sourceType: source.sourceType,
+    sourceName: source.sourceName, sourceUrl: source.sourceUrl,
     enabled: source.enabled, ...patch,
   })
-  return <tr>
+  return <tr className="align-top">
     <td className="px-4 py-3"><input type="checkbox" aria-label={`${source.sourceName} 선택`} checked={checked} onChange={onToggle} /></td>
-    <td className="px-4 py-3"><CrawlStatus source={source} /></td>
+    <td className="max-w-[280px] px-4 py-3"><CrawlStatus source={source} /></td>
     <td className="max-w-[200px] px-4 py-3 font-semibold">{source.sourceName}
       {source.autoDiscovered && <span className="ml-1.5 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-500">자동 등록</span>}</td>
     <td className="max-w-[320px] px-4 py-3"><a href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="block truncate text-blue-600 underline-offset-2 hover:underline" title={source.sourceUrl}>{source.sourceUrl}</a></td>
-    <td className="px-4 py-3"><select aria-label="출처 등급" value={source.sourceType} onChange={(e) => onChange(payload({ sourceType: e.target.value as AiNewsSourceType }))} className={inputCls}>{Object.entries(sourceTypeLabels).map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></td>
     <td className="px-4 py-3"><input type="checkbox" aria-label="수집 활성" checked={source.enabled} onChange={(e) => onChange(payload({ enabled: e.target.checked }))} /></td>
     <td className="px-4 py-3"><div className="flex gap-2">
       <button onClick={onEdit} className={smallBtn}>수정</button>
@@ -510,11 +512,25 @@ function SourceRow({ source, checked, onToggle, onChange, onEdit, onDelete }: {
     </div></td></tr>
 }
 
+/**
+ * 실패 사유는 <b>툴팁이 아니라 셀 안에</b> 그대로 보여 준다.
+ * 예전에는 title 속성에만 있어서, 고칠 수 있는 문제를 관리자가 사실상 볼 수 없었다.
+ */
 function CrawlStatus({ source }: { source: AiNewsSourceConfig }) {
-  const color = source.crawlStatus === 'SUCCESS' ? 'bg-blue-500' : source.crawlStatus === 'ERROR' ? 'bg-red-500' : 'bg-neutral-300'
-  const label = source.crawlStatus === 'SUCCESS' ? '수집 성공' : source.crawlStatus === 'ERROR' ? '수집 실패' : '수집 전'
-  const detail = source.lastCrawledAt ? `${label} · ${formatDateTime(source.lastCrawledAt)}${source.lastCrawlError ? ` · ${source.lastCrawlError}` : ''}` : label
-  return <span className="inline-flex items-center gap-2" title={detail}><span className={`h-3 w-3 rounded-full ${color}`} /><span className="text-xs text-neutral-600">{label}</span></span>
+  return (
+    <div className="space-y-1">
+      <span className="inline-flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${crawlStatusDotColors[source.crawlStatus]}`} />
+        <span className="whitespace-nowrap text-xs font-medium text-neutral-700">{crawlStatusLabels[source.crawlStatus]}</span>
+      </span>
+      {source.lastCrawledAt && (
+        <p className="text-[11px] text-neutral-400">{formatDateTime(source.lastCrawledAt)}</p>
+      )}
+      {source.lastCrawlError && (
+        <p className="break-words text-[11px] leading-4 text-red-600">{source.lastCrawlError}</p>
+      )}
+    </div>
+  )
 }
 
 function SourceField({ label, required = false, help, children }: { label: string; required?: boolean; help: string; children: ReactNode }) {
@@ -533,9 +549,17 @@ function SettingsTab() {
   const [form, setForm] = useState<AiNewsSettings | null>(null)
   useEffect(() => { if (saved) setForm(saved) }, [saved])
   const save = useMutation({ mutationFn: adminAiNewsApi.updateSettings, onSuccess: (next) => { setForm(next); qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] }) } })
+  // 다음 수집 예정은 서버가 쓰는 규칙(마지막 실행 시각 + 저장된 주기)을 그대로 화면에서 계산한다.
+  // 저장 전 입력값이 아니라 저장된 값을 쓴다 — 실제로 적용 중인 주기를 보여 줘야 한다.
+  const lastRunAt = runs?.content?.[0]?.startedAt
+  const nextCollectionAt = lastRunAt && saved
+    ? new Date(new Date(lastRunAt).getTime() + saved.collectionIntervalHours * 3_600_000)
+    : null
   if (isLoading || !form) return <Loading />
   return <div className="space-y-4">
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Metric label="다음 수집 예정" value={!saved?.automationEnabled ? '자동화 꺼짐'
+        : nextCollectionAt ? formatClock(nextCollectionAt) : '다음 실행에 곧바로'} />
       <Metric label="Tavily 크레딧" value={`${usage?.tavilyCredits ?? 0} / ${usage?.tavilyCreditLimit ?? form.tavilyMonthlyCreditLimit}`} />
       <Metric label="입력 토큰" value={(usage?.inputTokens ?? 0).toLocaleString()} />
       <Metric label="출력 토큰" value={(usage?.outputTokens ?? 0).toLocaleString()} />
@@ -553,6 +577,8 @@ function SettingsTab() {
       <RequiredFieldsNotice admin />
       <Toggle label="자동화 활성화" description="정해진 주기에 따라 등록 출처를 훑어 소재를 모읍니다. OFF이면 새로운 수집을 시작하지 않습니다." checked={form.automationEnabled} onChange={(v) => setForm({ ...form, automationEnabled: v })} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <NumberField label="수집 주기(시간, 1~24)" value={form.collectionIntervalHours} min="1" max="24"
+          onChange={(v) => setForm({ ...form, collectionIntervalHours: v })} />
         <NumberField label="소재 일일 수집 한도" value={form.dailyReleaseLimit} onChange={(v) => setForm({ ...form, dailyReleaseLimit: v })} />
         <NumberField label="Tavily 월 한도" value={form.tavilyMonthlyCreditLimit} onChange={(v) => setForm({ ...form, tavilyMonthlyCreditLimit: v })} />
         <NumberField label="Gemini 월 예산(USD, 0=모니터링)" value={form.openaiMonthlyBudgetUsd ?? 0} step="0.01" onChange={(v) => setForm({ ...form, openaiMonthlyBudgetUsd: v > 0 ? v : null })} />
@@ -562,7 +588,11 @@ function SettingsTab() {
         <NumberField label="꼬냑 비율" value={form.cognacRatio} onChange={(v) => setForm({ ...form, cognacRatio: v })} />
       </div>
       <div className="space-y-1 text-xs leading-5 text-neutral-500">
-        <p>소재 일일 수집 한도는 <strong>발행이 아니라 수집</strong> 기준입니다.</p>
+        <p>
+          수집 주기는 <strong>마지막 실행 시각 기준</strong>입니다. 서버는 매시간 확인하고, 주기가 지나지 않았으면 그냥 넘어갑니다.
+          실행마다 주종 하나에 집중해 검색하므로, 주기를 길게 잡을수록 특정 주종이 다시 돌아오는 데 오래 걸립니다.
+        </p>
+        <p>소재 일일 수집 한도는 <strong>발행이 아니라 수집</strong> 기준입니다. 주기를 짧게 해도 이 한도는 그대로 상한입니다.</p>
         <p>주종 비율은 소재 검색이 실행마다 어느 주종에 집중할지 정하는 순환 비중입니다. 합계는 100이어야 합니다. (60/20/20이면 10회 중 위스키 6·와인 2·꼬냑 2)</p>
         <p>API 키와 절대 안전상한은 서버 환경변수에서만 관리합니다.</p>
       </div>
@@ -587,7 +617,13 @@ function Toggle({ label, description, checked, onChange }: { label: string; desc
     <span><span className="block text-sm font-semibold text-neutral-800">{label}</span><span className="mt-1 block text-xs leading-5 text-neutral-500">{description}</span></span>
   </label>
 }
-function NumberField({ label, value, onChange, step = '1' }: { label: string; value: number; onChange: (v: number) => void; step?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<RequiredMark /><NumberInput required aria-required="true"step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
+function NumberField({ label, value, onChange, step = '1', min, max }: { label: string; value: number; onChange: (v: number) => void; step?: string; min?: string; max?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<RequiredMark /><NumberInput required aria-required="true" step={step} min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
+
+/** formatDateTime 과 같은 모양(yyyy-MM-dd HH:mm)으로 Date 를 찍는다. */
+function formatClock(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
 const inputCls = 'rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100'
 const smallBtn = 'rounded-md border border-neutral-200 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100'

@@ -1,7 +1,7 @@
 package com.caskbycask.domain.ainews.repository;
 
 import com.caskbycask.domain.ainews.entity.AiNewsSourceConfig;
-import com.caskbycask.domain.ainews.entity.enums.AiNewsSourceType;
+import com.caskbycask.domain.ainews.entity.enums.AiNewsSourceCrawlStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,11 +14,12 @@ public interface AiNewsSourceConfigRepository extends JpaRepository<AiNewsSource
 
     /**
      * 관리자 출처 목록. keyword 는 출처 이름·도메인을 함께 훑는다(소문자 + '!' 이스케이프해서 넘길 것).
+     * crawlStatus 는 마지막 수집 결과로 걸러 실패한 출처만 모아 보기 위한 것이고,
      * autoDiscovered 는 자동 등록 시절에 쌓인 옛 행만 골라 정리할 때 쓴다.
      */
     @Query("""
             select s from AiNewsSourceConfig s
-            where (:sourceType is null or s.sourceType = :sourceType)
+            where (:crawlStatus is null or s.crawlStatus = :crawlStatus)
               and (:enabled is null or s.enabled = :enabled)
               and (:autoDiscovered is null or s.autoDiscovered = :autoDiscovered)
               and (:keyword is null
@@ -26,7 +27,7 @@ public interface AiNewsSourceConfigRepository extends JpaRepository<AiNewsSource
                    or lower(s.domain) like concat('%', :keyword, '%') escape '!')
             order by s.sourceName asc
             """)
-    Page<AiNewsSourceConfig> search(@Param("sourceType") AiNewsSourceType sourceType,
+    Page<AiNewsSourceConfig> search(@Param("crawlStatus") AiNewsSourceCrawlStatus crawlStatus,
                                     @Param("enabled") Boolean enabled,
                                     @Param("autoDiscovered") Boolean autoDiscovered,
                                     @Param("keyword") String keyword,

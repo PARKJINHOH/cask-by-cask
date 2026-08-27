@@ -1,6 +1,5 @@
 package com.caskbycask.domain.ainews.entity;
 
-import com.caskbycask.domain.ainews.entity.enums.AiNewsSourceType;
 import com.caskbycask.domain.ainews.entity.enums.AiNewsSourceCrawlStatus;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -35,10 +34,6 @@ public class AiNewsSourceConfig extends BaseTimeEntity {
     @Column(nullable = false, length = 255)
     private String pathPrefix = "";
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private AiNewsSourceType sourceType;
-
     @Builder.Default
     @Column(nullable = false)
     private boolean enabled = true;
@@ -62,14 +57,12 @@ public class AiNewsSourceConfig extends BaseTimeEntity {
     private String lastCrawlError;
 
     public void update(String sourceName, String sourceUrl, String domain, String pathPrefix,
-                       AiNewsSourceType sourceType, boolean enabled) {
-        boolean collectionChanged = !this.sourceUrl.equals(sourceUrl)
-                || this.sourceType != sourceType || this.enabled != enabled;
+                       boolean enabled) {
+        boolean collectionChanged = !this.sourceUrl.equals(sourceUrl) || this.enabled != enabled;
         this.sourceName = sourceName;
         this.sourceUrl = sourceUrl;
         this.domain = domain;
         this.pathPrefix = pathPrefix;
-        this.sourceType = sourceType;
         this.enabled = enabled;
         if (collectionChanged) {
             this.crawlStatus = AiNewsSourceCrawlStatus.NOT_CHECKED;

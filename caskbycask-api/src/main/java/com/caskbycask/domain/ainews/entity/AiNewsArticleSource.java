@@ -1,6 +1,5 @@
 package com.caskbycask.domain.ainews.entity;
 
-import com.caskbycask.domain.ainews.entity.enums.AiNewsSourceType;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -35,10 +34,6 @@ public class AiNewsArticleSource extends BaseTimeEntity {
     @Column(length = 500)
     private String sourceTitle;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private AiNewsSourceType sourceType;
-
     @Column(length = 2000)
     private String evidenceSummary;
 
@@ -54,11 +49,9 @@ public class AiNewsArticleSource extends BaseTimeEntity {
         this.article = article;
     }
 
-    public void updateUrl(String sourceUrl, String canonicalUrl, AiNewsSourceType sourceType,
-                          LocalDateTime retrievedAt) {
+    public void updateUrl(String sourceUrl, String canonicalUrl, LocalDateTime retrievedAt) {
         this.sourceUrl = sourceUrl;
         this.canonicalUrl = canonicalUrl;
-        this.sourceType = sourceType;
         this.sourceTitle = null;
         this.evidenceSummary = null;
         this.contentHash = null;

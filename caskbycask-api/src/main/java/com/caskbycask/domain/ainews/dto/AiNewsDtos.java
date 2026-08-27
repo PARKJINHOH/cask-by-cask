@@ -21,7 +21,6 @@ public final class AiNewsDtos {
             @NotBlank @Size(max = 1500) String canonicalUrl,
             @NotBlank @Size(max = 255) String domain,
             @Size(max = 500) String sourceTitle,
-            @NotNull AiNewsSourceType sourceType,
             @Size(max = 2000) String evidenceSummary,
             @Size(max = 64) String contentHash,
             LocalDateTime publishedAt,
@@ -87,7 +86,6 @@ public final class AiNewsDtos {
             String canonicalUrl,
             String domain,
             String sourceTitle,
-            AiNewsSourceType sourceType,
             String evidenceSummary,
             String contentHash,
             LocalDateTime publishedAt,
@@ -95,7 +93,7 @@ public final class AiNewsDtos {
     ) {
         public static SourceResponse from(AiNewsArticleSource source) {
             return new SourceResponse(source.getId(), source.getSourceUrl(), source.getCanonicalUrl(),
-                    source.getDomain(), source.getSourceTitle(), source.getSourceType(),
+                    source.getDomain(), source.getSourceTitle(),
                     source.getEvidenceSummary(), source.getContentHash(), source.getPublishedAt(),
                     source.getRetrievedAt());
         }
@@ -204,7 +202,6 @@ public final class AiNewsDtos {
     public record SourceConfigUpsertRequest(
             @NotBlank @Size(max = 100) String sourceName,
             @NotBlank @Size(max = 1500) String sourceUrl,
-            @NotNull AiNewsSourceType sourceType,
             Boolean enabled
     ) {}
 
@@ -227,7 +224,6 @@ public final class AiNewsDtos {
             String sourceUrl,
             String domain,
             String pathPrefix,
-            AiNewsSourceType sourceType,
             boolean enabled,
             boolean autoDiscovered,
             AiNewsSourceCrawlStatus crawlStatus,
@@ -236,7 +232,7 @@ public final class AiNewsDtos {
     ) {
         public static SourceConfigResponse from(AiNewsSourceConfig source) {
             return new SourceConfigResponse(source.getId(), source.getSourceName(), source.getSourceUrl(),
-                    source.getDomain(), source.getPathPrefix(), source.getSourceType(), source.isEnabled(),
+                    source.getDomain(), source.getPathPrefix(), source.isEnabled(),
                     source.isAutoDiscovered(), source.getCrawlStatus(), source.getLastCrawledAt(),
                     source.getLastCrawlError());
         }
@@ -250,6 +246,7 @@ public final class AiNewsDtos {
 
     public record SettingsUpdateRequest(
             boolean automationEnabled,
+            @Min(1) @Max(24) int collectionIntervalHours,
             @Min(0) @Max(20) int dailyReleaseLimit,
             @Min(0) @Max(1000) int tavilyMonthlyCreditLimit,
             @DecimalMin("0.0") BigDecimal openaiMonthlyBudgetUsd,
@@ -261,6 +258,7 @@ public final class AiNewsDtos {
 
     public record SettingsResponse(
             boolean automationEnabled,
+            int collectionIntervalHours,
             int dailyReleaseLimit,
             int tavilyMonthlyCreditLimit,
             BigDecimal openaiMonthlyBudgetUsd,
@@ -270,7 +268,8 @@ public final class AiNewsDtos {
             int cognacRatio
     ) {
         public static SettingsResponse from(AiNewsSettings settings) {
-            return new SettingsResponse(settings.isAutomationEnabled(), settings.getDailyReleaseLimit(),
+            return new SettingsResponse(settings.isAutomationEnabled(), settings.getCollectionIntervalHours(),
+                    settings.getDailyReleaseLimit(),
                     settings.getTavilyMonthlyCreditLimit(),
                     settings.getOpenaiMonthlyBudgetUsd(), settings.getOpenaiMonthlyTokenLimit(),
                     settings.getWhiskyRatio(), settings.getWineRatio(), settings.getCognacRatio());
@@ -336,11 +335,20 @@ public final class AiNewsDtos {
         }
     }
 
+    /**
+     * 크롤러가 실행 앞머리에서 읽는 설정 묶음.
+     *
+     * <p>{@code collectionDue} 는 <b>서버가 내리는 판단</b>이다 — cron 은 매시간 돌지만 실제 수집 주기는
+     * 관리자 설정({@code collectionIntervalHours})이 정한다. 크롤러가 스스로 계산하지 않는 이유는
+     * 마지막 실행 시각이 DB 에만 있어서다 — 두 쪽이 각자 계산하면 주기가 조용히 어긋난다.
+     */
     public record InternalConfigResponse(
             SettingsResponse settings,
             UsageSummaryResponse usage,
             List<SourceConfigResponse> sources,
-            long releaseCreatedToday
+            long releaseCreatedToday,
+            boolean collectionDue,
+            LocalDateTime nextCollectionAt
     ) {}
 
     public record DedupeCheckResponse(

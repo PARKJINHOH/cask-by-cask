@@ -29,6 +29,10 @@ public class AiNewsSettings extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean automationEnabled;
 
+    /** 수집 실행 간격(시간). cron 은 매시간 돌고, 실제로 돌 차례인지는 이 값으로 판단한다. */
+    @Column(nullable = false)
+    private int collectionIntervalHours;
+
     @Column(nullable = false)
     private int dailyReleaseLimit;
 
@@ -51,6 +55,7 @@ public class AiNewsSettings extends BaseTimeEntity {
 
     public void update(
             boolean automationEnabled,
+            int collectionIntervalHours,
             int dailyReleaseLimit,
             int tavilyMonthlyCreditLimit,
             BigDecimal openaiMonthlyBudgetUsd,
@@ -60,6 +65,7 @@ public class AiNewsSettings extends BaseTimeEntity {
             int cognacRatio
     ) {
         this.automationEnabled = automationEnabled;
+        this.collectionIntervalHours = collectionIntervalHours;
         this.dailyReleaseLimit = dailyReleaseLimit;
         this.tavilyMonthlyCreditLimit = tavilyMonthlyCreditLimit;
         this.openaiMonthlyBudgetUsd = openaiMonthlyBudgetUsd;

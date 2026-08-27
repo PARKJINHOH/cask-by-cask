@@ -965,7 +965,10 @@ crontab -l | grep caskbycask-crawler
 tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 ```
 
-- `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식·팁은 핫딜 17분 후(`17 */2 * * *`)에 실행한다.
+- `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식은 매시간 17분(`17 * * * *`)에 실행한다.
+- AI 소식의 cron 은 확인만 한다. 실제 수집 주기는 `관리자 > 커뮤니티 > 소식(AI) > 설정·사용량`의
+  **수집 주기(시간)** 가 정하며(기본 2), 크롤러는 `/api/internal/ai-news/config` 의 `collectionDue` 가
+  거짓이면 `ai_news_runs` 행을 만들지 않고 종료한다. 즉 실행 이력 표의 간격이 곧 실제 수집 주기다.
 - `AI_NEWS_IMAGE_GENERATION_ENABLED=false`이면 Gemini 이미지 API를 호출하지 않는다. 승인 공식 이미지가 없는 원고는 이미지 없이 검토 대기로 보존한다.
 - AI 원고의 HTML 태그·공백 제외 본문이 1,000자 미만이면 실제 측정 길이와 부족한 글자 수를 넣어 한 번만 재작성한다.
   첫 응답의 Gemini `finishReason`이 `MAX_TOKENS`일 때만 재작성 출력 상한을 8,192토큰으로 명시한다.

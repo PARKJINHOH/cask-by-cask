@@ -401,12 +401,7 @@ function buildSourceEvidence(sourceUrls: string[]): AiNewsSourceEvidence[] {
         throw new Error(`동일한 도메인의 출처 URL은 하나만 등록할 수 있습니다: ${domain}`)
       }
       seenDomains.add(domain)
-      return {
-        sourceUrl,
-        canonicalUrl: sourceUrl,
-        domain,
-        sourceType: 'UNAPPROVED' as const,
-      }
+      return { sourceUrl, canonicalUrl: sourceUrl, domain }
     })
 }
 
