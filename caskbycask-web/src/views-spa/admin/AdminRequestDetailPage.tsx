@@ -16,6 +16,8 @@ import {
 } from '@/domain/admin/hooks/useAdminSpirits'
 import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
 import SpiritMasterPicker, { type PickedSpiritMaster } from '@/domain/spirit/components/SpiritMasterPicker'
+import { spiritApi } from '@/domain/spirit/api/spiritApi'
+import { deriveMasterEditionInfo } from '@/domain/spirit/utils/masterEdition'
 import { extractApiErrorMessage } from '@/shared/utils/apiError'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
@@ -161,6 +163,35 @@ export default function AdminRequestDetailPage() {
 
   const form = useSpiritForm({ requireProductionInfo: true })
 
+  /**
+   * 대상 주류를 고르면 그 마스터의 **에디션 유형·시리즈 식별자**를 폼에 채운다.
+   *
+   * <p>승인 시 서버는 이 값들을 마스터에서 상속하는데(resolveVariantTypeForUserCreate),
+   * 폼은 그걸 모르므로 비어 있으면 '시리즈 식별자는 필수입니다' 로 승인이 막힌다.
+   * 관리자가 이미 정해져 있는 값을 이유 없이 다시 적게 되는 상황을 없앤다.
+   * 이미 채워진 값은 건드리지 않는다 — 관리자가 고쳐 둔 값을 덮어쓰면 안 된다.
+   */
+  const pickTargetSpirit = async (master: PickedSpiritMaster) => {
+    setTargetSpirit(master)
+    try {
+      const detail = (await spiritApi.getDetail(master.id)).data.data
+      if (!detail) return
+      const info = deriveMasterEditionInfo(detail)
+      if (info.variantType) {
+        form.setIsVariantSplit(true)
+        form.setVariantType(info.variantType)
+      }
+      if (info.seriesIdentifier && !form.seriesIdentifier.trim()) {
+        form.setSeriesIdentifier(info.seriesIdentifier)
+      }
+      if (info.seriesIdentifierEn && !form.seriesIdentifierEn.trim()) {
+        form.setSeriesIdentifierEn(info.seriesIdentifierEn)
+      }
+    } catch {
+      // 상세 조회 실패 — 관리자가 유형·시리즈 식별자를 직접 채우면 된다.
+    }
+  }
+
   const [actionError, setActionError] = useState('')
   const [rejectMode, setRejectMode] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
@@ -241,6 +272,25 @@ export default function AdminRequestDetailPage() {
       <div className="bg-white rounded-xl shadow-sm p-5">
         <Row label="신청자">{req.requesterNickname}</Row>
         <Row label="신청일">{formatDate(req.createdAt)}</Row>
+        {/* 승인 대기 생산자 — id 가 없으면 선택기에는 이름만 흐리게 뜨고 고른 것처럼 보인다.
+            신청자가 적어 보낸 값이라는 사실을 여기서 분명히 해 둔다(승인하려면 실제 생산자를 골라야 한다). */}
+        {!req.producerId && req.producerNameKo && (
+          <Row label="신청 생산자">
+            <span className="text-neutral-800">{req.producerNameKo}</span>
+            <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">
+              미등록 · 직접 입력
+            </span>
+          </Row>
+        )}
+        {/* 신청 식별값 — 기존 주류에 붙는 요청에서 무엇을 추가하는지 한눈에 보여준다 */}
+        {req.variantValue && (
+          <Row label="신청 식별값">
+            <span className="font-semibold text-neutral-800">{req.variantValue}</span>
+            {req.variantValueEn && (
+              <span className="ml-2 text-xs text-neutral-500">{req.variantValueEn}</span>
+            )}
+          </Row>
+        )}
         {req.note && (
           <Row label="기타 문구"><span className="whitespace-pre-wrap text-neutral-700">{req.note}</span></Row>
         )}
@@ -333,7 +383,7 @@ export default function AdminRequestDetailPage() {
       <SpiritMasterPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onSelect={setTargetSpirit}
+        onSelect={(master) => { void pickTargetSpirit(master) }}
         category={req.category}
         admin
       />

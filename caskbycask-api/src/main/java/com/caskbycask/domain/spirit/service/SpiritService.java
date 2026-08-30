@@ -926,10 +926,9 @@ public class SpiritService {
 
         // 카테고리 핵심값 필수 (신청자 제출 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
-        // 생산 정보·숙성 연수 — 관리자 등록과 같은 기준으로 받는다.
-        // 빈 칸으로 들어오면 결국 관리자가 승인 화면에서 다시 메워야 한다.
+        // 생산 정보(생산자·국가) — 관리자가 승인 화면에서 술을 찾아낼 최소 단서다.
+        // 숙성 연수는 더 이상 요구하지 않는다 — 사용자 화면에서 그 입력칸을 없앴다.
         if (!body.hasProductionInfo()) throw new CustomException(ErrorCode.INVALID_INPUT);
-        if (!body.hasAgeChoice()) throw new CustomException(ErrorCode.INVALID_INPUT);
         if (!body.hasVariantForTarget()) throw new CustomException(ErrorCode.INVALID_INPUT);
         validateEditionValues(body);
         validateWineVintage(body.category(), body.vintageYear(), body.wineDetail());
@@ -980,7 +979,7 @@ public class SpiritService {
         verifyRequestOwner(req, userId);
         SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
         return SpiritRegisterRequestDetailResponse.of(
-                req, body, resolveProducerName(body.producerId()), resolveTargetSpirit(body.targetSpiritId()));
+                req, body, resolveProducerName(body), resolveTargetSpirit(body.targetSpiritId()));
     }
 
     /** 본인 요청 수정 — 검토 중(PENDING)·반려(REJECTED)만 가능. 반려 건은 재검토(PENDING) 전환. */
@@ -995,10 +994,8 @@ public class SpiritService {
 
         // 카테고리 핵심값 필수 (신청자 수정 경로)
         if (!body.hasCategoryCore()) throw new CustomException(ErrorCode.INVALID_INPUT);
-        // 생산 정보·숙성 연수 — 관리자 등록과 같은 기준으로 받는다.
-        // 빈 칸으로 들어오면 결국 관리자가 승인 화면에서 다시 메워야 한다.
+        // 생산 정보(생산자·국가) — 제출 경로와 같은 기준.
         if (!body.hasProductionInfo()) throw new CustomException(ErrorCode.INVALID_INPUT);
-        if (!body.hasAgeChoice()) throw new CustomException(ErrorCode.INVALID_INPUT);
         if (!body.hasVariantForTarget()) throw new CustomException(ErrorCode.INVALID_INPUT);
         validateEditionValues(body);
         validateWineVintage(body.category(), body.vintageYear(), body.wineDetail());
@@ -1061,7 +1058,7 @@ public class SpiritService {
         SpiritRegisterRequest req = getRegisterRequest(requestId);
         SpiritRegisterRequestBody body = parseSpiritData(req.getSpiritData());
         return SpiritRegisterRequestDetailResponse.of(
-                req, body, resolveProducerName(body.producerId()), resolveTargetSpirit(body.targetSpiritId()));
+                req, body, resolveProducerName(body), resolveTargetSpirit(body.targetSpiritId()));
     }
 
     @Transactional
@@ -1074,7 +1071,7 @@ public class SpiritService {
         // 기존값을 그대로 보존한다. 필드 추가에 영향받지 않도록 JSON 트리에서 기본 필드만 덮어쓴다.
         ObjectNode merged = objectMapper.valueToTree(existing);
         ObjectNode incoming = objectMapper.valueToTree(body);
-        for (String f : List.of("nameKo", "nameEn", "category", "producerId", "vintageYear", "abv", "volumeMl", "country", "region", "regionCode",
+        for (String f : List.of("nameKo", "nameEn", "category", "producerId", "producerName", "vintageYear", "abv", "volumeMl", "country", "region", "regionCode",
                 "abvMin", "abvMax", "volumeMlMin", "volumeMlMax")) {
             JsonNode v = incoming.get(f);
             if (v != null) merged.set(f, v);
@@ -1089,7 +1086,7 @@ public class SpiritService {
 
         req.updateSpiritData(serialize(mergedBody));
         return SpiritRegisterRequestDetailResponse.of(
-                req, mergedBody, resolveProducerName(mergedBody.producerId()),
+                req, mergedBody, resolveProducerName(mergedBody),
                 resolveTargetSpirit(mergedBody.targetSpiritId()));
     }
 
@@ -1108,7 +1105,7 @@ public class SpiritService {
         SpiritRegisterRequestBody updated = withImageUrls(body, imageUrls);
         req.updateSpiritData(serialize(updated));
         return SpiritRegisterRequestDetailResponse.of(
-                req, updated, resolveProducerName(updated.producerId()),
+                req, updated, resolveProducerName(updated),
                 resolveTargetSpirit(updated.targetSpiritId()));
     }
 
@@ -1123,7 +1120,7 @@ public class SpiritService {
         SpiritRegisterRequestBody updated = withImageUrls(body, imageUrls);
         req.updateSpiritData(serialize(updated));
         return SpiritRegisterRequestDetailResponse.of(
-                req, updated, resolveProducerName(updated.producerId()),
+                req, updated, resolveProducerName(updated),
                 resolveTargetSpirit(updated.targetSpiritId()));
     }
 
@@ -1802,11 +1799,22 @@ public class SpiritService {
                 .orElse(null);
     }
 
-    private String resolveProducerName(Long producerId) {
-        if (producerId == null) return null;
-        return producerRepository.findById(producerId)
-                .map(Producer::getNameKo)
-                .orElse(null);
+    /**
+     * 요청에 실린 생산자 이름 — 등록된 생산자면 그 한글명, 아니면 신청자가 직접 적은 이름.
+     *
+     * <p>사용자는 목록에 없는 생산자를 승인 대기 큐로만 넣을 수 있어 id 가 없는 경우가 많다.
+     * id 만 보고 null 을 내려주면 관리자 검토 화면에 생산자가 빈 칸으로 도착해,
+     * 신청자가 분명히 적어 보낸 단서를 관리자가 다시 찾아야 했다.
+     */
+    private String resolveProducerName(SpiritRegisterRequestBody body) {
+        if (body.producerId() != null) {
+            String registered = producerRepository.findById(body.producerId())
+                    .map(Producer::getNameKo)
+                    .orElse(null);
+            if (registered != null) return registered;
+        }
+        String pending = body.producerName();
+        return (pending != null && !pending.isBlank()) ? pending.trim() : null;
     }
 
     private void verifyProducerAccess(User user, Producer producer) {

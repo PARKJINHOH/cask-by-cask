@@ -2,6 +2,8 @@ export type SpiritCategory = 'WHISKY' | 'COGNAC' | 'WINE' | 'OTHER'
 export type SpiritStatus  = 'ACTIVE' | 'HIDDEN' | 'PENDING'
 export type SpiritSort    = 'LATEST' | 'SCORE_DESC' | 'REVIEW_COUNT_DESC'
 export type WineVintageStatus = 'VINTAGE' | 'NON_VINTAGE' | 'UNKNOWN'
+/** 에디션(하위 주류) 구분 유형. 'NONE' = 에디션 없음 (백엔드 VariantType 과 1:1) */
+export type SpiritVariantType = 'BATCH' | 'RELEASE_YEAR' | 'SINGLE_CASK' | 'VINTAGE' | 'NONE'
 
 export interface SpiritAutocompleteItem {
   id: number

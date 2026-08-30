@@ -34,6 +34,12 @@ public record SpiritRegisterRequestBody(
         @NotNull(message = "카테고리는 필수입니다.") SpiritCategory category,
         @Schema(description = "증류소 ID (선택)")
         Long producerId,
+        @Schema(description = """
+                신청자가 직접 적은 생산자 이름 (선택).
+                목록에 없는 생산자는 승인 대기 큐로만 들어가 id 가 없다 — 그때 이름이라도 남기지 않으면
+                관리자 검토 화면에 생산자가 빈 칸으로 도착해 다시 찾아야 한다.""")
+        @Size(max = 200, message = "생산자 이름은 200자 이하여야 합니다.")
+        String producerName,
         @Schema(description = "빈티지 연도 (선택)")
         @Min(value = SpiritLimits.YEAR_MIN, message = "빈티지 연도는 1800년 이후여야 합니다.")
         @Max(value = SpiritLimits.YEAR_MAX, message = "빈티지 연도는 2100년 이하여야 합니다.")
@@ -180,8 +186,12 @@ public record SpiritRegisterRequestBody(
         Long targetSpiritId
 ) {
         /**
-         * 카테고리별 핵심값(스타일/종류/등급/주종) 필수 여부.
-         * 신청자 직접 제출/수정 경로에서만 호출 — 관리자 수정(핵심값 미전송)에는 적용하지 않음.
+         * 카테고리별 핵심값 필수 여부 — 신청자 직접 제출/수정 경로에서만 호출한다.
+         *
+         * <p>위스키 스타일만 남긴다. 사용자 등록 요청 화면이 최소 정보만 받도록 바뀌면서
+         * 와인 종류·꼬냑 등급·기타 주종은 **입력할 칸 자체가 사라졌다**. 여기서 계속 요구하면
+         * 신청자가 고칠 방법이 없는 이유로 400 이 나므로, 그 세 값은 관리자가 승인 화면에서 채운다.
+         * (위스키 스타일은 「카테고리 & 기본 정보」에 남아 있어 그대로 필수다.)
          */
         public boolean hasCategoryCore() {
                 if (category == null) return false;
@@ -189,9 +199,7 @@ public record SpiritRegisterRequestBody(
                         case WHISKY -> whiskyStyle != null
                                 && (whiskyStyle != WhiskyStyle.OTHER
                                         || (whiskyStyleOther != null && !whiskyStyleOther.isBlank()));
-                        case WINE   -> wineType != null;
-                        case COGNAC -> cognacGrade != null;
-                        case OTHER  -> otherType != null;
+                        case WINE, COGNAC, OTHER -> true;
                 };
         }
 
@@ -209,29 +217,18 @@ public record SpiritRegisterRequestBody(
         }
 
         /**
-         * 위스키는 숙성 연수와 NAS 중 하나를 반드시 밝혀야 한다.
-         *
-         * <p>둘 다 비면 나이를 알 수 없는 술로 등록되고, 결국 관리자가 승인 화면에서 다시 메우게 된다.
-         * 사용자 폼과 같은 기준(관리자 등록과 동일)이다.
-         */
-        public boolean hasAgeChoice() {
-                if (category != SpiritCategory.WHISKY) return true;
-                boolean hasAge = ageStatement != null || ageStatementMonths != null;
-                return Boolean.TRUE.equals(isNas) != hasAge;
-        }
-
-        /**
          * 생산 정보(생산자·국가) 필수.
          *
-         * <p>위스키는 증류소·브랜드명 택1 — 발란타인 같은 블렌디드는 특정 증류소가 없다.
-         * 사용자는 생산자를 승인 대기로만 등록할 수 있어 id 가 없을 수 있으므로,
-         * 그때는 프론트가 이름을 보내지 않는다 — 국가만 확실히 받고 생산자는 강제하지 않는다.
+         * <p>생산자는 id 또는 이름 중 하나면 된다. 사용자는 목록에 없는 생산자를 승인 대기 큐로만
+         * 넣을 수 있어 id 가 없는 경우가 많은데, 예전에는 그때 이름도 보내지 않아 생산자가
+         * 통째로 비어 도착했다. 이름이라도 있으면 관리자가 그걸 단서로 찾아 등록할 수 있다.
          */
         public boolean hasProductionInfo() {
                 // 기존 주류에 붙이는 요청은 생산 정보를 마스터에서 복사한다 —
                 // 화면에서도 그 칸을 숨기므로 여기서 요구하면 고칠 수 없는 이유로 막힌다.
                 if (targetSpiritId != null) return true;
-                return country != null && !country.isBlank();
+                if (country == null || country.isBlank()) return false;
+                return producerId != null || (producerName != null && !producerName.isBlank());
         }
 
         /**
@@ -242,8 +239,9 @@ public record SpiritRegisterRequestBody(
          */
         public boolean hasVariantForTarget() {
                 if (targetSpiritId == null) return true;
-                return variantType != null
-                        && variantType != VariantType.NONE
-                        && variantValue != null && !variantValue.isBlank();
+                // 에디션 유형은 요구하지 않는다 — 사용자 화면에서 유형 선택을 없애고 식별값만 받는다.
+                // 이미 에디션이 있는 마스터면 승인 시 마스터에서 상속하고(resolveVariantTypeForUserCreate),
+                // 아직 갈리지 않은 마스터면 관리자가 승인 화면에서 유형·시리즈를 확정한다.
+                return variantValue != null && !variantValue.isBlank();
         }
 }

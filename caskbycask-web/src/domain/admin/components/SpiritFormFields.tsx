@@ -118,6 +118,8 @@ const DEFAULT_PLACEHOLDER = { nameEn: 'Balvenie 12Y DoubleWood', nameKo: '예) �
 export const CARD = 'bg-white rounded-2xl shadow-sm p-6 space-y-5'
 const INPUT = 'w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400'
 const LABEL = 'block text-xs font-medium text-neutral-600 mb-1.5'
+/** 마스터에서 물려받아 고칠 수 없는 값 — 입력칸이 아님이 한눈에 보이도록 회색 배지처럼 보여준다 */
+const LOCKED_TEXT = 'w-full px-3 py-2 text-sm rounded-lg bg-neutral-100 border border-neutral-200 text-neutral-700 whitespace-pre-wrap break-words'
 
 export function SectionTitle({ title, hint }: { title: string; hint?: string }) {
   return (
@@ -256,12 +258,21 @@ function validateAgeChoice(
  * @param options.allowPendingProducer
  *   생산자 id 대신 입력한 이름만 있어도 생산 정보를 충족한 것으로 본다.
  *   사용자 등록 요청 전용 — 그 화면은 생산자를 승인 대기로만 등록할 수 있어 id 가 바로 안 나온다.
+ *
+ * @param options.simple
+ *   **최소 정보 모드**(사용자 등록 요청 전용). 상세·캐스크·에디션 입력을 화면에서 전부 걷어내고
+ *   그에 딸린 검증도 함께 끈다. `SpiritFormFields` 가 반환값의 `simple` 을 읽어 렌더까지 같이
+ *   걷어내므로 둘이 갈라질 수 없다 — 렌더만 끄면 화면에 없는 칸의 오류로 제출이 막히고,
+ *   검증만 끄면 서버가 400 을 낸다.
+ *   대신 생산자는 카테고리 무관하게 필수다 — 관리자가 술을 찾아낼 최소 단서이기 때문이다.
  */
 export function useSpiritForm(options?: {
   requireProductionInfo?: boolean
   allowPendingProducer?: boolean
+  simple?: boolean
 }) {
   const adminRequired = options?.requireProductionInfo ?? false
+  const simple = options?.simple ?? false
   // 사용자 등록 요청은 생산자를 즉석에서 만들 수 없고 '승인 대기' 로만 넣는다 —
   // 그때는 id 가 없으므로 입력한 이름을 생산 정보로 인정한다.
   // 관리자는 즉석 생성이 되므로 이 예외를 주지 않는다(목록에서 골라야 한다).
@@ -761,16 +772,28 @@ export function useSpiritForm(options?: {
       })
     }
 
-    // 신청자가 선택한 에디션(위스키 단일 에디션) → 하위 에디션 1개로 seed. 관리자가 보완/추가 가능.
-    const splitType = r.variantType && r.variantType !== 'NONE' ? r.variantType : null
-    setVariantType(splitType ?? 'NONE')
+    // 신청자가 보낸 에디션 → 하위 에디션 1개로 seed. 관리자가 보완/추가 가능.
+    //
+    // ⚠️ 유형 폴백: 사용자 화면은 에디션 유형을 더 이상 묻지 않는다(식별값만 받는다).
+    // 아직 에디션이 갈리지 않은 마스터에 붙는 요청은 variantType 이 비어 오는데,
+    // 폴백 없이 그냥 버리면 **신청자가 적은 식별값이 관리자 화면에서 통째로 사라진다.**
+    // 위스키는 BATCH 로 열어 두고(가장 흔한 구분), 관리자가 승인 전에 실제 유형으로 바꾼다.
+    const splitType = (r.variantType && r.variantType !== 'NONE' ? r.variantType : null)
+      ?? (r.variantValue && r.category === 'WHISKY' ? 'BATCH' : null)
     setSeriesIdentifier(r.seriesIdentifier ?? '')
     setSeriesIdentifierEn(r.seriesIdentifierEn ?? '')
     // 와인은 관리자·사용자 모두 빈티지 목록 구조를 쓴다 — 여기서 복원하지 않으면
     // 사용자가 적은 빈티지와 와인 상세가 수정·검토 화면에서 통째로 사라진다.
     const seedableCategory = r.category === 'WHISKY'
       || (r.category === 'WINE' && splitType === 'VINTAGE')
-    if (splitType && r.variantValue && seedableCategory) {
+    // 최소 정보 모드(사용자 요청 화면)는 에디션 카드를 쓰지 않는다 — 식별값은 화면이
+    // 자체 상태로 복원하므로 여기서 variants 를 만들면 보이지 않는 에디션이 따라다닌다.
+    if (simple) {
+      setVariantType('NONE')
+      setIsVariantSplit(false)
+      setVariants([])
+    } else if (splitType && r.variantValue && seedableCategory) {
+      setVariantType(splitType)
       const seed: CreateVariantRequest = {
         variantType: splitType,
         variantValue: r.variantValue,
@@ -811,6 +834,7 @@ export function useSpiritForm(options?: {
       setVariantType('NONE')
       setVariants([])
     }
+
   }
 
   // ── 검증 (단일 정의) ──
@@ -854,27 +878,31 @@ export function useSpiritForm(options?: {
         errs.volumeMl = LIMIT_MESSAGE.volumeMl
     }
 
-    if (commonDetail.distilledDate && !DATE_RE.test(commonDetail.distilledDate))
+    if (!simple && commonDetail.distilledDate && !DATE_RE.test(commonDetail.distilledDate))
       errs.distilledDate = '형식: YYYY 또는 YYYY-MM'
-    if (commonDetail.bottledDate && !DATE_RE.test(commonDetail.bottledDate))
+    if (!simple && commonDetail.bottledDate && !DATE_RE.test(commonDetail.bottledDate))
       errs.bottledDate = '형식: YYYY 또는 YYYY-MM'
 
+    // ⚠️ 아래 카테고리별 검증은 대부분 **상세 카드**에서 입력받는 값이다.
+    // 최소 정보 모드(simple)는 그 카드를 통째로 걷어내므로 같이 꺼야 한다 —
+    // 화면에 없는 칸에 오류가 걸리면 제출 버튼이 아무 반응 없는 것처럼 보인다.
+    // 위스키 스타일만 예외: 「카테고리 & 기본 정보」에 남아 있어 두 모드 모두 필수다.
     if (category === 'WHISKY') {
       if (!whiskyDetail.style) errs.style = '스타일을 선택해주세요.'
       else if (whiskyDetail.style === 'OTHER' && !whiskyDetail.styleOther.trim())
         errs.styleOther = '스타일을 직접 입력해주세요.'
 
-      // 숙성 연수·NAS 택1 필수 — 관리자 등록/수정에만 적용한다(사용자 등록 요청은 기존대로 선택).
+      // 숙성 연수·NAS 택1 필수 — 관리자 등록/수정에만 적용한다.
       // 에디션으로 나누면 마스터의 '위스키 상세' 카드 자체가 숨겨 입력칸이 없으므로
       // 그때는 아래 에디션 검증이 각각 받는다. 없는 칸을 필수로 막으면 등록이 아예 불가능해진다.
-      if (adminRequired && !isVariantSplit) {
+      if (!simple && adminRequired && !isVariantSplit) {
         const ageError = validateAgeChoice(
           commonDetail.isNas, commonDetail.ageStatement, commonDetail.ageStatementMonths,
         )
         if (ageError) errs.ageStatement = ageError
       }
     }
-    if (category === 'WINE' && !isVariantSplit) {
+    if (!simple && category === 'WINE' && !isVariantSplit) {
       if (!wineDetail.wineType) errs.wineType = '와인 종류를 선택해주세요.'
       if (wineDetail.vintageStatus === 'VINTAGE') {
         const year = Number(wineDetail.vintageYear)
@@ -885,7 +913,7 @@ export function useSpiritForm(options?: {
       const total = wineDetail.grapeVarieties.reduce((sum, g) => sum + (Number(g.percentage) || 0), 0)
       if (total > 100) errs.grapeVarieties = '포도 품종 비율 합계가 100%를 초과합니다.'
     }
-    if (category === 'COGNAC') {
+    if (!simple && category === 'COGNAC') {
       if (!cognacDetail.grade) errs.grade = '등급을 선택해주세요.'
       const rows = cognacDetail.cruComposition.filter((r) => r.cru)
       const cruTotal = rows.reduce((sum, r) => sum + (Number(r.percentage) || 0), 0)
@@ -893,18 +921,23 @@ export function useSpiritForm(options?: {
       else if (new Set(rows.map((r) => r.cru)).size !== rows.length)
         errs.cruComposition = '같은 크뤼를 중복해서 입력할 수 없습니다.'
     }
-    if (category === 'OTHER' && !otherDetail.otherType) errs.otherType = '주종을 선택해주세요.'
+    if (!simple && category === 'OTHER' && !otherDetail.otherType) errs.otherType = '주종을 선택해주세요.'
 
     // 생산 정보 필수 — 관리자 등록/수정에만 적용한다.
-    // 사용자 술 등록 요청(admin=false)은 일반 이용자가 쓰는 화면이라 기존처럼 선택으로 둔다.
     // 목록에 없는 생산자는 선택기 안에서 직접 등록할 수 있으므로 필수로 둬도 막히지 않는다.
     // 위스키는 증류소·브랜드명 택1 — 발렌타인 같은 블렌디드 위스키는 특정 증류소가 없고
     // 브랜드명으로만 식별되므로 증류소를 강제하면 등록 자체가 막힌다.
+    // 단, 최소 정보 모드는 그 예외를 주지 않는다 — 상세를 전부 걷어낸 요청에서 생산자마저 비면
+    // 관리자가 어느 술인지 찾아낼 단서가 이름밖에 남지 않는다. 목록에 없으면 이름만 적어도 된다
+    // (allowPendingProducer — 승인 대기 큐로 가고, 그 이름이 요청에 함께 실린다).
     if (adminRequired && category && !identityInherited) {
-      if (category === 'WHISKY') {
+      const hasProducer = !!producerId || (allowPendingProducer && !!producerName.trim())
+      if (simple) {
+        if (!hasProducer) errs.producerId = `${PRODUCER_LABEL[category]}을(를) 선택하거나 직접 입력해주세요.`
+      } else if (category === 'WHISKY') {
         if (!producerId && !whiskyDetail.brandName.trim())
           errs.producerId = '증류소 또는 브랜드명 중 하나는 반드시 입력해주세요.'
-      } else if (!producerId && !(allowPendingProducer && producerName.trim())) {
+      } else if (!hasProducer) {
         errs.producerId = `${PRODUCER_LABEL[category]}을(를) 선택하거나 직접 등록해주세요.`
       }
       if (!countryCode) errs.country = '국가는 필수입니다.'
@@ -1027,8 +1060,11 @@ export function useSpiritForm(options?: {
           notes: whiskyDetail.notes || null,
         },
       }
+      // ⚠️ 최소 정보 모드는 와인 상세 카드를 렌더하지 않는다 — wineDetail 은 손대지 않은 기본값이고
+      // 그 기본 vintageStatus 는 'VINTAGE' 다. 그대로 보내면 서버가 "빈티지인데 연도가 없다"로 보고
+      // (resolveCreateVintageYear) 모든 와인 요청을 400 으로 막는다. 신고하지 않은 셈이니 UNKNOWN 이 맞다.
       case 'WINE': return {
-        wineDetail: isVariantSplit ? ({ vintageStatus: 'UNKNOWN' } as WineDetailRequest) : {
+        wineDetail: (isVariantSplit || simple) ? ({ vintageStatus: 'UNKNOWN' } as WineDetailRequest) : {
           wineType: wineDetail.wineType || null,
           vintageStatus: wineDetail.vintageStatus,
           isOakAged: wineDetail.isOakAged ?? null,
@@ -1215,6 +1251,12 @@ export function useSpiritForm(options?: {
   return {
     /** 생산자·국가를 필수로 검증하는지 (UI 가 필수 표시를 붙일 때 사용) */
     requireProductionInfo: adminRequired,
+    /**
+     * 최소 정보 모드 — SpiritFormFields 가 이 값으로 상세·캐스크·에디션 영역을 걷어낸다.
+     * 렌더용 prop 을 따로 두지 않는 이유: 검증(여기)과 렌더가 어긋나면
+     * 화면에 없는 칸의 오류로 제출이 막혀 원인을 찾기 어렵다.
+     */
+    simple,
     category, setCategory, selectCategory,
     nameKo, setNameKo, nameEn, setNameEn,
     // setProducerName 은 JSON 붙여넣기 입력이 이름만 아는 생산자를 선택기에 보여주기 위해 쓴다
@@ -1396,8 +1438,6 @@ interface SpiritFormFieldsProps {
   onCategorySelect?: (cat: SpiritCategory) => void
   /** 좌측 컬럼 하단에 끼워 넣을 슬롯 (이미지 관리 카드 등) */
   imageSlot?: React.ReactNode
-  /** false면 하위 에디션을 1개까지만 허용 — "에디션 추가" 버튼/탭 바를 숨김 (사용자 등록 요청 화면용). 미지정 시 true(관리자 동작 동일) */
-  allowMultipleVariants?: boolean
   /** 외부 흐름에서 특정 하위 에디션을 바로 열어야 할 때 사용 */
   activeVariantIndex?: number | null
   /** 생산자 선택 컴포넌트 교체 (미지정 시 AdminProducerSelector) */
@@ -1412,10 +1452,17 @@ interface SpiritFormFieldsProps {
 
 export default function SpiritFormFields({
   form, categoryLocked, identityLocked = false, onCategorySelect, imageSlot,
-  allowMultipleVariants = true, activeVariantIndex, producerSelector, onCreateProducer, bottomSlot,
+  activeVariantIndex, producerSelector, onCreateProducer, bottomSlot,
   admin = true,
 }: SpiritFormFieldsProps) {
   const { category, errors } = form
+  /**
+   * 최소 정보 모드 — 사용자 술 등록 요청 화면.
+   *
+   * <p>상세·캐스크·에디션 입력을 통째로 걷어내고 1열로 세운다. 값은 훅에서 그대로 받는다
+   * (별도 prop 이 아니다) — 검증과 렌더가 어긋나면 화면에 없는 칸의 오류로 제출이 막힌다.
+   */
+  const simple = form.simple
   const handleCategory = onCategorySelect ?? form.selectCategory
   const producerLabel = category ? PRODUCER_LABEL[category] : '증류소'
   const ph = category ? PLACEHOLDERS[category] : DEFAULT_PLACEHOLDER
@@ -1432,25 +1479,6 @@ export default function SpiritFormFields({
       setActiveVariantIdx(Math.max(0, form.variants.length - 1))
     }
   }, [form.variants.length, activeVariantIdx])
-
-  /**
-   * 에디션 1건 고정 화면(`allowMultipleVariants=false`, 사용자 등록 요청)의 에디션을 자동으로 맞춘다.
-   *
-   * <p>이 화면은 탭 바를 숨기는데, 유일한 '에디션 추가' 버튼이 그 탭 바 안에 있다.
-   * 자동 시딩이 없으면 사용자가 배치·싱글캐스크·출시연도(또는 와인)를 고르는 순간
-   * `variants` 가 빈 채로 검증에만 막혀 **입력할 칸도, 빠져나올 버튼도 없는** 상태가 된다.
-   * 이 effect 를 지우면 그 막힌 길이 그대로 되살아난다.
-   *
-   * <p>2건 이상이 들어온 경우(옵션이 바뀌기 전에 저장된 요청 등)에는 첫 건만 남긴다 —
-   * 이 화면의 계약이 1건이고, 화면에 보이지도 않는 에디션이 조용히 제출되는 편보다 낫다.
-   */
-  useEffect(() => {
-    if (allowMultipleVariants) return
-    if (!form.isVariantSplit) return
-    if (form.variants.length === 0) { form.addVariant(); return }
-    if (form.variants.length > 1) form.setVariants((prev) => prev.slice(0, 1))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowMultipleVariants, form.isVariantSplit, form.variants.length])
 
   // 에디션 탭 드래그 정렬·캐스크 3열 배치는 PC 전용이다 (모바일에서는 탭 클릭으로만 전환)
   const isDesktop = useIsDesktop()
@@ -1558,6 +1586,18 @@ export default function SpiritFormFields({
    */
   const isWhisky = category === 'WHISKY'
 
+  /**
+   * 컬럼 골격.
+   *
+   * <p>최소 정보 모드는 상세·캐스크·에디션이 통째로 빠져 나눌 컬럼 자체가 없다 — 1열로 세운다.
+   * 관리자는 기존대로 위스키 3열(기본·생산 / 상세·에디션 / 캐스크), 그 외 2:3 이다.
+   */
+  const gridCols = simple ? '' : isWhisky ? 'lg:grid-cols-3' : 'lg:grid-cols-5'
+  /** 전체 폭을 쓰는 행(이미지·bottomSlot)의 span */
+  const fullRowSpan = simple ? '' : isWhisky ? 'lg:col-span-3' : 'lg:col-span-5'
+  /** 좌측 컬럼 span — 위스키는 균등 3열이라 span 없음 */
+  const leftColSpan = simple || isWhisky ? '' : 'lg:col-span-2'
+
   /** 위스키만 증류소·브랜드명 택1 필수 — 블렌디드 위스키(발렌타인 등)는 증류소가 특정되지 않는다 */
   const producerOrBrandRequired = requireProduction && isWhisky
 
@@ -1585,18 +1625,16 @@ export default function SpiritFormFields({
 
   return (
     // data-spirit-form: 오류 앵커를 못 찾았을 때 폼 맨 위로 올리기 위한 표식 (focusFirstError 참고)
-    <div data-spirit-form className={`grid grid-cols-1 gap-6 items-start ${
-      isWhisky ? 'lg:grid-cols-3' : 'lg:grid-cols-5'
-    }`}>
+    <div data-spirit-form className={`grid grid-cols-1 gap-6 items-start ${gridCols}`}>
       {/* ═══ 최상단: 이미지 (전체 폭 1줄) ═══
           주류 수정 화면과 같은 위치·형태로 맞춘다 — 대표 이미지 지정과 순서 변경을
           다른 입력과 나란히 두면 좁아서 썸네일이 잘 보이지 않는다. */}
       {imageSlot && (
-        <div className={isWhisky ? 'lg:col-span-3' : 'lg:col-span-5'}>{imageSlot}</div>
+        <div className={fullRowSpan}>{imageSlot}</div>
       )}
 
       {/* ═══ 좌측: ① 기본 / ② 생산 / ④ 공통 상세 ═══ */}
-      <div className={`space-y-6 ${isWhisky ? '' : 'lg:col-span-2'}`}>
+      <div className={`space-y-6 ${leftColSpan}`}>
         <div className={CARD}>
           <SectionTitle title="카테고리 & 기본 정보" />
 
@@ -1627,38 +1665,48 @@ export default function SpiritFormFields({
             {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
           </div>
 
-          {/* 이름 */}
+          {/* 이름 — 마스터에서 물려받는 모드에서는 **입력칸이 아니라 텍스트**로 보여준다.
+              readOnly 입력칸은 일반 입력칸과 똑같이 생겨서 고칠 수 있는 것처럼 보이는데,
+              여기서 고쳐 봐야 승인 시 서버가 마스터 이름으로 덮어쓴다. */}
           <div className="space-y-4">
             <div>
               <label className={LABEL}>
                 한국어 이름 <RequiredMark />
-                {identityLocked && <span className="ml-1.5 text-[11px] font-normal text-neutral-400">(선택한 주류에서 가져옴)</span>}
+                {identityLocked && <span className="ml-1.5 text-[11px] font-normal text-neutral-400">(선택한 주류에서 가져옴 · 수정 불가)</span>}
               </label>
-              <AutoResizeTextarea value={form.nameKo} onChange={form.setNameKo} maxLength={200}
-                required aria-required="true"
-                readOnly={identityLocked}
-                data-field="nameKo"
-                placeholder={ph.nameKo}
-                className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
+              {identityLocked ? (
+                <p data-field="nameKo" className={LOCKED_TEXT}>{form.nameKo}</p>
+              ) : (
+                <AutoResizeTextarea value={form.nameKo} onChange={form.setNameKo} maxLength={200}
+                  required aria-required="true"
+                  data-field="nameKo"
+                  placeholder={ph.nameKo}
+                  className={`${INPUT} ${errors.nameKo ? 'border-red-400' : ''}`} />
+              )}
               {errors.nameKo && <p className="text-xs text-red-500 mt-1">{errors.nameKo}</p>}
             </div>
             <div>
               <label className={LABEL}>
                 영어 이름 <RequiredMark />
-                {identityLocked && <span className="ml-1.5 text-[11px] font-normal text-neutral-400">(선택한 주류에서 가져옴)</span>}
+                {identityLocked && <span className="ml-1.5 text-[11px] font-normal text-neutral-400">(선택한 주류에서 가져옴 · 수정 불가)</span>}
               </label>
-              <AutoResizeTextarea value={form.nameEn} onChange={form.setNameEn} maxLength={200}
-                required aria-required="true"
-                readOnly={identityLocked}
-                data-field="nameEn"
-                placeholder={ph.nameEn}
-                className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
+              {identityLocked ? (
+                <p data-field="nameEn" className={LOCKED_TEXT}>{form.nameEn}</p>
+              ) : (
+                <AutoResizeTextarea value={form.nameEn} onChange={form.setNameEn} maxLength={200}
+                  required aria-required="true"
+                  data-field="nameEn"
+                  placeholder={ph.nameEn}
+                  className={`${INPUT} ${errors.nameEn ? 'border-red-400' : ''}`} />
+              )}
               {errors.nameEn && <p className="text-xs text-red-500 mt-1">{errors.nameEn}</p>}
             </div>
           </div>
 
-          {/* 에디션 유형 */}
-          {category === 'WHISKY' && (
+          {/* 에디션 유형 — 최소 정보 모드에는 없다.
+              사용자는 유형을 판단할 근거가 없고(같은 술의 다른 배치인지조차 모른다),
+              기존 주류에 에디션을 붙일 때는 대상 마스터에서 유형을 상속한다. */}
+          {!simple && category === 'WHISKY' && (
             <div>
               <label className={LABEL}>에디션 유형</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1981,8 +2029,9 @@ export default function SpiritFormFields({
         )}
       </div>
 
-      {/* ═══ 중앙: ③ 카테고리 상세 및 에디션 ═══ */}
-      <div className={`space-y-6 ${isWhisky ? '' : 'lg:col-span-3'}`}>
+      {/* ═══ 중앙: ③ 카테고리 상세 및 에디션 ═══
+          최소 정보 모드에서는 이 컬럼 전체가 빠진다 — 관리자가 승인 화면에서 채운다. */}
+      {!simple && <div className={`space-y-6 ${isWhisky ? '' : 'lg:col-span-3'}`}>
         {!category ? (
           <div className="rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50/50 py-12 text-center">
             <p className="text-sm text-neutral-400">카테고리를 먼저 선택하면 상세 입력 항목이 표시됩니다.</p>
@@ -2010,50 +2059,48 @@ export default function SpiritFormFields({
 
                 {errors.variants && <p className="text-xs text-red-500">{errors.variants}</p>}
 
-                {/* 탭 바 (다중 에디션 허용 시에만 노출 — 사용자 등록 요청 화면은 1개로 고정) */}
-                {allowMultipleVariants && (
-                  <div className="flex flex-wrap items-center gap-1.5 border-b border-neutral-200 pb-3 mb-4">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
+                {/* 탭 바 — 에디션 전환·정렬·추가 */}
+                <div className="flex flex-wrap items-center gap-1.5 border-b border-neutral-200 pb-3 mb-4">
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={form.variants.map((v, idx) => (v as any).tempId || `temp-${idx}`)}
+                      strategy={horizontalListSortingStrategy}
                     >
-                      <SortableContext
-                        items={form.variants.map((v, idx) => (v as any).tempId || `temp-${idx}`)}
-                        strategy={horizontalListSortingStrategy}
-                      >
-                        {form.variants.map((v, idx) => (
-                          <SortableTab
-                            key={(v as any).tempId || `temp-${idx}`}
-                            id={(v as any).tempId || `temp-${idx}`}
-                            index={idx}
-                            variant={v}
-                            isActive={activeVariantIdx === idx}
-                            hasError={errorVariantIndexes.has(idx)}
-                            sortable={isDesktop}
-                            label={category === 'WINE' ? '빈티지' : '에디션'}
-                            onClick={() => setActiveVariantIdx(idx)}
-                            onRemove={() => form.removeVariant(idx)}
-                          />
-                        ))}
-                      </SortableContext>
-                    </DndContext>
+                      {form.variants.map((v, idx) => (
+                        <SortableTab
+                          key={(v as any).tempId || `temp-${idx}`}
+                          id={(v as any).tempId || `temp-${idx}`}
+                          index={idx}
+                          variant={v}
+                          isActive={activeVariantIdx === idx}
+                          hasError={errorVariantIndexes.has(idx)}
+                          sortable={isDesktop}
+                          label={category === 'WINE' ? '빈티지' : '에디션'}
+                          onClick={() => setActiveVariantIdx(idx)}
+                          onRemove={() => form.removeVariant(idx)}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        form.addVariant()
-                        setActiveVariantIdx(form.variants.length)
-                      }}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-dashed border-neutral-300 hover:border-amber-400 text-neutral-500 hover:text-amber-700 flex items-center gap-1 transition-all bg-white cursor-pointer"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      {category === 'WINE' ? '빈티지 추가' : '에디션 추가'}
-                    </button>
-                  </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      form.addVariant()
+                      setActiveVariantIdx(form.variants.length)
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-dashed border-neutral-300 hover:border-amber-400 text-neutral-500 hover:text-amber-700 flex items-center gap-1 transition-all bg-white cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                    {category === 'WINE' ? '빈티지 추가' : '에디션 추가'}
+                  </button>
+                </div>
 
                 {/* 활성화된 에디션 정보 및 상세 */}
                 {form.variants.length > 0 && form.variants[activeVariantIdx] ? (
@@ -2116,12 +2163,12 @@ export default function SpiritFormFields({
             )}
           </>
         )}
-      </div>
+      </div>}
 
       {/* ═══ 우측: 캐스크 전용 컬럼 (위스키만) ═══
           입력이 길어 스크롤이 과해지는 것을 막고, 에디션 분리 시에는
           현재 열린 에디션의 캐스크를 여기서 편집한다. */}
-      {isWhisky && category && (
+      {!simple && isWhisky && category && (
         <div className="space-y-6">
           <div className={`${CARD} lg:sticky lg:top-4`}>
             {/* PC — 3열 중 한 컬럼을 통째로 쓰므로 항상 펼쳐 둔다 */}
@@ -2162,7 +2209,7 @@ export default function SpiritFormFields({
       )}
 
       {bottomSlot && (
-        <div className={isWhisky ? 'lg:col-span-3' : 'lg:col-span-5'}>{bottomSlot}</div>
+        <div className={fullRowSpan}>{bottomSlot}</div>
       )}
     </div>
   )

@@ -25,16 +25,16 @@ const src = readFileSync(FORM_SRC, 'utf8')
 const problems = []
 const expect = (cond, msg) => { if (!cond) problems.push(msg) }
 
-expect(/isWhisky \? 'lg:grid-cols-3' : 'lg:grid-cols-5'/.test(src),
-  '컬럼 수 분기(위스키 3열 / 그 외 5분할)를 찾지 못했다')
+expect(/const gridCols = simple \? '' : isWhisky \? 'lg:grid-cols-3' : 'lg:grid-cols-5'/.test(src),
+  '컬럼 수 분기(최소 정보 1열 / 위스키 3열 / 그 외 5분할)를 찾지 못했다')
 expect(/<WhiskyCaskSection value=\{caskTarget\.value\}/.test(src),
   '캐스크 전용 컬럼이 WhiskyCaskSection 을 쓰지 않는다')
 expect(/form\.isVariantSplit && form\.variants\[activeVariantIdx\]/.test(src),
   '에디션 분리 시 활성 에디션의 캐스크를 대상으로 삼는 분기가 없다')
-expect(/lg:col-span-3' : 'lg:col-span-5'/.test(src),
-  'bottomSlot 의 컬럼 span 이 카테고리에 따라 바뀌지 않는다')
+expect(/const fullRowSpan = simple \? '' : isWhisky \? 'lg:col-span-3' : 'lg:col-span-5'/.test(src),
+  '전체 폭 행(이미지·bottomSlot)의 컬럼 span 분기를 찾지 못했다')
 // 이미지는 최상단 전체 폭 1줄 — 좌측 컬럼에 남아 있으면 안 된다
-expect(/\{imageSlot && \(\s*\n\s*<div className=\{isWhisky \? 'lg:col-span-3' : 'lg:col-span-5'\}>\{imageSlot\}<\/div>/.test(src),
+expect(/\{imageSlot && \(\s*\n\s*<div className=\{fullRowSpan\}>\{imageSlot\}<\/div>/.test(src),
   '이미지 슬롯이 최상단 전체 폭 행으로 배치되지 않았다')
 const leftColumnStart = src.indexOf("{/* ═══ 좌측")
 const centerColumnStart = src.indexOf("{/* ═══ 중앙")
@@ -61,13 +61,29 @@ const requestPageSrc = readFileSync(
 const adaptersSrc = readFileSync(
   join(WEB_ROOT, 'src', 'domain', 'admin', 'components', 'spiritFormAdapters.ts'), 'utf8')
 
-// ① 에디션 1건 자동 시딩 — 이게 없으면 사용자가 배치/빈티지를 고르는 순간
-//    '에디션을 1건 이상 추가해주세요' 로 막히는데 추가할 버튼이 화면에 없다(탭 바 안에 있음).
-expect(/if \(allowMultipleVariants\) return[\s\S]{0,400}form\.addVariant\(\)/.test(src),
-  'allowMultipleVariants=false 화면의 에디션 1건 자동 시딩이 사라졌다 — 사용자가 에디션을 만들 수 없게 된다')
-// ② 검증 기준은 관리자와 동일해야 한다. 빠지면 생산자·국가·숙성연수가 빈 요청이 다시 들어온다.
-expect(/useSpiritForm\(\{ requireProductionInfo: true, allowPendingProducer: true \}\)/.test(requestPageSrc),
-  '사용자 등록 요청이 관리자와 다른 검증 기준으로 되돌아갔다')
+// ① 최소 정보 모드는 **검증과 렌더가 한 값에서** 나와야 한다.
+//    렌더만 끄면 화면에 없는 칸의 오류로 제출 버튼이 먹통이 되고, 검증만 끄면 서버가 400 을 낸다.
+expect(/const simple = form\.simple/.test(src),
+  'SpiritFormFields 가 훅의 simple 을 읽지 않는다 — 렌더 게이팅과 검증이 갈라진다')
+expect(/if \(!simple && category === 'WINE'/.test(src) && /if \(!simple && category === 'COGNAC'/.test(src),
+  '카테고리 상세 검증이 최소 정보 모드에서 꺼지지 않는다 — 입력칸 없는 오류로 제출이 막힌다')
+expect(/\{!simple && <div className=\{`space-y-6 \$\{isWhisky \? '' : 'lg:col-span-3'\}`\}>/.test(src),
+  '카테고리 상세·에디션 컬럼이 최소 정보 모드에서 제거되지 않는다')
+expect(/\{!simple && isWhisky && category && \(/.test(src),
+  '캐스크 컬럼이 최소 정보 모드에서 제거되지 않는다')
+// ①-b 와인은 DEFAULT_WINE.vintageStatus 가 'VINTAGE' 다. 상세 카드를 안 그리는 모드에서 그대로
+//    보내면 서버가 "빈티지인데 연도가 없다"로 보고 **모든 와인 요청을 400** 으로 막는다.
+expect(/wineDetail: \(isVariantSplit \|\| simple\) \? \(\{ vintageStatus: 'UNKNOWN' \}/.test(src),
+  '최소 정보 모드의 와인 요청이 vintageStatus=UNKNOWN 으로 나가지 않는다 — 서버가 400 으로 막는다')
+// ② 사용자 화면은 최소 정보 모드다 — 생산자·국가는 계속 필수로 받는다.
+expect(/useSpiritForm\(\{ requireProductionInfo: true, allowPendingProducer: true, simple: true \}\)/.test(requestPageSrc),
+  '사용자 등록 요청의 폼 옵션이 바뀌었다 (requireProductionInfo · allowPendingProducer · simple)')
+// ②-b 승인 대기 생산자는 id 가 없다 — 이름을 안 실으면 관리자 화면에 생산자가 빈 칸으로 도착한다.
+expect(/producerName: form\.producerId \? null : form\.producerName\.trim\(\) \|\| null/.test(requestPageSrc),
+  '사용자 등록 요청이 승인 대기 생산자 이름을 보내지 않는다')
+// ②-c 에디션은 식별값만 받는다 — 유형·시리즈는 대상 마스터에서 물려받아 되돌려 보낸다.
+expect(/variantValue: isVariantMode \? trimmedEdition : null/.test(requestPageSrc),
+  '사용자 등록 요청이 에디션 식별값을 제출하지 않는다')
 // ③ 와인 빈티지 상세는 마스터가 아니라 에디션에 있다. 마스터 것을 보내면 상세가 통째로 사라진다.
 expect(/const wine = variant\?\.wineDetail \?\? payload\.wineDetail/.test(adaptersSrc),
   '어댑터가 와인 빈티지의 wineDetail 대신 마스터 값을 보내고 있다')

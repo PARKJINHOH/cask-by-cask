@@ -16,6 +16,11 @@ export interface SpiritRegisterRequestForm {
   nameEn: string
   category: SpiritCategory
   producerId?: number | null
+  /**
+   * 신청자가 직접 적은 생산자 이름 (목록에 없어 승인 대기 큐로 보낸 경우).
+   * id 가 없을 때 이것마저 안 보내면 관리자 화면에 생산자가 빈 칸으로 도착한다.
+   */
+  producerName?: string | null
   abv?: number | null
   abvMin?: number | null   // 도수 범위 지정 시
   abvMax?: number | null

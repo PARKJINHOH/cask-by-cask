@@ -7,34 +7,45 @@ import ProducerSelector from '@/domain/producer/components/ProducerSelector'
 import { useSubmitProducerRequest } from '@/domain/producer/hooks/useProducerRequest'
 import { CATEGORY_TO_PRODUCER_TYPE, type NewProducerInput } from '@/domain/producer/types/producer.types'
 import SeoMeta from '@/shared/components/SeoMeta'
-import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
+import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFieldLabel'
 import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
 import { toSpiritRequestForm, toPrefillDetail } from '@/domain/admin/components/spiritFormAdapters'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 import SpiritMasterPicker, { type PickedSpiritMaster } from '@/domain/spirit/components/SpiritMasterPicker'
 import { spiritApi } from '@/domain/spirit/api/spiritApi'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
+import {
+  deriveMasterEditionInfo, EMPTY_MASTER_EDITION, type MasterEditionInfo,
+} from '@/domain/spirit/utils/masterEdition'
 import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 
 // ═════════════════════════════════════════════════════════════════
 //  사용자 술 등록 요청 — 관리자 등록 폼(SpiritFormFields/useSpiritForm)을
-//  그대로 재사용한다(단일 소스). 술 데이터 항목을 추가·변경할 때는
-//  SpiritFormFields.tsx 만 수정하면 관리자 3화면 + 이 화면까지 전부 반영된다.
+//  **최소 정보 모드**(`simple: true`)로 재사용한다.
 //
-//  관리자와의 차이는 세 가지뿐이다.
-//   ① 에디션 개수 — 관리자 N개 / 사용자 1개(allowMultipleVariants=false).
-//     1건은 SpiritFormFields 가 **자동으로 시딩**한다 — 이 화면에는 '에디션 추가' 버튼이 없다.
+//  이 화면이 받는 것은 "관리자가 그 술을 찾아낼 수 있을 만큼"이 전부다:
+//  카테고리 · 이름(한/영) · 도수 · 용량 · (위스키)스타일 · 생산자 · 국가.
+//  숙성 연수·캐스크·와인 상세 같은 값은 일반 이용자가 알기 어렵고, 비워 보내나
+//  틀리게 보내나 결국 관리자가 승인 화면에서 다시 채운다 — 그래서 아예 묻지 않는다.
+//
+//  관리자와의 차이는 세 가지다.
+//   ① 입력 범위 — 상세·캐스크·에디션 카드가 없다(`simple`). 검증도 같이 꺼진다.
 //   ② 제출 채널 — 평탄화 DTO + 멀티파트 이미지(spiritFormAdapters.ts 가 형태를 변환).
 //   ③ 생산자 — 즉석 생성이 안 되고 승인 대기 큐로 들어간다(allowPendingProducer).
-//  검증 기준은 관리자와 **동일**하다(requireProductionInfo: true).
+//     그때는 id 가 없으므로 **입력한 이름을 payload.producerName 으로 함께 보낸다** —
+//     이걸 빠뜨리면 관리자 화면에 생산자가 빈 칸으로 도착한다.
 //
 //  내 요청 목록은 별도 화면(MySpiritRequestsPage, /request/spirit/my)에서
 //  게시글 목록 형태로 관리 — 이 화면은 ?edit=<id> 쿼리로 수정 모드만 진입.
 // ═════════════════════════════════════════════════════════════════
 
-// 에디션을 붙일 수 있는 카테고리 — 위스키(배치·싱글캐스크·출시연도)와 와인(빈티지)뿐이다.
-// 꼬냑·기타는 폼에 에디션 개념 자체가 없다.
-const VARIANT_CAPABLE: SpiritCategory[] = ['WHISKY', 'WINE']
+/**
+ * 에디션을 붙일 수 있는 카테고리 — 위스키뿐이다.
+ *
+ * <p>와인 빈티지는 서버가 식별값을 **연도 또는 'NV' 로 강제**하는데(validateWineVariants),
+ * 이 화면은 자유 입력 식별값만 받으므로 승인 시점에 막힌다. 와인 빈티지는 새 주류 요청으로 받는다.
+ */
+const VARIANT_CAPABLE: SpiritCategory[] = ['WHISKY']
 
 const MAX_IMAGES = 3
 
@@ -44,7 +55,7 @@ const LABEL_CLS = 'block text-xs font-medium text-neutral-600 mb-1.5'
 
 export default function SpiritRequestPage() {
   const { t } = useTranslation()
-  const form = useSpiritForm({ requireProductionInfo: true, allowPendingProducer: true })
+  const form = useSpiritForm({ requireProductionInfo: true, allowPendingProducer: true, simple: true })
 
   const [successMsg, setSuccessMsg] = useState('')
   const [loadErr, setLoadErr] = useState('')
@@ -61,16 +72,27 @@ export default function SpiritRequestPage() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [targetErr, setTargetErr] = useState('')
   const isVariantMode = targetSpirit != null
+  /**
+   * 사용자가 적는 에디션 식별값 — 이 화면의 유일한 에디션 입력이다.
+   *
+   * <p>에디션 카드(`variants[]`)를 쓰지 않고 페이지 상태로 들고 있다가 제출 직전에 평탄화 DTO 에 얹는다.
+   * 에디션 카드를 쓰면 시리즈 식별자·에디션별 숙성연수까지 필수가 되는데, 그 칸들이 이 화면에는 없다.
+   */
+  const [editionValue, setEditionValue] = useState('')
+  const [editionValueEn, setEditionValueEn] = useState('')
+  const [editionErr, setEditionErr] = useState('')
+  /** 고른 마스터가 이미 갖고 있는 에디션 유형·시리즈 식별자 (승인 시 서버가 쓰는 값과 같은 규칙으로 추출) */
+  const [masterEdition, setMasterEdition] = useState<MasterEditionInfo>(EMPTY_MASTER_EDITION)
 
   /**
    * 고른 주류의 정보를 폼에 옮겨 담는다.
    *
-   * <p>이름·카테고리·생산자·국가는 승인 시 서버가 마스터에서 복사하지만, 요청 기록과 화면에도
-   * 같은 값이 보여야 신청자가 무엇을 보내는지 알 수 있다. 에디션 분리를 함께 켜 두면
-   * SpiritFormFields 가 에디션 카드 1건을 자동으로 띄운다.
+   * <p>이름·생산자·국가는 승인 시 서버가 마스터에서 복사하지만, 요청 기록과 화면에도
+   * 같은 값이 보여야 신청자가 무엇을 보내는지 알 수 있다.
    */
   const applyTargetSpirit = async (master: PickedSpiritMaster) => {
     setTargetErr('')
+    setEditionErr('')
     if (!master.category || !VARIANT_CAPABLE.includes(master.category)) {
       setTargetErr(t('spiritRequest.form.existingSpirit.unsupportedCategory'))
       return
@@ -82,10 +104,11 @@ export default function SpiritRequestPage() {
     form.setNameKo(master.nameKo)
     form.setNameEn(master.nameEn)
     setTargetSpirit(master)
+    setMasterEdition(EMPTY_MASTER_EDITION)
 
-    // 상세를 한 번 더 불러 생산자·국가·산지를 채운다 — 자동완성 응답에는 없는 값들이다.
-    // 승인 시 서버가 마스터에서 다시 복사하지만, 요청 기록과 관리자 검토 화면에도
-    // 같은 값이 보여야 무엇에 붙는 요청인지 한눈에 알 수 있다.
+    // 상세를 한 번 더 불러 생산자·국가·산지와 **에디션 구분 정보**를 채운다 —
+    // 자동완성 응답에는 없는 값들이다. 승인 시 서버가 마스터에서 다시 복사하지만,
+    // 요청 기록과 관리자 검토 화면에도 같은 값이 보여야 무엇에 붙는 요청인지 한눈에 알 수 있다.
     try {
       const detail = (await spiritApi.getDetail(master.id)).data.data
       if (detail) {
@@ -95,21 +118,29 @@ export default function SpiritRequestPage() {
         form.setCountryValue(code, detail.country ?? '')
         form.setRegion(detail.region ?? '')
         form.setRegionCode(detail.wineRegion?.code ?? null)
+        // 스타일도 마스터에서 가져온다 — 같은 술의 다른 배치라 스타일이 달라질 일이 없는데,
+        // 비워 두면 '스타일을 선택해주세요' 로 막혀 신청자가 같은 값을 다시 고르게 된다.
+        if (detail.whiskyDetail?.style) {
+          form.updateWhisky({
+            style: detail.whiskyDetail.style,
+            styleOther: detail.whiskyDetail.styleOther ?? '',
+          })
+        }
+        setMasterEdition(deriveMasterEditionInfo(detail))
       }
     } catch {
       // 상세 조회 실패 — 이름·카테고리만으로도 요청은 보낼 수 있다.
-    }
-
-    // 위스키는 에디션 유형을 사용자가 고르고, 와인은 빈티지로 고정된다.
-    if (master.category === 'WINE') {
-      form.setIsVariantSplit(true)
-      form.setVariantType('VINTAGE')
+      // 에디션 유형은 비어 가고, 관리자가 승인 화면에서 확정한다.
     }
   }
 
   const clearTargetSpirit = () => {
     setTargetSpirit(null)
     setTargetErr('')
+    setEditionErr('')
+    setEditionValue('')
+    setEditionValueEn('')
+    setMasterEdition(EMPTY_MASTER_EDITION)
     form.reset()   // identityInherited 도 같이 풀린다
   }
 
@@ -119,11 +150,11 @@ export default function SpiritRequestPage() {
   const { mutateAsync: submitProducerRequest } = useSubmitProducerRequest()
   const isPending = isSubmitting || isUpdating
 
-  // 기타 카테고리 — 목록에 없는 생산자 직접 등록 → 생산자 등록요청 큐로 전송 (승인 후 사용)
   // 목록에 없는 생산자 → 생산자 등록요청 큐로 전송(승인 후 사용).
   // 종류를 카테고리에 맞춰야 한다 — 예전에는 'OTHER' 로 고정돼 있어,
   // 사용자가 요청한 양조장이 승인되어도 와인 생산자 목록에는 끝내 나타나지 않았다.
-  // id 는 아직 없으므로 이름을 폼에 남겨 생산 정보 필수 검증을 통과시킨다(allowPendingProducer).
+  // id 는 아직 없으므로 이름을 폼에 남겨 생산 정보 필수 검증을 통과시키고(allowPendingProducer),
+  // 제출 시 producerName 으로 함께 보낸다.
   const handleCreateProducer = async (data: NewProducerInput) => {
     const producerType = form.category ? CATEGORY_TO_PRODUCER_TYPE[form.category] : 'OTHER'
     await submitProducerRequest({ type: producerType, ...data })
@@ -152,6 +183,10 @@ export default function SpiritRequestPage() {
     form.reset()
     setTargetSpirit(null)
     setTargetErr('')
+    setEditionErr('')
+    setEditionValue('')
+    setEditionValueEn('')
+    setMasterEdition(EMPTY_MASTER_EDITION)
     setNewImages([])
     setKeptImageUrls([])
     setNote('')
@@ -159,20 +194,30 @@ export default function SpiritRequestPage() {
   }
 
   const onSubmit = () => {
-    // 기존 주류 모드는 붙일 에디션이 반드시 있어야 한다.
-    // 위스키는 에디션 유형을 사용자가 고르므로, 고르지 않은 채 보내면
-    // 서버가 승인 시점에 막게 된다 — 그 전에 여기서 알려준다.
-    if (isVariantMode && !form.isVariantSplit) {
-      setTargetErr(t('spiritRequest.form.existingSpirit.editionRequired'))
+    // 기존 주류 모드는 붙일 식별값이 반드시 있어야 한다. 서버도 막지만(hasVariantForTarget)
+    // 메시지가 일반적이라, 무엇을 채워야 하는지 여기서 먼저 알려준다.
+    const trimmedEdition = editionValue.trim()
+    if (isVariantMode && !trimmedEdition) {
+      setEditionErr(t('spiritRequest.form.existingSpirit.editionValueRequired'))
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
+    setEditionErr('')
     if (!form.validate()) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     const payload = {
       ...toSpiritRequestForm(form.buildPayload()),
+      // 승인 대기 생산자는 id 가 없다 — 이름이라도 실어야 관리자가 술을 찾아낼 수 있다.
+      producerName: form.producerId ? null : form.producerName.trim() || null,
+      // 에디션 — 유형·시리즈 식별자는 마스터에서 물려받은 값을 그대로 되돌려 보낸다.
+      // 마스터가 아직 갈리지 않았으면 비어 가고, 관리자가 승인 화면에서 확정한다.
+      variantType: isVariantMode ? masterEdition.variantType : null,
+      variantValue: isVariantMode ? trimmedEdition : null,
+      variantValueEn: isVariantMode ? editionValueEn.trim() || null : null,
+      seriesIdentifier: isVariantMode ? masterEdition.seriesIdentifier : null,
+      seriesIdentifierEn: isVariantMode ? masterEdition.seriesIdentifierEn : null,
       imageUrls: keptImageUrls,
       note: note.trim() || undefined,
       targetSpiritId: targetSpirit?.id ?? null,
@@ -206,11 +251,23 @@ export default function SpiritRequestPage() {
       if (!d) throw new Error('no data')
       form.prefillFromRequest(toPrefillDetail(d))
       // 기존 주류에 붙이는 요청이었다면 그 대상도 함께 복원한다 —
-      // 복원하지 않으면 수정해서 다시 보내는 순간 새 주류 요청으로 바뀜다.
-      setTargetSpirit(d.targetSpirit
+      // 복원하지 않으면 수정해서 다시 보내는 순간 새 주류 요청으로 바뀐다.
+      const target = d.targetSpirit
         ? { id: d.targetSpirit.id, nameKo: d.targetSpirit.nameKo,
             nameEn: d.targetSpirit.nameEn, category: d.category }
-        : null)
+        : null
+      setTargetSpirit(target)
+      // 식별값은 폼(variants)이 아니라 이 화면이 들고 있다 — 평탄화 필드에서 되살린다.
+      setEditionValue(d.variantValue ?? '')
+      setEditionValueEn(d.variantValueEn ?? '')
+      setMasterEdition(target
+        ? {
+          hasEditions: !!d.variantType && d.variantType !== 'NONE' && !!d.seriesIdentifier,
+          variantType: d.variantType && d.variantType !== 'NONE' ? d.variantType : null,
+          seriesIdentifier: d.seriesIdentifier ?? null,
+          seriesIdentifierEn: d.seriesIdentifierEn ?? null,
+        }
+        : EMPTY_MASTER_EDITION)
       setKeptImageUrls(d.imageUrls ?? [])
       setNewImages([])
       setNote(d.note ?? '')
@@ -229,7 +286,8 @@ export default function SpiritRequestPage() {
   }, [])
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    // 1열 폼이라 관리자 화면처럼 넓게 펼치지 않는다 — 입력칸이 가로로 늘어지면 오히려 읽기 어렵다.
+    <div className="max-w-3xl mx-auto px-4 py-8">
       <SeoMeta title={t('spiritRequest.title')} description={t('spiritRequest.subtitle')} noindex />
 
       {/* Page title */}
@@ -245,6 +303,14 @@ export default function SpiritRequestPage() {
         >
           {t('spiritRequest.myRequests.viewList')}
         </Link>
+      </div>
+
+      {/* 이 화면이 무엇을 요구하지 '않는지'를 먼저 알린다 — 상세를 못 채워서 요청을 포기하는 일이 잦다. */}
+      <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3.5">
+        <p className="text-sm font-semibold text-amber-800">{t('spiritRequest.form.adminFillsTitle')}</p>
+        <p className="mt-1 text-xs leading-relaxed text-amber-700/90">
+          {t('spiritRequest.form.adminFillsNotice')}
+        </p>
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); onSubmit() }} noValidate className="space-y-6">
@@ -331,7 +397,6 @@ export default function SpiritRequestPage() {
 
           <SpiritFormFields
             form={form}
-            allowMultipleVariants={false}
             admin={false}
             categoryLocked={isVariantMode}
             identityLocked={isVariantMode}
@@ -339,6 +404,53 @@ export default function SpiritRequestPage() {
             onCreateProducer={handleCreateProducer}
             bottomSlot={
               <div className="space-y-6">
+                {/* 에디션 식별값 — 기존 주류에 붙일 때만. 유형은 대상 주류에서 상속한다. */}
+                {isVariantMode && (
+                  <div className={CARD}>
+                    <SectionTitle
+                      title={t('spiritRequest.form.existingSpirit.editionSectionTitle')}
+                      hint={masterEdition.hasEditions
+                        ? undefined
+                        : t('spiritRequest.form.existingSpirit.editionTypeByAdmin')}
+                    />
+                    <div>
+                      <label className={LABEL_CLS} htmlFor="edition-value-ko">
+                        {t('spiritRequest.form.existingSpirit.editionValueKoLabel')} <RequiredMark />
+                      </label>
+                      <input
+                        id="edition-value-ko"
+                        type="text"
+                        value={editionValue}
+                        onChange={(e) => setEditionValue(e.target.value)}
+                        maxLength={100}
+                        placeholder={t('spiritRequest.form.existingSpirit.editionValueKoPlaceholder')}
+                        className={`${FIELD_CLS} ${editionErr ? 'border-red-400' : 'border-neutral-300'}`}
+                      />
+                      <p className="mt-1 text-[11px] text-neutral-400">
+                        {t('spiritRequest.form.existingSpirit.editionValueKoHint')}
+                      </p>
+                      {editionErr && <p className="mt-1 text-xs text-red-500">{editionErr}</p>}
+                    </div>
+                    <div>
+                      <label className={LABEL_CLS} htmlFor="edition-value-en">
+                        {t('spiritRequest.form.existingSpirit.editionValueEnLabel')}
+                      </label>
+                      <input
+                        id="edition-value-en"
+                        type="text"
+                        value={editionValueEn}
+                        onChange={(e) => setEditionValueEn(e.target.value)}
+                        maxLength={100}
+                        placeholder={t('spiritRequest.form.existingSpirit.editionValueEnPlaceholder')}
+                        className={`${FIELD_CLS} border-neutral-300`}
+                      />
+                      <p className="mt-1 text-[11px] text-neutral-400">
+                        {t('spiritRequest.form.existingSpirit.editionValueEnHint')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* 사진 첨부 (최대 3장) — 승인 시 주류 이미지로 등록 */}
                 <div className={CARD}>
                   <SectionTitle title={t('spiritRequest.form.images.label')} />

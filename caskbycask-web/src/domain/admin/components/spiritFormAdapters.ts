@@ -47,6 +47,8 @@ export function toSpiritRequestForm(payload: CreateSpiritPayload): SpiritRegiste
     nameEn: payload.nameEn,
     category: payload.category,
     producerId: payload.producerId ?? null,
+    // producerName(승인 대기 생산자 이름)은 useSpiritForm 밖의 값이라 여기서 채우지 않는다 —
+    // SpiritRequestPage 가 제출 직전에 얹는다.
     vintageYear: vintageYear ?? null,
     abv: abv ?? null,
     abvMin: abvMin ?? null,
@@ -92,6 +94,9 @@ export function toSpiritRequestForm(payload: CreateSpiritPayload): SpiritRegiste
     cognacDetail: payload.cognacDetail ?? null,
     otherDetail: payload.otherDetail ?? null,
 
+    // 에디션 값 — 사용자 등록 요청 화면은 에디션 카드를 쓰지 않고 식별값 2칸만 받으므로
+    // 이 네 값을 제출 직전에 통째로 덮어쓴다(SpiritRequestPage.onSubmit 참고).
+    // 여기 기본값은 관리자 폼에서 넘어온 payload(에디션 분리 사용)를 위한 것이다.
     variantType: (variant?.variantType ?? 'NONE') as RequestVariantType,
     variantValue: variant?.variantValue || null,
     variantValueEn: variant?.variantValueEn || null,
@@ -110,7 +115,9 @@ export function toPrefillDetail(d: MySpiritRequestDetail): SpiritRegisterRequest
     nameEn: d.nameEn,
     category: d.category,
     producerId: d.producerId ?? null,
-    producerNameKo: d.producerNameKo ?? null,
+    // 서버가 등록 생산자면 그 한글명을, 아니면 신청자가 적은 이름을 producerNameKo 로 내려준다.
+    // 구버전 응답(producerNameKo 없음) 대비로 평탄화 필드도 함께 본다.
+    producerNameKo: d.producerNameKo ?? d.producerName ?? null,
     vintageYear: d.vintageYear ?? null,
     abv: d.abv ?? null,
     volumeMl: d.volumeMl ?? null,
