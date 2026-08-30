@@ -115,6 +115,11 @@ public enum ErrorCode {
     // 태그를 걷어 낸 본문 기준 길이 — 서식이 붙은 HTML 문자열 길이가 아니다.
     REVIEW_COMMENT_TOO_LONG(HttpStatus.BAD_REQUEST, "REVIEW_020",
             "종합평가는 600자 이내여야 합니다."),
+    // 리뷰 가져오기 — 링크는 보조 경로다. 어느 쪽으로 실패하든 화면은 붙여넣기로 되돌아간다.
+    REVIEW_IMPORT_UNSUPPORTED_URL(HttpStatus.BAD_REQUEST, "REVIEW_021",
+            "가져올 수 없는 주소입니다. 디시인사이드 갤러리 또는 아카라이브 게시글 주소를 넣어주세요."),
+    REVIEW_IMPORT_FETCH_FAILED(HttpStatus.BAD_GATEWAY, "REVIEW_022",
+            "원문을 가져오지 못했습니다. 게시글을 열어 본문을 복사한 뒤 붙여넣어 주세요."),
 
     // Comment
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_001", "댓글을 찾을 수 없습니다."),

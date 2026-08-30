@@ -51,7 +51,8 @@
     "test:photo-gallery": "node --import ./scripts/test-alias-register.mjs --test scripts/photo-gallery-layout.test.mjs",
     "test:photo-variants": "node --import ./scripts/test-alias-register.mjs --test scripts/photo-image-variants.test.mjs",
     "test:youtube-thumbnail": "node --import ./scripts/test-alias-register.mjs --test scripts/youtube-thumbnail.test.mjs",
-    "test:review-rich-text": "node --import ./scripts/test-alias-register.mjs --test scripts/review-rich-text.test.mjs"
+    "test:review-rich-text": "node --import ./scripts/test-alias-register.mjs --test scripts/review-rich-text.test.mjs",
+    "test:review-import": "node --import ./scripts/test-alias-register.mjs --test scripts/review-import-parser.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

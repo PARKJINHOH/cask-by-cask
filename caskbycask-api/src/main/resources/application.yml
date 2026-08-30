@@ -142,6 +142,16 @@ youtube:
     max-per-run: ${YOUTUBE_AVAILABILITY_MAX_PER_RUN:300}
     delay-ms: ${YOUTUBE_AVAILABILITY_DELAY_MS:150}
 
+# 리뷰 가져오기(링크) — 사용자가 다른 커뮤니티에 써 둔 자기 리뷰의 공개 게시글을 서버가 대신 읽는다.
+# 붙여넣기가 주 경로이고 이쪽은 보조 수단이라, 원문 사이트가 우리 서버 IP 를 막으면
+# 코드 배포 없이 enabled=false 로 내려도 기능은 그대로 쓸 수 있다.
+review-import:
+  enabled: ${REVIEW_IMPORT_ENABLED:true}
+  connect-timeout-ms: ${REVIEW_IMPORT_CONNECT_TIMEOUT_MS:3000}
+  read-timeout-ms: ${REVIEW_IMPORT_READ_TIMEOUT_MS:5000}
+  # 아카라이브는 채널이 많다 — 주류 채널만 연다.
+  arcalive-channels: ${REVIEW_IMPORT_ARCALIVE_CHANNELS:alcohol}
+
 # SEO 메타 — sitemap.xml / IndexNow 의 base URL
 # (페이지 HTML 은 Next.js 가 렌더링한다. API 는 sitemap·IndexNow·SEO 조회 API 만 담당)
 seo:

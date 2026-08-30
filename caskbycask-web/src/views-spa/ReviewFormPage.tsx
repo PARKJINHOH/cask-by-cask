@@ -22,6 +22,8 @@ import ReviewVariantCreateModal, {
 import ReviewVariantDraftCard from '@/domain/review/components/ReviewVariantDraftCard'
 import MyPastReviewsPanel from '@/domain/review/components/MyPastReviewsPanel'
 import { getReviewSaveErrorMessage } from '@/domain/review/utils/reviewErrors'
+import ReviewImportCard, { REVIEW_IMPORT_DRAFT_KEY } from '@/domain/review/components/ReviewImportCard'
+import type { ReviewImportPlan } from '@/domain/review/utils/reviewImportParser'
 import {
   EMPTY_AROMA_NOTES,
   parseAromaNotes,
@@ -277,6 +279,44 @@ export default function ReviewFormPage() {
   const hasAllScores = nose != null && taste != null && finish != null
   const totalPreview = hasAllScores ? (nose + taste + finish) / 3 : null
 
+  /**
+   * 붙여넣기·링크로 읽어 낸 값을 입력칸에 넣는다. 저장은 하지 않는다 —
+   * 사용자가 확인하고 고친 뒤 직접 등록 버튼을 누른다.
+   *
+   * 노트 칸은 register 되지 않아 `setValue` 로만 값이 들어간다(ReviewScoreSection 주석 참고).
+   * `shouldValidate` 를 켜야 20자 미만 같은 오류가 채운 직후에 바로 보인다.
+   */
+  const applyImportedReview = (plan: ReviewImportPlan, sourceUrl: string | null) => {
+    const options = { shouldValidate: true, shouldDirty: true } as const
+
+    setValue('noseNote', plan.noseNote, options)
+    setValue('tasteNote', plan.tasteNote, options)
+    setValue('finishNote', plan.finishNote, options)
+    setValue('noseScore', plan.noseScore, options)
+    setValue('tasteScore', plan.tasteScore, options)
+    setValue('finishScore', plan.finishScore, options)
+
+    // 제한형 에디터는 링크 마크가 꺼져 있어 원문 주소는 평문 한 줄로 남긴다.
+    const body = sourceUrl ? [plan.comment, sourceUrl].filter(Boolean).join('\n') : plan.comment
+    setValue('comment', reviewCommentToHtml(body), options)
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  /** 자동으로 나눌 수 없는 글 — 향 노트 칸으로 보내 직접 쓰게 한다. */
+  const focusNoteForManualInput = () => {
+    focusFirstError(['noseNote'], '[data-review-form]')
+  }
+
+  /** 저장까지 끝나면 붙여넣어 둔 원문은 더 지킬 이유가 없다. */
+  const clearImportDraft = () => {
+    try {
+      window.localStorage.removeItem(REVIEW_IMPORT_DRAFT_KEY)
+    } catch {
+      /* 저장소를 못 쓰는 환경에서도 등록 자체는 끝나야 한다 */
+    }
+  }
+
   const onSubmit = async (values: ReviewFormValues) => {
     if ((socialSelection.instagram || socialSelection.threads)
       && !socialSelection.consentAccepted) {
@@ -344,12 +384,14 @@ export default function ReviewFormPage() {
       })
       // 저장이 끝났으면 지킬 내용이 없다 — 이탈 확인창이 뜨지 않게 먼저 내린다.
       setSubmitted(true)
+      clearImportDraft()
       navigate('/mypage?tab=reviews', { replace: true })
       return
     } else {
       await createMutation.mutateAsync({ data: payload, images: imageSubmission.files })
     }
     setSubmitted(true)
+    clearImportDraft()
     navigate(`/spirits/${spiritId}`, { replace: true })
   }
 
@@ -452,6 +494,17 @@ export default function ReviewFormPage() {
 
       <form onSubmit={handleSubmit(onSubmit, handleInvalid)} className="space-y-4">
         <RequiredFieldsNotice />
+
+        {/* 다른 커뮤니티에 써 둔 내 리뷰 가져오기 — 입력칸만 채우고 저장은 사람이 한다.
+            수정 화면에서는 띄우지 않는다: 이미 쓴 리뷰를 덮어쓸 일이 아니다. */}
+        {!isEdit && (
+          <ReviewImportCard
+            spiritName={primaryName ?? undefined}
+            hasValues={!!(noseNote || tasteNote || finishNote)}
+            onApply={applyImportedReview}
+            onManualInput={focusNoteForManualInput}
+          />
+        )}
 
         {/* 에디션 선택 (하위 에디션이 존재하는 경우에만 노출) */}
         {masterId && hasSubEditionFlow && !isEdit && (

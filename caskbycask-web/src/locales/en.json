@@ -928,6 +928,53 @@
     }
   },
   "review": {
+    "import": {
+      "title": "Import my review from elsewhere",
+      "noSaveBadge": "Nothing is saved",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "clear": "Clear",
+      "description": "Paste a review you wrote yourself on DCInside, Arca.live or Naver Cafe and we will fill in the nose, palate, finish and overall fields. Check everything before you submit.",
+      "tabPaste": "Paste text",
+      "tabLink": "From a link",
+      "pastePlaceholder": "Paste the review text as it is.\n\nNose: …\nPalate: …\nFinish: …\nOverall: …",
+      "linkPlaceholder": "https://gall.dcinside.com/mgallery/board/view/?id=whiskey&no=…",
+      "linkSupported": "Only public posts that open without a login can be fetched (DCInside galleries, Arca.live). For Naver Cafe, Instagram and Threads, copy the text and paste it instead.",
+      "keepSourceLink": "Keep the original link at the end of the overall note",
+      "submit": "Import",
+      "loading": "Importing…",
+      "confirmOverwrite": "You have already entered something. Overwrite it with the imported text?",
+      "appliedCount": "Filled {{count}} field(s). Please check them before submitting.",
+      "warningCount": "{{count}} item(s) need your attention",
+      "sourceAppended": "The original link was added to the end of the overall note — {{url}}",
+      "field": {
+        "score": "Scores",
+        "general": "General"
+      },
+      "blocked": {
+        "comparisonTitle": "Comparison reviews cannot be imported",
+        "comparisonBody": "This looks like a review comparing two or more bottles. A review is saved against a single spirit, so it cannot be imported as is. Paste only the part about one bottle, or write it yourself.",
+        "unlabeledTitle": "Could not find nose, palate and finish",
+        "unlabeledBody": "The text has no markers separating nose, palate and finish, so nothing was filled in. Writing it yourself is more accurate than splitting it wrongly.",
+        "manualAction": "Enter it myself"
+      },
+      "error": {
+        "fetchFailed": "Could not fetch the post from that link. Open the post, copy the text and paste it instead.",
+        "empty": "The fetched post was empty. Please copy the text and paste it instead."
+      },
+      "warn": {
+        "truncated": "Trimmed to {{max}} characters.",
+        "tooShort": "Under {{min}} characters, so it cannot be submitted as is. Please add more.",
+        "overallMissing": "No overall section was found. Please write one yourself.",
+        "overallInferred": "No overall marker was found, so the last paragraph was moved into the overall field.",
+        "overallRepeated": "Several overall sections were found; only the last one was used.",
+        "leftoverMerged": "Text that belonged to no section was added before the overall note.",
+        "overallOnly": "Only a total score of {{value}} was found. Nose, palate and finish each need their own score.",
+        "partial": "Only some scores were found, so all were cleared. Enter all three or leave all three empty.",
+        "inlineFallback": "There were no line breaks, so the split points were estimated. Please double-check.",
+        "spiritMismatch": "Could not find '{{name}}' in the text. Please confirm this is the right spirit."
+      }
+    },
     "scoreNotRated": "Not rated",
     "scoreNotRatedHint": "Leave blank to keep this review out of the average",
     "scoreClear": "Clear score",

@@ -928,6 +928,53 @@
     }
   },
   "review": {
+    "import": {
+      "title": "다른 곳에 쓴 내 리뷰 가져오기",
+      "noSaveBadge": "저장하지 않습니다",
+      "collapse": "접기",
+      "expand": "펼치기",
+      "clear": "지우기",
+      "description": "디시인사이드·아카라이브·네이버 카페 등에 직접 쓴 내 리뷰 본문을 붙여넣으면 향·맛·피니시·총평 칸을 채워 드립니다. 채운 뒤 반드시 확인하고 직접 등록하세요.",
+      "tabPaste": "본문 붙여넣기",
+      "tabLink": "링크로 가져오기",
+      "pastePlaceholder": "리뷰 본문을 그대로 붙여넣으세요.\n\n향: …\n맛: …\n피니시: …\n총평: …",
+      "linkPlaceholder": "https://gall.dcinside.com/mgallery/board/view/?id=whiskey&no=…",
+      "linkSupported": "비로그인으로 열리는 공개 게시글만 가져올 수 있습니다(디시인사이드 갤러리, 아카라이브). 네이버 카페·인스타그램·스레드는 본문을 복사해 붙여넣어 주세요.",
+      "keepSourceLink": "원문 주소를 총평 끝에 남기기",
+      "submit": "가져오기",
+      "loading": "가져오는 중…",
+      "confirmOverwrite": "이미 입력한 내용이 있습니다. 가져온 내용으로 덮어쓸까요?",
+      "appliedCount": "{{count}}개 칸을 채웠습니다. 등록 전에 내용을 확인해주세요.",
+      "warningCount": "확인이 필요한 항목 {{count}}건",
+      "sourceAppended": "총평 끝에 원문 주소를 남겼습니다 — {{url}}",
+      "field": {
+        "score": "점수",
+        "general": "전체"
+      },
+      "blocked": {
+        "comparisonTitle": "비교 리뷰는 가져올 수 없습니다",
+        "comparisonBody": "두 가지 이상을 비교한 리뷰로 보입니다. 리뷰는 술 하나에 하나씩 저장되므로 그대로 가져올 수 없어요. 한 술에 대한 부분만 잘라서 붙여넣거나 직접 작성해주세요.",
+        "unlabeledTitle": "향·맛·피니시 구분을 찾지 못했습니다",
+        "unlabeledBody": "본문에서 향·맛·피니시를 나눈 표시를 찾지 못해 자동으로 채우지 않았습니다. 잘못 나눠 담는 것보다 직접 쓰는 편이 정확합니다.",
+        "manualAction": "직접 입력하기"
+      },
+      "error": {
+        "fetchFailed": "링크에서 원문을 가져오지 못했습니다. 게시글을 열어 본문을 복사한 뒤 붙여넣어 주세요.",
+        "empty": "가져온 본문이 비어 있습니다. 본문을 복사해 붙여넣어 주세요."
+      },
+      "warn": {
+        "truncated": "{{max}}자를 넘어 뒷부분을 잘랐습니다.",
+        "tooShort": "{{min}}자 미만이라 이대로는 등록할 수 없습니다. 내용을 더 채워주세요.",
+        "overallMissing": "총평으로 볼 만한 부분을 찾지 못했습니다. 직접 채워주세요.",
+        "overallInferred": "총평 표시가 없어 마지막 문단을 총평으로 옮겼습니다.",
+        "overallRepeated": "총평이 여러 번 나와 마지막 것만 총평 칸에 넣었습니다.",
+        "leftoverMerged": "어느 칸에도 속하지 않은 도입부를 총평 앞에 붙였습니다.",
+        "overallOnly": "총점 {{value}}점만 찾았습니다. 향·맛·피니시 점수를 각각 입력해야 저장됩니다.",
+        "partial": "점수가 일부만 있어 전부 비웠습니다. 세 점수는 모두 넣거나 모두 비워야 합니다.",
+        "inlineFallback": "줄바꿈이 없어 나눌 위치를 추정했습니다. 내용을 꼭 확인해주세요.",
+        "spiritMismatch": "본문에서 '{{name}}' 을(를) 찾지 못했습니다. 리뷰 대상이 맞는지 확인해주세요."
+      }
+    },
     "scoreNotRated": "점수 미입력",
     "scoreNotRatedHint": "비워 두면 평균 점수에 반영되지 않습니다",
     "scoreClear": "점수 지우기",
