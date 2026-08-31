@@ -22,8 +22,8 @@ import ReviewVariantCreateModal, {
 import ReviewVariantDraftCard from '@/domain/review/components/ReviewVariantDraftCard'
 import MyPastReviewsPanel from '@/domain/review/components/MyPastReviewsPanel'
 import { getReviewSaveErrorMessage } from '@/domain/review/utils/reviewErrors'
-import ReviewImportCard, { REVIEW_IMPORT_DRAFT_KEY } from '@/domain/review/components/ReviewImportCard'
-import type { ReviewImportPlan } from '@/domain/review/utils/reviewImportParser'
+import ReviewImportCard, { ReviewImportButton, REVIEW_IMPORT_DRAFT_KEY } from '@/domain/review/components/ReviewImportCard'
+import type { ImportField, ReviewImportPlan } from '@/domain/review/utils/reviewImportParser'
 import {
   EMPTY_AROMA_NOTES,
   parseAromaNotes,
@@ -64,6 +64,9 @@ import { focusFirstError } from '@/shared/utils/focusFirstError'
 import RichTextEditor from '@/shared/tiptap/RichTextEditor'
 
 const ADD_VARIANT_SELECT_VALUE = '__ADD_VARIANT__'
+
+/** 가져오기 강조를 씌울 칸. 점수는 구간 카드 안에 있어 따로 표시하지 않는다. */
+const HIGHLIGHTABLE: ReadonlySet<ImportField> = new Set<ImportField>(['nose', 'taste', 'finish', 'comment'])
 
 /**
  * 검증 오류를 잡을 때 훑는 순서 — 화면에 보이는 위(향)부터 아래(총평)까지다.
@@ -189,6 +192,9 @@ export default function ReviewFormPage() {
   const [targetSpiritId, setTargetSpiritId] = useState<number | null>(null)
   const [variantError, setVariantError] = useState<string | null>(null)
   const [variantCreateOpen, setVariantCreateOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  /** 가져오기로 채운 칸 — 모서리를 살짝 강조했다가 누르면 지운다. */
+  const [importedFields, setImportedFields] = useState<ReadonlySet<ImportField>>(new Set())
   const [pendingVariantDraft, setPendingVariantDraft] = useState<ReviewVariantDraft | null>(null)
   const [socialSelection, setSocialSelection] = useState<SocialPublishSelection>(EMPTY_SOCIAL_SELECTION)
   const [socialRetryIds, setSocialRetryIds] = useState<number[]>([])
@@ -300,8 +306,23 @@ export default function ReviewFormPage() {
     const body = sourceUrl ? [plan.comment, sourceUrl].filter(Boolean).join('\n') : plan.comment
     setValue('comment', reviewCommentToHtml(body), options)
 
+    // 어느 칸이 채워졌는지 한눈에 보이게 모서리를 강조한다. 확인하고 누르면 사라진다.
+    setImportedFields(new Set(plan.applied.filter((field) => HIGHLIGHTABLE.has(field))))
+
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  /** 강조를 지운다. 사용자가 그 칸을 확인했다는 뜻이다. */
+  const dismissImported = (field: ImportField) => setImportedFields((current) => {
+    if (!current.has(field)) return current
+    const next = new Set(current)
+    next.delete(field)
+    return next
+  })
+
+  const importedRing = (field: ImportField) => (importedFields.has(field)
+    ? 'rounded-2xl ring-2 ring-amber-300/80 ring-offset-2 ring-offset-white transition-shadow'
+    : '')
 
   /** 자동으로 나눌 수 없는 글 — 향 노트 칸으로 보내 직접 쓰게 한다. */
   const focusNoteForManualInput = () => {
@@ -483,13 +504,25 @@ export default function ReviewFormPage() {
 
         {/* 헤더 */}
         <div className="mb-6 pb-5 border-b border-neutral-100">
-          <h1 className="text-xl font-bold text-neutral-900">
-            {isEdit ? t('review.edit') : t('review.write')}
-          </h1>
-          {/* 긴 주류명이 좁은 화면에서 헤더를 통째로 밀어내지 않도록 두 줄로 자른다 */}
-          {primaryName && (
-            <p className="text-sm text-neutral-500 mt-1 line-clamp-2">{primaryName}</p>
-          )}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-neutral-900">
+                {isEdit ? t('review.edit') : t('review.write')}
+              </h1>
+              {/* 긴 주류명이 좁은 화면에서 헤더를 통째로 밀어내지 않도록 두 줄로 자른다 */}
+              {primaryName && (
+                <p className="text-sm text-neutral-500 mt-1 line-clamp-2">{primaryName}</p>
+              )}
+            </div>
+            {/* 리뷰 가져오기는 실험 기능이라 헤더 우측 작은 아이콘 뒤에 둔다.
+                서식이 사람마다 제각각이라 늘 맞히지는 못하므로 화면을 차지하지 않게 한다. */}
+            {!isEdit && (
+              <ReviewImportButton
+                active={importOpen}
+                onClick={() => setImportOpen((value) => !value)}
+              />
+            )}
+          </div>
         </div>
 
       <form onSubmit={handleSubmit(onSubmit, handleInvalid)} className="space-y-4">
@@ -499,6 +532,8 @@ export default function ReviewFormPage() {
             수정 화면에서는 띄우지 않는다: 이미 쓴 리뷰를 덮어쓸 일이 아니다. */}
         {!isEdit && (
           <ReviewImportCard
+            open={importOpen}
+            onClose={() => setImportOpen(false)}
             spiritName={primaryName ?? undefined}
             hasValues={!!(noseNote || tasteNote || finishNote)}
             onApply={applyImportedReview}
@@ -562,6 +597,7 @@ export default function ReviewFormPage() {
         )}
 
         {/* 향 */}
+        <div className={importedRing('nose')} onClick={() => dismissImported('nose')}>
         <Controller
           name="noseScore"
           control={control}
@@ -588,8 +624,10 @@ export default function ReviewFormPage() {
             />
           )}
         />
+        </div>
 
         {/* 맛 */}
+        <div className={importedRing('taste')} onClick={() => dismissImported('taste')}>
         <Controller
           name="tasteScore"
           control={control}
@@ -616,8 +654,10 @@ export default function ReviewFormPage() {
             />
           )}
         />
+        </div>
 
         {/* 피니시 */}
+        <div className={importedRing('finish')} onClick={() => dismissImported('finish')}>
         <Controller
           name="finishScore"
           control={control}
@@ -644,6 +684,7 @@ export default function ReviewFormPage() {
             />
           )}
         />
+        </div>
 
         {/* 총점 미리보기 + 총평 */}
         <div className="md:grid md:grid-cols-[180px_1fr] md:gap-5 md:items-start space-y-4 md:space-y-0">
@@ -666,7 +707,7 @@ export default function ReviewFormPage() {
             name="comment"
             control={control}
             render={({ field }) => (
-              <div>
+              <div className={importedRing('comment')} onClick={() => dismissImported('comment')}>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   {t('review.overall')}{' '}
                   <span className="text-neutral-400 font-normal text-xs">({t('review.overallHint')})</span>

@@ -931,8 +931,10 @@
     "import": {
       "title": "Import my review from elsewhere",
       "noSaveBadge": "Nothing is saved",
-      "collapse": "Collapse",
-      "expand": "Expand",
+      "experimental": "Beta",
+      "openLabel": "Import my review from elsewhere (experimental)",
+      "close": "Close",
+      "experimentalNote": "This is an experimental feature. Review formats vary a lot, so it may not recognise yours — when that happens nothing is filled in and we just tell you why.",
       "clear": "Clear",
       "description": "Paste a review you wrote yourself on DCInside, Arca.live or Naver Cafe and we will fill in the nose, palate, finish and overall fields. Check everything before you submit.",
       "tabPaste": "Paste text",
@@ -963,6 +965,8 @@
         "empty": "The fetched post was empty. Please copy the text and paste it instead."
       },
       "warn": {
+        "notFound": "This field was not found in the text. Please fill it in yourself.",
+        "duplicated": "The same section appears twice; only the last one was imported. Please check it.",
         "truncated": "Trimmed to {{max}} characters.",
         "tooShort": "Under {{min}} characters, so it cannot be submitted as is. Please add more.",
         "overallMissing": "No overall section was found. Please write one yourself.",
@@ -1062,6 +1066,8 @@
     "aromaSearchPlaceholder": "Search or type to add custom...",
     "aromaNoMatch": "No match — press Add to save as custom",
     "aromaProfile": {
+        "expand": "Show aroma profile",
+        "collapse": "Hide aroma profile",
       "byReviewer": "{{nickname}}'s aroma profile",
       "title": "Aroma Profile",
       "add": "+ Profile",
@@ -1082,8 +1088,6 @@
       "removeAxisConfirm": "Removing this aroma leaves fewer than 3 profile axes, so this profile will also be deleted. Continue?",
         "textAlternative": "Aroma intensity list",
         "itemValue": "{{aroma}} intensity {{intensity}}, {{label}}",
-        "expand": "Show aroma profile",
-        "collapse": "Hide aroma profile",
         "phase": {
         "NOSE": "Nose",
         "PALATE": "Taste",

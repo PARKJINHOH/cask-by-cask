@@ -52,8 +52,13 @@ export interface ParseContext {
 
 type Section = 'NOSE' | 'PALATE' | 'FINISH' | 'OVERALL' | 'SCORE' | 'IGNORE'
 
-/** 향·맛·피니시 — 리뷰 폼의 노트 세 칸에 대응하는 구간. */
-const PHASE_SECTIONS: ReadonlySet<Section> = new Set<Section>(['NOSE', 'PALATE', 'FINISH'])
+/** 향·맛·피니시 — 리뷰 폼의 노트 세 칸에 대응하는 구간. 화면에 보이는 순서다. */
+const PHASE_ORDER = ['NOSE', 'PALATE', 'FINISH'] as const
+const PHASE_SECTIONS: ReadonlySet<Section> = new Set<Section>(PHASE_ORDER)
+/** 구간 → 폼 위치. 경고를 어느 칸 옆에 보여 줄지 정한다. */
+const PHASE_FIELD: Record<(typeof PHASE_ORDER)[number], ImportField> = {
+  NOSE: 'nose', PALATE: 'taste', FINISH: 'finish',
+}
 
 interface LabelDef {
   text: string
@@ -77,7 +82,10 @@ const LABELS: LabelDef[] = [
   { text: '노즈', section: 'NOSE' },
   { text: '노징', section: 'NOSE' },
   { text: '아로마', section: 'NOSE' },
+  { text: 'Aroma', section: 'NOSE' },
+  { text: '향기', section: 'NOSE' },
   { text: '향', section: 'NOSE' },
+  { text: '코', section: 'NOSE' },
   { text: 'N', section: 'NOSE' },
   // 맛
   { text: 'Palate', section: 'PALATE', glued: true },
@@ -85,8 +93,11 @@ const LABELS: LabelDef[] = [
   { text: 'Taste', section: 'PALATE' },
   { text: '팔레이트', section: 'PALATE' },
   { text: '팔레트', section: 'PALATE' },
+  { text: '테이스트', section: 'PALATE' },
   { text: '미각', section: 'PALATE' },
+  { text: '구개', section: 'PALATE' },
   { text: '맛', section: 'PALATE' },
+  { text: '혀', section: 'PALATE' },
   { text: '입', section: 'PALATE' },
   { text: 'T', section: 'PALATE' },
   // 아마하간 리뷰가 팔레트 자리에 `노트 :` 를 썼다. 향 노트 나열과 헷갈려 weak 로 둔다.
@@ -100,6 +111,10 @@ const LABELS: LabelDef[] = [
   { text: '피니시', section: 'FINISH' },
   { text: '여운', section: 'FINISH' },
   { text: '후미', section: 'FINISH' },
+  { text: '끝맛', section: 'FINISH' },
+  { text: '뒷맛', section: 'FINISH' },
+  { text: '애프터', section: 'FINISH' },
+  { text: '끝', section: 'FINISH' },
   // `목 넘김 및 여운:` 처럼 목넘김과 묶어 쓰는 사람이 있다. 조사가 붙은 `목넘김도 부드럽다`는
   // glued 를 켜지 않아 걸리지 않는다.
   { text: '목 넘김 및 여운', section: 'FINISH' },
@@ -117,6 +132,14 @@ const LABELS: LabelDef[] = [
   { text: '종합', section: 'OVERALL' },
   { text: '마무리', section: 'OVERALL' },
   { text: '소감', section: 'OVERALL' },
+  { text: '한줄요약', section: 'OVERALL' },
+  { text: '요약', section: 'OVERALL' },
+  { text: '정리', section: 'OVERALL' },
+  { text: '느낀점', section: 'OVERALL' },
+  { text: '느낌점', section: 'OVERALL' },
+  { text: '느낌', section: 'OVERALL' },
+  { text: 'Conclusion', section: 'OVERALL' },
+  { text: 'Comment', section: 'OVERALL' },
   // 네이버 카페 시음기가 `평.` 한 글자로 총평을 여는 경우가 있다.
   // glued 를 켜지 않으므로 `평소에`·`평가가` 는 걸리지 않는다(`평점` 은 더 긴 라벨이라 먼저 잡힌다).
   { text: '평', section: 'OVERALL' },
@@ -135,6 +158,7 @@ const LABELS: LabelDef[] = [
   ...(([
     '주종', '증류소', '증류', '병입자', '병입', '숙성년수', '숙성연수', '숙성 년수', '숙성', '년수',
     '지역', '기타', '바틀 컨디션', '바틀컨디션', '컨디션', 'Spec',
+    '제품명', '제품', '구입처', '구매처', '판매처', '생산국',
     '도수', 'ABV', '용량', '가격', '캐스크', '병 상태', '병상태', '상태', '스펙',
     '출시 수량', '출시수량', '원산지', '원재료', '테이스팅 잔', '테이스팅잔',
     '외관', '색상', '색', '레그', '여담', '참고', '바틀', '보틀', '샘플 번호', '샘플번호',
@@ -158,18 +182,27 @@ const SORTED_LABELS = [...LABELS].sort((a, b) => b.text.length - a.text.length)
 /** `결론` 계열은 구간별 소감(`총평.`)이 여러 번 나오는 글에서 진짜 총평을 가려낸다. */
 const CONCLUSION_LABELS = new Set(['결론', 'Verdict'])
 
-const DECORATION = '[\\s\\[\\(【《<※▶▷■◆●▪◦•‣⦁・·*→>]'
+/**
+ * 라벨 앞에 붙는 장식.
+ *
+ * 사람마다 취향이 제각각이라 넓게 잡는다 — 불릿(`■ ▶ •`), 괄호(`[ ( 【 《 <`),
+ * 표 구분자(`|`), 번호(`1.` `2)`), 이모지(`🥃 향:`)까지 실제로 쓰인다.
+ */
+const DECORATION = '(?:[\\s\\[\\(【《<※▶▷■◆●▪◦•‣⦁・·*→>|#]|\\d{1,2}[.)]|\\p{Extended_Pictographic}|\\uFE0F)'
 /**
  * 라벨과 본문을 가르는 문자.
  *
- * `<향>` `노즈)` `피니쉬? :` 처럼 닫는 기호나 물음표로 끝내는 글이 실제로 있어
- * 여는 기호만큼이나 넓게 잡는다.
+ * `<향>` `노즈)` `피니쉬? :` `향~` `향 = ` 처럼 닫는 기호·물음표·물결·등호로
+ * 넘어가는 글이 실제로 있어 여는 기호만큼이나 넓게 잡는다.
+ * 한글 자모(`향ㅋㅋ`)도 여기 넣는다 — 자모 나열로 시작하는 낱말은 없다.
  */
-const SEPARATOR = '[:：\\-–—.)\\]>》】?!]'
+const SEPARATOR = '[:：\\-–—.)\\]>》】?!*~=|\\u3131-\\u318E]'
 /** 라벨 뒤 첫 글자가 여기 속하면 라벨로 인정한다(공백·구분자·여는 괄호). */
-const BOUNDARY = new RegExp(`^[\\s(（]|^${SEPARATOR}`)
-/** 라벨과 본문 사이의 구분자 묶음 — `? : `, `: -. ` 처럼 여러 개가 겹친다. */
-const SEPARATOR_RUN = new RegExp(`^(?:\\s*${SEPARATOR}){0,4}\\s*`)
+const BOUNDARY = new RegExp(`^[\\s(（]|^${SEPARATOR}`, 'u')
+/** 라벨과 본문 사이의 구분자 묶음 — `? : `, `: -. `, `ㅋㅋ ` 처럼 여러 개가 겹친다. */
+const SEPARATOR_RUN = new RegExp(`^(?:\\s*${SEPARATOR}){0,6}\\s*`, 'u')
+/** 라벨을 감싼 장식이 뒤에도 붙는 경우 — `■ 향 ■`, `| 향 |` */
+const TRAILING_DECORATION = /[\s*|■◆●▪▶◀◇□★☆~=-]+$/
 
 // ── 전처리 ───────────────────────────────────────────────────────
 
@@ -234,7 +267,7 @@ interface Hit {
  */
 function matchLabel(line: string): Omit<Hit, 'index'> | null {
   const opener = line.match(/^\s*([[(【《])/)?.[1]
-  const stripped = line.replace(new RegExp(`^(?:${DECORATION}|-{1,3})+`), '')
+  const stripped = line.replace(new RegExp(`^(?:${DECORATION}|-{1,3})+`, 'u'), '')
   if (!stripped) return null
 
   for (const def of SORTED_LABELS) {
@@ -251,17 +284,41 @@ function matchLabel(line: string): Omit<Hit, 'index'> | null {
       after = after.slice(paren[0].length)
     }
 
-    // 한글 라벨에 영문 이름을 나란히 적는 표기 — `향(Nose)`, `피니쉬(Finish)`.
-    after = after.replace(/^\s*\(\s*[A-Za-z][A-Za-z0-9\s/]{0,18}\)/, '')
+    // 라벨 뒤 별점 — `향 ★★★★☆`
+    if (parenScore == null && PHASE_SECTIONS.has(def.section)) {
+      const stars = after.match(/^\s*([★☆]{3,7})/)
+      if (stars) {
+        parenScore = clampScore((stars[1].match(/★/g) ?? []).length * 20)
+        if (parenScore != null) after = after.slice(stars[0].length)
+      }
+    }
+
+    // 두 이름을 나란히 적는 표기 — `향(Nose)`, `Nose(향)`, `향/Nose`, `피니시 / Finish`
+    after = after
+      .replace(/^\s*\(\s*[A-Za-z가-힣][A-Za-z0-9가-힣\s/]{0,18}\)/, '')
+      .replace(/^\s*\/\s*[A-Za-z가-힣]{1,12}/, '')
 
     const boundary = after[0]
     if (boundary !== undefined && !BOUNDARY.test(boundary) && !def.glued) continue
 
     // 구분자·공백을 걷어 내고 남은 것이 같은 줄에 딸린 본문이다.
-    let rest = after.replace(SEPARATOR_RUN, '').trim()
+    const consumed = after.match(SEPARATOR_RUN)?.[0] ?? ''
+    /** 공백 말고 진짜 구분자(`:`·`-`·`)`)가 있었는가 — 스펙 줄 판정에 쓴다. */
+    const hasExplicitSeparator = /\S/.test(consumed)
+    let rest = after.slice(consumed.length).trim()
     // `[ 향 : 레드베리, … 후추]` 처럼 라벨과 본문을 통째로 괄호에 넣는 글이 있다.
     // 여는 기호를 장식으로 걷어 냈으면 짝이 되는 닫는 기호도 본문에서 뺀다.
     if (opener) rest = rest.replace(new RegExp(`\\s*${CLOSERS[opener]}$`), '').trim()
+    // `■ 향 ■`, `| 향 |`, `*향*` 처럼 라벨을 양쪽에서 감싼 장식은 뒤에도 걷어 낸다.
+    rest = rest.replace(TRAILING_DECORATION, '').trim()
+
+    // 스펙 라벨은 값을 적어 두는 칸에만 쓴다.
+    //
+    // `가격`·`색`·`상태` 같은 말은 본문 첫머리에도 흔히 온다. 구분자 없이 공백만으로
+    // 이어질 때는 <b>뒤에 값이 오는지</b>로 가른다 — `ABV 55.4%`·`Distillery Suzaki` 는
+    // 스펙이지만 `가격 생각하면 훌륭하다` 는 총평 본문이다. 이걸 안 가리면 문장이 통째로 사라진다.
+    if (def.section === 'IGNORE' && !hasExplicitSeparator
+      && rest !== '' && !/^[\d(（A-Za-z]/.test(rest)) continue
 
     // 괄호 없이 라벨 바로 뒤에 점수를 적는 템플릿 — `NOSE 86.00 포도, 메탈릭…`, `N 88 버터…`
     // 두세 자리 수에 공백이 따라올 때만 본다. `향: 3가지 과일`·`F: 12년 숙성` 은 걸리지 않는다.
@@ -555,22 +612,34 @@ export function parseReviewText(raw: string, ctx: ParseContext = {}): ReviewImpo
   const repeated = ['NOSE', 'PALATE', 'FINISH'].filter((s) => countOf(s as Section) > 1)
   if (repeated.length >= 2) return empty('comparison', 'labelRepeated')
 
-  const hasAllPhases = countOf('NOSE') === 1 && countOf('PALATE') === 1 && countOf('FINISH') === 1
-  if (!hasAllPhases && numberedItemCount(body) >= 2) return empty('comparison', 'numberedList')
+  const foundPhases = PHASE_ORDER.filter((section) => countOf(section) > 0)
+  if (foundPhases.length === 0 && numberedItemCount(body) >= 2) {
+    return empty('comparison', 'numberedList')
+  }
 
   const blocks = sliceBlocks(lines, hits)
   if (hasRepeatedSubLabels(blocks.sections)) return empty('comparison', 'subLabels')
 
-  // ── 향·맛·피니시가 다 있어야 자동으로 채운다 ──
-  if (!hasAllPhases) return empty('unlabeled', 'missingLabels')
+  // ── 하나도 못 찾으면 손댈 것이 없다 ──
+  // 하나라도 찾았으면 <b>찾은 것만</b> 채우고 나머지 칸은 비워 둔 채 알린다.
+  // 전부 거절하면 세 칸을 다 다시 쓰게 되는데, 두 칸이라도 채워 주는 편이 낫다.
+  if (foundPhases.length === 0) return empty('unlabeled', 'missingLabels')
+  for (const section of PHASE_ORDER) {
+    const count = countOf(section)
+    if (count === 0) warnings.push({ field: PHASE_FIELD[section], code: 'notFound' })
+    // 한 구간만 두 번인 글은 오타일 때가 많다(F 를 P 로 적음). 마지막 것만 남는다고 알린다.
+    else if (count > 1) warnings.push({ field: PHASE_FIELD[section], code: 'duplicated' })
+  }
 
   if (inlineFallback) warnings.push({ field: 'general', code: 'inlineFallback' })
 
-  // 총평 라벨이 없으면 피니시 뒤 마무리 문단을 총평으로 뗀다.
-  if (!blocks.conclusion) {
-    const split = splitTrailingOverall(blocks.sections.get('FINISH') ?? '')
+  // 총평 라벨이 없으면 <b>문서상 마지막 구간</b> 뒤의 마무리 문단을 총평으로 뗀다.
+  // 피니시가 없는 글도 있으므로 FINISH 로 못 박지 않는다.
+  const lastPhase = [...hits].reverse().find((hit) => PHASE_SECTIONS.has(hit.section))?.section
+  if (!blocks.conclusion && lastPhase) {
+    const split = splitTrailingOverall(blocks.sections.get(lastPhase) ?? '')
     if (split) {
-      blocks.sections.set('FINISH', split.finish)
+      blocks.sections.set(lastPhase, split.finish)
       blocks.conclusion = split.overall
       warnings.push({ field: 'comment', code: 'overallInferred' })
     }

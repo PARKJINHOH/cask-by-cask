@@ -369,11 +369,14 @@ const T10 = `Tamdhu 15 Years old
 
 몇 년 전에 바에서 먹어본 이후 처음으로 사본 탐두다. 셰리하면 응당 생각날만한 그런 맛이 잘 남`
 
-test('T10 — 피니시 라벨이 없으면 직접 입력으로 보낸다', () => {
+test('T10 — 피니시가 없으면 찾은 향·맛만 채우고 피니시는 비워 둔 채 알린다', () => {
   const plan = parseReviewText(T10)
-  assert.equal(plan.outcome, 'unlabeled')
-  assert.equal(plan.reason, 'missingLabels')
-  assert.equal(plan.noseNote, '')
+  assert.equal(plan.outcome, 'ok')
+  assert.ok(plan.noseNote.startsWith('달큰상큼한 포도'))
+  assert.ok(plan.tasteNote.startsWith('포도 계열의 건과일'))
+  assert.equal(plan.finishNote, '')
+  assert.ok(plan.warnings.some((w) => w.field === 'finish' && w.code === 'notFound'))
+  assert.ok(!plan.applied.includes('finish'))
 })
 
 // ── T11: 영문 라벨 (아카라이브 템플턴) ───────────────────────────
@@ -1101,13 +1104,14 @@ const N4 = `[Russell's Reserve Single Barrel]
 
 아쉽게도 재구매는 없을 예정입니다.`
 
-test('N4 — 피니시를 따로 적지 않은 글은 직접 입력으로 보낸다', () => {
+test('N4 — 피니시를 따로 적지 않아도 향·맛·총평은 채운다', () => {
   const plan = parseReviewText(N4)
-  assert.equal(plan.outcome, 'unlabeled')
-  assert.equal(plan.reason, 'missingLabels')
-  assert.equal(plan.noseNote, '')
-  assert.equal(plan.tasteNote, '')
-  assert.deepEqual(plan.applied, [])
+  assert.equal(plan.outcome, 'ok')
+  assert.ok(plan.noseNote.startsWith('다 아는 그 향'))
+  assert.ok(plan.tasteNote.startsWith('캐러멜과 토피의'))
+  assert.equal(plan.finishNote, '')
+  assert.ok(plan.comment.includes('와일드터키 101을 좀 더'))
+  assert.ok(plan.warnings.some((w) => w.field === 'finish' && w.code === 'notFound'))
 })
 
 test('N4 — Non-Chill Filtered 는 N 라벨이 아니다', () => {
@@ -1344,11 +1348,14 @@ P 88 스파이스, 감칠맛, 오렌지
 
 레드 캐스크 벤리네스를 먹어보고 여행가자마자 사온 인생 첫 독병이다.`
 
-test('L5 — 한 구간만 두 번이면 비교가 아니라 라벨 부족으로 본다', () => {
+test('L5 — 한 구간만 두 번이면 비교가 아니라 오타로 보고 찾은 것만 채운다', () => {
   const plan = parseReviewText(L5)
   // 글쓴이가 F 를 P 로 잘못 적은 글이다. `비교 리뷰입니다` 라고 안내하면 엉뚱한 말이 된다.
-  assert.equal(plan.outcome, 'unlabeled')
-  assert.equal(plan.reason, 'missingLabels')
+  assert.equal(plan.outcome, 'ok')
+  assert.ok(plan.noseNote.startsWith('버터, 향신료'))
+  assert.equal(plan.finishNote, '')
+  assert.ok(plan.warnings.some((w) => w.field === 'taste' && w.code === 'duplicated'))
+  assert.ok(plan.warnings.some((w) => w.field === 'finish' && w.code === 'notFound'))
 })
 
 test('두 구간 이상 반복되면 그때는 비교 리뷰다', () => {
@@ -1482,7 +1489,7 @@ test('L8 — `잔에서 올라오는` 은 스펙 라벨이 아니다', () => {
 
 // ── L9: 향·맛만 적고 피니시가 없다 (아카 177299895) ─────────────
 
-test('L9 — 향·맛만 있는 짧은 후기는 직접 입력으로 보낸다', () => {
+test('L9 — 향·맛만 있는 짧은 후기도 그 둘은 채운다', () => {
   const plan = parseReviewText(`주종 : 싱글몰트 위스키/재패니즈 위스키
 증류소 : 닛카 위스키(일본)
 도수 : 45도
@@ -1491,8 +1498,11 @@ test('L9 — 향·맛만 있는 짧은 후기는 직접 입력으로 보낸다',
 맛 : 처음에 상큼달달한 뉘앙스가 나다가 점차 스모키로 바뀜
 
 나름대로 먹을만한 위스키이지만 700ml 1병에 10만원 넘게 주고 살만한가에는 물음표가 많이 뜬다`)
-  assert.equal(plan.outcome, 'unlabeled')
-  assert.equal(plan.reason, 'missingLabels')
+  assert.equal(plan.outcome, 'ok')
+  assert.ok(plan.noseNote.startsWith('처음 따르고 나서는 사과'))
+  assert.ok(plan.tasteNote.includes('상큼달달한 뉘앙스'))
+  assert.equal(plan.finishNote, '')
+  assert.ok(plan.warnings.some((w) => w.field === 'finish' && w.code === 'notFound'))
 })
 
 // ─────────────────────────────────────────────────────────────────
@@ -1684,7 +1694,7 @@ test('M4 — 16500엔·52.5% 를 점수로 읽지 않는다', () => {
 
 // ── M5: 향·맛만 적고 피니시가 없다 (디시 1772484) ───────────────
 
-test('M5 — `향)` `맛)` 만 있는 글은 직접 입력으로 보낸다', () => {
+test('M5 — `향)` `맛)` 만 있어도 찾은 것과 총평은 채운다', () => {
   const plan = parseReviewText(`1792 풀 프루프 62.5%
 
 향)
@@ -1698,8 +1708,12 @@ test('M5 — `향)` `맛)` 만 있는 글은 직접 입력으로 보낸다', () 
 총평:
 할인하면 99000원에 62.5도 BP급 스펙
 저 가격에 구할 수 있으면 사야제. 맛돌이다.`)
-  assert.equal(plan.outcome, 'unlabeled')
-  assert.equal(plan.reason, 'missingLabels')
+  assert.equal(plan.outcome, 'ok')
+  assert.ok(plan.noseNote.startsWith('나무, 시나몬'))
+  assert.ok(plan.tasteNote.startsWith('단맛. 폭력적인 달콤함'))
+  assert.equal(plan.finishNote, '')
+  assert.ok(plan.comment.includes('저 가격에 구할 수 있으면'))
+  assert.ok(plan.warnings.some((w) => w.field === 'finish' && w.code === 'notFound'))
 })
 
 test('`평소에`·`평가` 는 총평 라벨이 아니다', () => {
@@ -1712,6 +1726,228 @@ test('`평소에`·`평가` 는 총평 라벨이 아니다', () => {
 })
 
 // ── 빈 입력 ──────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────
+// 서식 스트레스 (S) — 사람마다 제각각인 표기를 폭넓게 흉내 낸 표.
+//
+// 실제 글에서 배운 어휘·장식·구분자를 조합해 만들었다. 네 칸의 내용은 모두 같으므로
+// <b>어떻게 적어도 같은 결과가 나오는지</b>만 본다. 라벨 어휘를 늘릴 때 여기에 한 줄 추가할 것.
+// ─────────────────────────────────────────────────────────────────
+
+const NOSE_TEXT = '잘 익은 사과와 시나몬이 은은하게 올라온다'
+const TASTE_TEXT = '흑설탕과 다크초콜릿이 두텁게 깔린다'
+const FINISH_TEXT = '오크의 우디함이 길게 남는다'
+const OVERALL_TEXT = '가격 생각하면 훌륭하다'
+
+const STYLES = [
+  ['한글 기본', `향: ${NOSE_TEXT}
+맛: ${TASTE_TEXT}
+피니시: ${FINISH_TEXT}
+총평: ${OVERALL_TEXT}`],
+  ['노즈/팔레트/피니쉬/결론', `노즈: ${NOSE_TEXT}
+팔레트: ${TASTE_TEXT}
+피니쉬: ${FINISH_TEXT}
+결론: ${OVERALL_TEXT}`],
+  ['코/입/끝', `코: ${NOSE_TEXT}
+입: ${TASTE_TEXT}
+끝: ${FINISH_TEXT}
+총평: ${OVERALL_TEXT}`],
+  ['향기/여운/느낀점', `향기: ${NOSE_TEXT}
+맛: ${TASTE_TEXT}
+여운: ${FINISH_TEXT}
+느낀점: ${OVERALL_TEXT}`],
+  ['아로마/테이스트/마무리', `아로마: ${NOSE_TEXT}
+테이스트: ${TASTE_TEXT}
+피니쉬: ${FINISH_TEXT}
+마무리: ${OVERALL_TEXT}`],
+  ['한줄요약', `향: ${NOSE_TEXT}
+맛: ${TASTE_TEXT}
+피니시: ${FINISH_TEXT}
+한줄요약: ${OVERALL_TEXT}`],
+  ['정리', `향: ${NOSE_TEXT}
+맛: ${TASTE_TEXT}
+피니시: ${FINISH_TEXT}
+정리: ${OVERALL_TEXT}`],
+  ['화살표 구분자', `향 > ${NOSE_TEXT}
+맛 > ${TASTE_TEXT}
+피니시 > ${FINISH_TEXT}
+총평 > ${OVERALL_TEXT}`],
+  ['엠대시 구분자', `향 — ${NOSE_TEXT}
+맛 — ${TASTE_TEXT}
+피니시 — ${FINISH_TEXT}
+총평 — ${OVERALL_TEXT}`],
+  ['등호 구분자', `향 = ${NOSE_TEXT}
+맛 = ${TASTE_TEXT}
+피니시 = ${FINISH_TEXT}
+총평 = ${OVERALL_TEXT}`],
+  ['물결 구분자', `향~ ${NOSE_TEXT}
+맛~ ${TASTE_TEXT}
+피니시~ ${FINISH_TEXT}
+총평~ ${OVERALL_TEXT}`],
+  ['구분자 없이 공백만', `향 ${NOSE_TEXT}
+맛 ${TASTE_TEXT}
+피니시 ${FINISH_TEXT}
+총평 ${OVERALL_TEXT}`],
+  ['번호 매김', `1. 향
+${NOSE_TEXT}
+2. 맛
+${TASTE_TEXT}
+3. 피니시
+${FINISH_TEXT}
+4. 총평
+${OVERALL_TEXT}`],
+  ['양쪽 겹장식', `■ 향 ■
+${NOSE_TEXT}
+■ 맛 ■
+${TASTE_TEXT}
+■ 피니시 ■
+${FINISH_TEXT}
+■ 총평 ■
+${OVERALL_TEXT}`],
+  ['검은 괄호', `【향】 ${NOSE_TEXT}
+【맛】 ${TASTE_TEXT}
+【피니시】 ${FINISH_TEXT}
+【총평】 ${OVERALL_TEXT}`],
+  ['별표 강조', `*향* ${NOSE_TEXT}
+*맛* ${TASTE_TEXT}
+*피니시* ${FINISH_TEXT}
+*총평* ${OVERALL_TEXT}`],
+  ['파이프 표', `| 향 | ${NOSE_TEXT} |
+| 맛 | ${TASTE_TEXT} |
+| 피니시 | ${FINISH_TEXT} |
+| 총평 | ${OVERALL_TEXT} |`],
+  ['이모지 머리', `🥃 향: ${NOSE_TEXT}
+👅 맛: ${TASTE_TEXT}
+🔚 피니시: ${FINISH_TEXT}
+📝 총평: ${OVERALL_TEXT}`],
+  ['한영 병기 슬래시', `향/Nose: ${NOSE_TEXT}
+맛/Palate: ${TASTE_TEXT}
+피니시/Finish: ${FINISH_TEXT}
+총평: ${OVERALL_TEXT}`],
+  ['영문에 한글 병기', `Nose(향): ${NOSE_TEXT}
+Palate(맛): ${TASTE_TEXT}
+Finish(피니시): ${FINISH_TEXT}
+Overall(총평): ${OVERALL_TEXT}`],
+  ['초성체 섞임', `향ㅋㅋ ${NOSE_TEXT}
+맛ㅋㅋ ${TASTE_TEXT}
+피니시ㅋㅋ ${FINISH_TEXT}
+총평ㅋㅋ ${OVERALL_TEXT}`],
+  ['들여쓰기', `  향: ${NOSE_TEXT}
+  맛: ${TASTE_TEXT}
+  피니시: ${FINISH_TEXT}
+  총평: ${OVERALL_TEXT}`],
+  ['라벨 뒤 빈 줄', `향
+
+${NOSE_TEXT}
+
+맛
+
+${TASTE_TEXT}
+
+피니시
+
+${FINISH_TEXT}
+
+총평
+
+${OVERALL_TEXT}`],
+]
+
+for (const [name, body] of STYLES) {
+  test(`S 서식 — ${name}`, () => {
+    const plan = parseReviewText(body)
+    assert.equal(plan.outcome, 'ok', `${name}: ${plan.reason ?? ''}`)
+    assert.equal(plan.noseNote, NOSE_TEXT, name)
+    assert.equal(plan.tasteNote, TASTE_TEXT, name)
+    assert.equal(plan.finishNote, FINISH_TEXT, name)
+    assert.equal(plan.comment, OVERALL_TEXT, name)
+  })
+}
+
+test('S 점수 — 라벨 뒤 별점을 100점으로 환산한다', () => {
+  const plan = parseReviewText(`향 ★★★★☆
+${NOSE_TEXT}
+맛 ★★★★☆
+${TASTE_TEXT}
+피니시 ★★★☆☆
+${FINISH_TEXT}
+총평: ${OVERALL_TEXT}`)
+  assert.equal(plan.outcome, 'ok')
+  assert.equal(plan.noseScore, 80)
+  assert.equal(plan.tasteScore, 80)
+  assert.equal(plan.finishScore, 60)
+  assert.equal(plan.noseNote, NOSE_TEXT)
+})
+
+test('S 점수 — 라벨 괄호 안 10점 만점을 환산한다', () => {
+  const plan = parseReviewText(`향 (9/10): ${NOSE_TEXT}
+맛 (8.5/10): ${TASTE_TEXT}
+피니시 (8/10): ${FINISH_TEXT}
+총평: ${OVERALL_TEXT}`)
+  assert.equal(plan.noseScore, 90)
+  assert.equal(plan.tasteScore, 85)
+  assert.equal(plan.finishScore, 80)
+})
+
+test('S 스펙 — `가격 생각하면` 같은 본문을 스펙 줄로 오인하지 않는다', () => {
+  // `가격`·`색`·`상태` 는 스펙 라벨이면서 문장 첫머리에도 흔히 온다.
+  // 구분자 없이 한글이 이어지면 본문이다 — 이걸 못 가리면 문장이 통째로 사라진다.
+  const plan = parseReviewText(`향: ${NOSE_TEXT}
+맛: ${TASTE_TEXT}
+피니시: ${FINISH_TEXT}
+총평:
+가격 생각하면 훌륭하다
+색 하나는 정말 예쁘다`)
+  assert.ok(plan.comment.includes('가격 생각하면 훌륭하다'))
+  assert.ok(plan.comment.includes('색 하나는 정말 예쁘다'))
+})
+
+test('S 스펙 — 구분자나 값이 이어지면 스펙으로 본다', () => {
+  const plan = parseReviewText(`제품명: 글렌알라키 15년
+가격 : 12만원
+ABV 46%
+구입처: 면세점
+
+향: ${NOSE_TEXT}
+맛: ${TASTE_TEXT}
+피니시: ${FINISH_TEXT}
+총평: ${OVERALL_TEXT}`)
+  assert.equal(plan.outcome, 'ok')
+  const all = [plan.noseNote, plan.tasteNote, plan.finishNote, plan.comment].join(' ')
+  assert.ok(!all.includes('12만원'))
+  assert.ok(!all.includes('면세점'))
+  assert.ok(!all.includes('46%'))
+})
+
+// ── applied — 화면이 어느 칸을 강조할지 정하는 계약 ──────────────
+
+test('applied 에는 실제로 채운 칸만 담긴다', () => {
+  const plan = parseReviewText(`향: ${NOSE_TEXT}
+맛: ${TASTE_TEXT}
+총평: ${OVERALL_TEXT}`)
+  assert.equal(plan.outcome, 'ok')
+  // 피니시는 못 찾았으니 강조 대상이 아니다.
+  assert.deepEqual([...plan.applied].sort(), ['comment', 'nose', 'taste'])
+  assert.ok(plan.warnings.some((w) => w.field === 'finish' && w.code === 'notFound'))
+})
+
+test('세 칸을 다 찾으면 applied 에 셋과 총평이 담긴다', () => {
+  const plan = parseReviewText(`향: ${NOSE_TEXT}
+맛: ${TASTE_TEXT}
+피니시: ${FINISH_TEXT}
+총평: ${OVERALL_TEXT}`)
+  assert.deepEqual([...plan.applied].sort(), ['comment', 'finish', 'nose', 'taste'])
+  assert.ok(!plan.warnings.some((w) => w.code === 'notFound'))
+})
+
+test('구분을 하나도 못 찾으면 여전히 아무것도 채우지 않는다', () => {
+  const plan = parseReviewText(`어제 바에서 한 잔 했는데 첫 향이 진짜 좋았다.
+사과랑 시나몬 같은 게 확 올라오고, 마시면 흑설탕 단맛이 두텁게 깔린다.
+끝맛은 오크가 길게 남는데 전체적으로 가격 생각하면 훌륭한 위스키였다.`)
+  assert.equal(plan.outcome, 'unlabeled')
+  assert.equal(plan.reason, 'missingLabels')
+  assert.deepEqual(plan.applied, [])
+})
 
 test('빈 입력은 직접 입력으로 보낸다', () => {
   assert.equal(parseReviewText('').outcome, 'unlabeled')
