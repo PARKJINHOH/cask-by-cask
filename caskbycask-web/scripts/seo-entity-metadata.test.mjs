@@ -541,6 +541,67 @@ test('엔티티별 metadata', async (t) => {
     assert.deepEqual(enCrumbs.map((c) => c.name), ['Home', 'Browse', 'Test Batch 12'])
   })
 
+  // 브랜드 질의(CaskByCask / 캐바캐 / 캐스크바이캐스크)가 착지할 페이지.
+  // 이 페이지가 얇거나 없으면 검색엔진이 브랜드를 이 도메인에 묶을 근거가 사라진다.
+  await t.test('소개: 브랜드 별칭이 서버 HTML 본문에 있고 h1 은 하나다', async () => {
+    const ko = await readBody('/ko/about')
+    assert.equal(ko.status, 200)
+    assert.equal(ko.h1.length, 1)
+    assert.match(ko.h1[0], /캐스크바이캐스크/)
+    assert.match(ko.text, /캐바캐/)
+    assert.match(ko.text, /2026/)
+    for (const href of ['/ko/spirits', '/ko/faq', '/ko/terms', '/ko/inquiry']) {
+      assert.ok(ko.hrefs.includes(href), `${href} 링크 없음`)
+    }
+    assert.ok(ko.hrefs.some((h) => h.includes('instagram.com/caskbycask')))
+
+    const en = await readBody('/en/about')
+    assert.equal(en.h1.length, 1)
+    assert.match(en.h1[0], /캐스크바이캐스크/)
+  })
+
+  await t.test('소개: Organization 전체 노드와 AboutPage 가 서로를 가리킨다', async () => {
+    const { graph } = await readRouteJsonLd('/ko/about')
+    const org = nodeOfType(graph, 'Organization')
+    const about = nodeOfType(graph, 'AboutPage')
+    assert.ok(org, 'Organization 노드가 없으면 mainEntity 참조가 아무것도 가리키지 못한다')
+    assert.equal(org.foundingDate, '2026-06-01')
+    assert.deepEqual(org.alternateName, ['캐바캐', '캐스크바이캐스크'])
+    assert.ok(about)
+    assert.equal(about.mainEntity['@id'], org['@id'])
+  })
+
+  await t.test('홈 Organization: 보강 필드와 리다이렉트 아닌 url', async () => {
+    const { graph } = await readRouteJsonLd('/ko')
+    const org = nodeOfType(graph, 'Organization')
+    assert.ok(org)
+    assert.equal(org.url, `${SITE}/ko`, '루트(/)는 308 리다이렉트라 엔티티 대표 URL 로 부적절')
+    assert.equal(org.mainEntityOfPage, `${SITE}/ko/about`)
+    assert.equal(org.sameAs.length, 2, '보유하지 않은 계정을 sameAs 에 넣으면 안 된다')
+    assert.ok(Array.isArray(org.knowsAbout) && org.knowsAbout.includes('위스키'))
+  })
+
+  // 사업자의 비공개 결정(운영자 실명·이메일·주소 비공개)을 코드로 고정한다.
+  // 스키마를 늘리다 무심코 되돌리기 쉬운 종류의 결정이라 테스트로 막는다.
+  await t.test('Organization: 개인 정보 필드가 없다', async () => {
+    for (const path of ['/ko', '/ko/about']) {
+      const { graph } = await readRouteJsonLd(path)
+      const org = nodeOfType(graph, 'Organization')
+      for (const field of ['email', 'founder', 'address', 'legalName', 'telephone']) {
+        assert.equal(org[field], undefined, `${path}: Organization.${field} 가 노출됐다`)
+      }
+      assert.equal(org.contactPoint?.email, undefined, `${path}: contactPoint 에 이메일이 들어갔다`)
+    }
+  })
+
+  // 별칭이 한 페이지에만 있으면 "이 사이트 이름이 캐스크바이캐스크" 라는 사이트 레벨 신호가 안 된다.
+  await t.test('브랜드 별칭이 모든 색인 대상 페이지의 서버 HTML 에 있다', async () => {
+    for (const path of ['/ko', '/ko/about', '/ko/faq', '/ko/producers/7']) {
+      const body = await readBody(path)
+      assert.match(body.text, /캐스크바이캐스크/, `${path} 서버 HTML 에 별칭이 없다`)
+    }
+  })
+
   await t.test('어떤 엔티티 페이지도 홈과 title 이 같지 않다', async () => {
     const home = await readHead('/ko')
     const paths = [
@@ -551,6 +612,7 @@ test('엔티티별 metadata', async (t) => {
       '/ko/taste-trees/t/abc123',
       // DEFAULT_ROUTE_METADATA 에 매핑이 없으면 홈 문구를 그대로 물려받아 title 이 겹쳤다.
       '/ko/social',
+      '/ko/about',
     ]
     const titles = []
     for (const path of paths) {

@@ -88,6 +88,8 @@ class SitemapServiceTest {
         assertThat(xml).contains("/ko/taste-trees", "/en/taste-trees");
         assertThat(xml).contains("/ko/price-tracker", "/en/price-tracker");
         assertThat(xml).contains("/ko/operation-policy", "/en/operation-policy");
+        // 소개는 브랜드 엔티티를 정의하는 페이지다. 색인 대상에서 빠지면 브랜드 질의가 착지할 곳이 없다.
+        assertThat(xml).contains("/ko/about", "/en/about");
         // 영상·채널을 noindex 로 내린 뒤 /youtube 허브는 유일한 색인 대상 유튜브 주소이자
         // 영상 페이지로 가는 유일한 발견 경로다. 정리하다 함께 빠지지 않도록 고정한다.
         assertThat(xml).contains("/ko/youtube", "/en/youtube");
