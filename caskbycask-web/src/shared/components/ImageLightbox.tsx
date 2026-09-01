@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 
 interface Props {
   images: string[]
+  /** images 와 같은 순서의 이미지 라벨. 해당 항목이 비어 있으면 뱃지를 그리지 않는다 */
+  labels?: (string | null)[]
   initialIndex?: number
   open: boolean
   onClose: () => void
@@ -18,7 +20,7 @@ const SYNTHETIC_DOUBLE_CLICK_GUARD_MS = 500
 
 type View = { scale: number; tx: number; ty: number }
 
-export default function ImageLightbox({ images, initialIndex = 0, open, onClose }: Props) {
+export default function ImageLightbox({ images, labels, initialIndex = 0, open, onClose }: Props) {
   const { t } = useTranslation()
   const [current, setCurrent] = useState(initialIndex)
   const [view, setView] = useState<View>({ scale: 1, tx: 0, ty: 0 })
@@ -337,6 +339,17 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                   </button>
                 )}
               </div>
+
+              {/* 어느 에디션 이미지인지 — 갤러리 큰 이미지의 뱃지와 같은 위치·스타일 */}
+              {labels?.[current] && (
+                <span className={`absolute left-3 z-20 max-w-[calc(100vw-6rem)] truncate rounded-full
+                  bg-neutral-900/40 backdrop-blur-sm px-2 py-0.5 text-[10px] leading-4 font-medium
+                  text-white ring-1 ring-white/10 pointer-events-none sm:left-5 ${
+                  images.length > 1 ? 'bottom-24 sm:bottom-28' : 'bottom-3 sm:bottom-5'
+                }`}>
+                  {labels[current]}
+                </span>
+              )}
 
               {/* 카운터 + 썸네일 스트립 */}
               {images.length > 1 && (

@@ -1438,6 +1438,13 @@ interface SpiritFormFieldsProps {
   onCategorySelect?: (cat: SpiritCategory) => void
   /** 좌측 컬럼 하단에 끼워 넣을 슬롯 (이미지 관리 카드 등) */
   imageSlot?: React.ReactNode
+  /**
+   * 하위 에디션 카드 안에 끼워 넣을 슬롯 (에디션 대표 이미지 등).
+   *
+   * <p>이 폼은 사용자 술 등록 요청 화면과도 공유된다 — 관리자 전용 API 훅을 이 파일 안에
+   * 두면 사용자 화면에서 관리자 엔드포인트를 호출하게 되므로, 호출부가 슬롯으로 넣어 준다.
+   */
+  variantImageSlot?: (variant: CreateVariantRequest, index: number) => React.ReactNode
   /** 외부 흐름에서 특정 하위 에디션을 바로 열어야 할 때 사용 */
   activeVariantIndex?: number | null
   /** 생산자 선택 컴포넌트 교체 (미지정 시 AdminProducerSelector) */
@@ -1452,6 +1459,7 @@ interface SpiritFormFieldsProps {
 
 export default function SpiritFormFields({
   form, categoryLocked, identityLocked = false, onCategorySelect, imageSlot,
+  variantImageSlot,
   activeVariantIndex, producerSelector, onCreateProducer, bottomSlot,
   admin = true,
 }: SpiritFormFieldsProps) {
@@ -2114,6 +2122,7 @@ export default function SpiritFormFields({
                     onUpdateWhisky={(updates) => form.updateVariantWhisky(activeVariantIdx, updates)}
                     onUpdateWine={(updates) => form.updateVariantWine(activeVariantIdx, updates)}
                     requireAge={requireProduction}
+                    imageSlot={variantImageSlot?.(form.variants[activeVariantIdx], activeVariantIdx)}
                   />
                 ) : (
                   <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/50 py-8 text-center text-neutral-400 text-sm">
@@ -2433,6 +2442,8 @@ interface VariantItemCardProps {
   onUpdateWine: (updates: Partial<WineDetailRequest>) => void
   /** 숙성 연수·NAS 택1 을 필수로 받는지 (관리자 등록/수정). */
   requireAge?: boolean
+  /** 에디션 대표 이미지 입력 등 — 호출부가 넣어 주는 슬롯 */
+  imageSlot?: React.ReactNode
 }
 
 function VariantItemCard({
@@ -2445,6 +2456,7 @@ function VariantItemCard({
   onUpdateWhisky,
   onUpdateWine,
   requireAge = false,
+  imageSlot,
 }: VariantItemCardProps) {
   const whiskyFormValue = toWhiskyDetailForm(variant.whiskyDetail)
 
@@ -2490,6 +2502,8 @@ function VariantItemCard({
         <h4 className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
           {category === 'WINE' ? '빈티지 기본 정보' : '에디션 기본 정보'}
         </h4>
+
+        {imageSlot}
         
         {category !== 'WINE' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

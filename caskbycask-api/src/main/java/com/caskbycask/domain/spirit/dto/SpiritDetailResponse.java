@@ -51,8 +51,10 @@ public record SpiritDetailResponse(
         Integer scoredReviewCount,
         @Schema(description = "공개 상태")
         SpiritStatus status,
-        @Schema(description = "이미지 목록")
+        @Schema(description = "이미지 목록 — 이 주류의 이미지(에디션이면 없을 때 마스터로 폴백)")
         List<SpiritImageResponse> images,
+        @Schema(description = "에디션 그룹 전체 이미지 (마스터 + 모든 ACTIVE 하위 에디션). 상세 갤러리 전용")
+        List<SpiritImageResponse> groupImages,
         @Schema(description = "등록 일시")
         LocalDateTime createdAt,
         @Schema(description = "최종 수정 일시")
@@ -126,11 +128,12 @@ public record SpiritDetailResponse(
 ) {
     /** 상세 없이 기본 정보만 반환 (등록·수정 응답) — 이 경로는 생산자 로고 목록을 조회하지 않는다. */
     public static SpiritDetailResponse of(Spirit spirit, List<SpiritImageResponse> images) {
-        return of(spirit, images, List.of(), null, null, null, null, null, List.of());
+        return of(spirit, images, List.of(), List.of(), null, null, null, null, null, List.of());
     }
 
     /** 전체 상세 포함 응답 (GET /api/spirits/{id}) */
     public static SpiritDetailResponse of(Spirit spirit, List<SpiritImageResponse> images,
+                                           List<SpiritImageResponse> groupImages,
                                            List<ProducerLogoResponse> producerLogoImages,
                                            SpiritCommonDetailResponse commonDetail,
                                            WhiskyDetailResponse whiskyDetail,
@@ -159,6 +162,7 @@ public record SpiritDetailResponse(
                 spirit.getScoredReviewCount(),
                 spirit.getStatus(),
                 images,
+                groupImages,
                 spirit.getCreatedAt(),
                 spirit.getUpdatedAt(),
                 commonDetail,

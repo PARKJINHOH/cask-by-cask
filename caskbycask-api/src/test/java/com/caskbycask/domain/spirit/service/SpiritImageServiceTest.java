@@ -5,6 +5,7 @@ import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
+import com.caskbycask.domain.spirit.repository.SpiritImageVariantRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -39,6 +40,9 @@ class SpiritImageServiceTest {
 
     @Mock
     private SpiritImageRepository spiritImageRepository;
+
+    @Mock
+    private SpiritImageVariantRepository spiritImageVariantRepository;
 
     @Mock
     private WebpConversionService webpConversionService;

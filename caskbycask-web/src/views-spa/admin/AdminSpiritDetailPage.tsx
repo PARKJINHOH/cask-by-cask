@@ -30,6 +30,8 @@ import type {
 } from '@/domain/admin/types/admin.types'
 import SpiritFormFields, { useSpiritForm, CARD } from '@/domain/admin/components/SpiritFormFields'
 import AdminSpiritReviewPanel from '@/domain/admin/components/AdminSpiritReviewPanel'
+import VariantAssignedImagesPreview from '@/domain/admin/components/VariantAssignedImagesPreview'
+import SpiritImageEditionsModal from '@/domain/admin/components/SpiritImageEditionsModal'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import useIsDesktop from '@/shared/hooks/useIsDesktop'
@@ -140,7 +142,13 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 // ── 이미지 섹션 ──────────────────────────────────────────────────
-function SpiritImageSection({ spiritId, images }: { spiritId: number; images: AdminSpiritImageItem[] }) {
+function SpiritImageSection({ spiritId, images, variants, onError }: {
+  spiritId: number
+  images: AdminSpiritImageItem[]
+  /** 하위 에디션 목록. 비어 있으면 에디션 지정 UI 를 렌더하지 않는다 */
+  variants: AdminSpiritVariant[]
+  onError: (message: string) => void
+}) {
   // 순서 변경(HTML5 드래그)과 캔버스 이미지 편집은 PC 전용이다.
   // 모바일에서도 추가·삭제·대표 지정은 그대로 쓸 수 있다.
   const isDesktop = useIsDesktop()
@@ -155,6 +163,7 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
   const [isDragOver, setIsDragOver] = useState(false)
   const dragIndexRef = useRef<number | null>(null)
   const [editingImage, setEditingImage] = useState<AdminSpiritImageItem | null>(null)
+  const [assigningImage, setAssigningImage] = useState<AdminSpiritImageItem | null>(null)
 
   const handleEditSave = async (file: File) => {
     if (!editingImage) return
@@ -205,6 +214,14 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
   }, [images])
 
   const imageUrls = order.map((img) => img.imageUrl)
+
+  // 타일 아래 버튼은 좁다 — 전체 나열 대신 "배치 11 외 1" 로 줄인다.
+  const assignedSummary = (img: AdminSpiritImageItem) => {
+    const refs = img.variants ?? []
+    if (refs.length === 0) return null
+    const first = refs[0].variantValue?.trim() || refs[0].variantValueEn?.trim() || `#${refs[0].spiritId}`
+    return refs.length > 1 ? `${first} 외 ${refs.length - 1}` : first
+  }
 
   const uploadFiles = async (files: File[]) => {
     if (files.length === 0) return
@@ -325,8 +342,8 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
         {/* 모바일은 2열 — 3열이면 타일이 좁아 번호·순서·대표 버튼이 서로 겹친다 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           {order.map((img, idx) => (
+            <div key={img.id} className="space-y-1">
             <div
-              key={img.id}
               draggable={isDesktop}
               onDragStart={() => { dragIndexRef.current = idx }}
               onDragOver={(e) => e.preventDefault()}
@@ -427,6 +444,24 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
                 >→</button>
               </div>
             </div>
+
+            {/* 에디션 지정 — 타일 안은 번호·대표·편집·삭제·순서로 이미 꽉 차 있어 바깥에 둔다.
+                에디션이 없는 주류에는 아예 그리지 않는다. */}
+            {variants.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAssigningImage(img)}
+                title="이 이미지를 쓰는 에디션 지정"
+                className={`w-full truncate rounded-md border px-1.5 py-1 text-[11px] font-medium transition-colors ${
+                  assignedSummary(img)
+                    ? 'border-amber-300 bg-amber-50 text-amber-700 hover:border-amber-400'
+                    : 'border-dashed border-neutral-300 text-neutral-400 hover:border-amber-400 hover:text-amber-700'
+                }`}
+              >
+                {assignedSummary(img) ?? '에디션 지정'}
+              </button>
+            )}
+            </div>
           ))}
         </div>
         </>
@@ -438,6 +473,17 @@ function SpiritImageSection({ spiritId, images }: { spiritId: number; images: Ad
         open={lightboxIndex >= 0}
         onClose={() => setLightboxIndex(-1)}
       />
+
+      {assigningImage && (
+        <SpiritImageEditionsModal
+          open={!!assigningImage}
+          onClose={() => setAssigningImage(null)}
+          spiritId={spiritId}
+          image={order.find((img) => img.id === assigningImage.id) ?? assigningImage}
+          variants={variants}
+          onError={onError}
+        />
+      )}
 
       {editingImage && (
         <ImageEditorModal
@@ -606,6 +652,12 @@ export default function AdminSpiritDetailPage() {
         navigate(location.pathname, { replace: true, state: { returnTo: listReturnTo } })
       } else {
         showToast('저장되었습니다.', 'success')
+        // 프리필은 한 번만 도는데(initialized), 방금 추가한 에디션은 폼 상태의 id 가 아직
+        // undefined 다. 그대로 두면 에디션 대표 이미지 슬롯이 새로고침 전까지
+        // "저장 후 등록 가능"에 머문다. 저장 직후라 미저장 편집분이 없어 재프리필이 안전하다.
+        if (form.variants.some((variant) => variant.id == null)) {
+          setInitialized(false)
+        }
       }
     } catch {
       showToast(
@@ -774,7 +826,12 @@ export default function AdminSpiritDetailPage() {
               </div>
             </section>
           )}
-          <SpiritImageSection spiritId={spiritId} images={spirit.images} />
+          <SpiritImageSection
+            spiritId={spiritId}
+            images={spirit.images}
+            variants={spirit.variants ?? []}
+            onError={(message) => showToast(message, 'error')}
+          />
 
 
 
@@ -784,6 +841,14 @@ export default function AdminSpiritDetailPage() {
             form={form}
             categoryLocked
             activeVariantIndex={approvalVariantIndex >= 0 ? approvalVariantIndex : null}
+            // 지정 결과는 이미 spirit.images 에 실려 온다 — 에디션 탭에서 추가 조회가 필요 없다.
+            variantImageSlot={(variant) => (
+              <VariantAssignedImagesPreview
+                unsaved={variant.id == null}
+                images={(spirit.images ?? []).filter((img) =>
+                  (img.variants ?? []).some((ref) => ref.spiritId === variant.id))}
+              />
+            )}
           />
         </>
       ) : (

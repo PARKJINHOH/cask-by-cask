@@ -254,11 +254,20 @@ export interface AdminSpiritItem {
   status: SpiritStatus
 }
 
+import type { SpiritImageVariantRef } from '@/domain/spirit/types/spirit.types'
+
 export interface AdminSpiritImageItem {
   id: number
   imageUrl: string
   isPrimary: boolean
   sortOrder: number
+  /** 이 이미지를 등록한 주류 ID (보통 마스터) */
+  spiritId?: number | null
+  /**
+   * 이 이미지를 쓰는 에디션들. 비어 있으면 공통 이미지 — 화면에 뱃지가 뜨지 않는다.
+   * 이미지 1장을 여러 에디션이 공유할 수 있다(같은 라벨 디자인의 배치들).
+   */
+  variants?: SpiritImageVariantRef[]
 }
 
 /** 관리자 연관 술(다른 배치·병입) 목록 항목 — origin: 이름 자동(AUTO) / 수동 추가(MANUAL) */

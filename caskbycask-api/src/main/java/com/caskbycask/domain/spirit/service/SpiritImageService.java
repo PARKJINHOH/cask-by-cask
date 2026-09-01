@@ -4,6 +4,7 @@ import com.caskbycask.domain.spirit.dto.SpiritImageResponse;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
+import com.caskbycask.domain.spirit.repository.SpiritImageVariantRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -44,6 +45,7 @@ public class SpiritImageService {
 
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
+    private final SpiritImageVariantRepository spiritImageVariantRepository;
     private final WebpConversionService webpConversionService;
 
     @Transactional
@@ -74,6 +76,8 @@ public class SpiritImageService {
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_IMAGE_NOT_FOUND));
 
         String imageUrl = image.getImageUrl();
+        // 이미지에 걸린 에디션 지정도 함께 지운다 — FK 가 없어 두면 고아 행이 남는다.
+        spiritImageVariantRepository.deleteBySpiritImageId(imageId);
         spiritImageRepository.delete(image);
         deleteFilesAfterCommit(List.of(imageUrl));
     }
@@ -89,6 +93,8 @@ public class SpiritImageService {
                 .map(SpiritImage::getImageUrl)
                 .toList();
 
+        spiritImageVariantRepository.deleteBySpiritImageIdIn(
+                images.stream().map(SpiritImage::getId).toList());
         spiritImageRepository.deleteAll(images);
         deleteFilesAfterCommit(imageUrls);
     }

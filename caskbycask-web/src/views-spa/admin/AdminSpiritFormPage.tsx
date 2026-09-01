@@ -7,6 +7,7 @@ import ImageLightbox from '@/shared/components/ImageLightbox'
 import ImageEditorModal from '@/shared/components/ImageEditorModal'
 import SpiritFormFields, { useSpiritForm, CARD, SectionTitle } from '@/domain/admin/components/SpiritFormFields'
 import SpiritJsonImportCard from '@/domain/admin/components/SpiritJsonImportCard'
+import VariantAssignedImagesPreview from '@/domain/admin/components/VariantAssignedImagesPreview'
 import type { SpiritStatus } from '@/domain/spirit/types/spirit.types'
 import { RequiredFieldsNotice } from '@/shared/components/FormFieldLabel'
 
@@ -129,6 +130,10 @@ export default function AdminSpiritFormPage() {
       <RequiredFieldsNotice admin className="mb-4" />
       <SpiritFormFields
         form={form}
+        // 신규 등록 화면에서는 에디션에 아직 ID 가 없다. 슬롯을 넘겨야 "저장 후 지정 가능"
+        // 안내라도 뜬다 — 안 넘기면 관리자가 기능 존재 자체를 모른다.
+        // (등록 직후 /admin/spirits/{newId} 로 이동하므로 거기서 바로 지정할 수 있다)
+        variantImageSlot={() => <VariantAssignedImagesPreview images={[]} unsaved />}
         imageSlot={
           <div className={CARD}>
             <SectionTitle title="이미지" hint="'등록'을 눌러야 저장됩니다" />

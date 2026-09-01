@@ -96,6 +96,20 @@ export interface SpiritImage {
   imageUrl: string
   isPrimary: boolean
   sortOrder: number
+  /** 이 이미지를 등록한 주류 ID (보통 마스터) */
+  spiritId?: number | null
+  /**
+   * 이 이미지를 쓰는 에디션들. 비어 있으면 공통 이미지 — 화면에 뱃지가 뜨지 않는다.
+   * 이미지 1장을 여러 에디션이 공유할 수 있다(같은 라벨 디자인의 배치들).
+   */
+  variants?: SpiritImageVariantRef[]
+}
+
+/** 이미지에 지정된 에디션 — 사용자 갤러리 뱃지 문구의 원본 */
+export interface SpiritImageVariantRef {
+  spiritId: number
+  variantValue?: string | null
+  variantValueEn?: string | null
 }
 
 export interface SpiritDetail extends SpiritListItem {
@@ -117,6 +131,11 @@ export interface SpiritDetail extends SpiritListItem {
   wineRegion: SpiritWineRegion | null
   status: SpiritStatus
   images: SpiritImage[]
+  /**
+   * 에디션 그룹 전체 이미지 (마스터 + ACTIVE 하위 에디션) — 상세 갤러리 전용.
+   * images 와 별개다: images 는 "이 주류의 이미지"라 SEO·공유 카드가 대표 이미지를 고를 때 쓴다.
+   */
+  groupImages?: SpiritImage[]
   createdAt: string
   updatedAt: string
   parentId?: number | null
