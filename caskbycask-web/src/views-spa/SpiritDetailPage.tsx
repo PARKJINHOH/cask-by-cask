@@ -616,15 +616,18 @@ function SpiritDetailSections({
 // ── Sub-components ────────────────────────────────────────
 
 function Gallery({
-  images, nameKo, selectedIdx, onSelect, onImageClick,
+  images, labels, nameKo, selectedIdx, onSelect, onImageClick,
 }: {
   images: SpiritImage[]
+  /** images 와 같은 순서의 뱃지 문구(에디션 식별 값). null 이면 그 이미지에는 뱃지가 없다 */
+  labels: (string | null)[]
   nameKo: string
   selectedIdx: number
   onSelect: (i: number) => void
   onImageClick: (i: number) => void
 }) {
   const current = images[selectedIdx]
+  const currentLabel = labels[selectedIdx] ?? null
   return (
     <div className="space-y-3">
       <div
@@ -648,6 +651,23 @@ function Gallery({
                 <line x1="8" y1="11" x2="14" y2="11" />
               </svg>
             </div>
+            {/* 이 이미지가 어느 에디션 것인지 — 마스터/에디션 이미지가 한 갤러리에 섞여 있어
+                식별 값이 없으면 구분할 방법이 없다. 마스터 이미지에는 값이 없어 뱃지도 없다.
+                카운터 pill 을 덮지 않게 폭을 제한하고, 잘린 전체 문구는 title 로 보여 준다.
+
+                pointer-events-none 을 주면 안 된다 — 위에 깔린 돋보기 오버레이(inset-0)로
+                마우스가 그냥 통과해 title 툴팁이 뜨지 않는다. z-10 으로 오버레이 위에 올린다.
+                클릭은 부모로 버블링되므로 뱃지를 눌러도 라이트박스는 그대로 열린다. */}
+            {currentLabel && (
+              <span
+                title={currentLabel}
+                className="absolute bottom-2.5 left-2.5 z-10 max-w-[calc(100%-5.5rem)] truncate
+                  rounded-full bg-neutral-900/30 backdrop-blur-sm px-2 py-0.5
+                  text-[10px] leading-4 font-medium text-white ring-1 ring-white/10"
+              >
+                {currentLabel}
+              </span>
+            )}
             {images.length > 1 && (
               <span className="absolute bottom-3 right-3 text-[11px] font-medium text-neutral-500
                 bg-white/85 backdrop-blur rounded-full px-2 py-0.5 ring-1 ring-black/5">
@@ -660,7 +680,9 @@ function Gallery({
         )}
       </div>
       {images.length > 1 && (
-        <div className="grid grid-cols-4 gap-2">
+        <div className={`grid grid-cols-4 gap-2 ${
+          images.length > 12 ? 'max-h-[13.5rem] overflow-y-auto pr-1' : ''
+        }`}>
           {images.map((img, i) => (
             <button key={img.id} onClick={() => onSelect(i)}
               className={`aspect-square rounded-xl overflow-hidden bg-white ring-2 transition-all ${
@@ -1043,6 +1065,47 @@ export default function SpiritDetailPage() {
     }, {})
   }, [isVariantSplitGroup, variantsList, isEn])
 
+  // 표시 대상 주류 — 마스터 페이지는 마지막 에디션을 보여 준다.
+  // (아래 갤러리 훅들은 early return 위에 있어야 해서 여기서 ID 만 먼저 뽑는다.
+  //  narrowing 된 displaySpirit 본체는 로딩·404 가드 아래에서 만든다.)
+  const displaySpiritId = (lastEditionSpirit ?? spirit)?.id ?? null
+
+  // 갤러리는 에디션 그룹 전체(마스터 + 모든 에디션) 이미지를 한 벌로 보여 준다.
+  // 에디션을 골라도 목록이 줄지 않고, 아래 이펙트가 그 에디션 이미지로 선택만 옮긴다.
+  // groupImages 가 없는 응답(구버전 API)은 기존 images(본인→마스터 폴백)로 내려앉는다.
+  //
+  // useMemo 는 필수다 — 아래 이펙트의 의존성이라, 매 렌더 새 배열을 만들면
+  // setSelectedImg → 리렌더 → 새 배열 → 이펙트 재실행으로 무한 루프가 된다.
+  const galleryImages = useMemo<SpiritImage[]>(() => {
+    const source = lastEditionSpirit ?? spirit
+    const group = source?.groupImages?.length ? source.groupImages : source?.images ?? []
+    if (group.length > 0) return group
+    // 외부 제공 이미지는 에디션 지정 개념이 없다 — 공통 이미지로 둔다(뱃지 없음).
+    return source?.sourceImageUrl
+      ? [{
+          id: -1,
+          imageUrl: source.sourceImageUrl,
+          isPrimary: true,
+          sortOrder: 0,
+          spiritId: source.id,
+          variants: [],
+        }]
+      : []
+  }, [lastEditionSpirit, spirit])
+
+  // 큰 이미지 좌측 하단 뱃지 문구 — 그 이미지를 쓰는 에디션 식별 값을 전부 잇는다.
+  // 한 이미지를 여러 배치가 공유할 수 있어서다("배치 11 · 배치 12").
+  // 지정이 없는 공통 이미지는 null 이라 뱃지가 그려지지 않는다.
+  const galleryLabels = useMemo(
+    () => galleryImages.map((img) => {
+      const values = (img.variants ?? [])
+        .map((ref) => (isEn ? (ref.variantValueEn || ref.variantValue) : ref.variantValue)?.trim())
+        .filter((value): value is string => !!value)
+      return values.length > 0 ? values.join(' · ') : null
+    }),
+    [galleryImages, isEn],
+  )
+
   useEffect(() => {
     const targetPath = localizedSeoPath(spiritSeo, isEn)
     if (!targetPath) return
@@ -1062,6 +1125,20 @@ export default function SpiritDetailPage() {
     setPriceVariantId(null)
     scrollToPageTop(null)
   }, [spiritId])
+
+  // 보고 있는 에디션의 이미지를 갤러리에서 자동 선택한다.
+  // 마스터 페이지는 마지막 에디션을 표시하므로 라우트 ID(spiritId)가 아니라
+  // 실제 표시 중인 주류 ID 를 기준으로 잡아야 한다.
+  //
+  // 폴백 순서: ① 이 에디션이 지정된 이미지 → ② 지정이 없는 공통 이미지 → ③ 0번.
+  // ②가 필요한 이유 — 지정이 없는 에디션에서 바로 0번으로 가면 남의 배치 뱃지가 붙은
+  // 이미지가 떠서, 보고 있는 에디션과 다른 값을 읽게 된다.
+  useEffect(() => {
+    const assigned = galleryImages.findIndex((img) =>
+      (img.variants ?? []).some((ref) => ref.spiritId === displaySpiritId))
+    const shared = galleryImages.findIndex((img) => (img.variants ?? []).length === 0)
+    setSelectedImg(assigned >= 0 ? assigned : shared >= 0 ? shared : 0)
+  }, [displaySpiritId, galleryImages])
 
   if (isLoading || isLastEditionLoading || isLastEditionPlaceholder) return <Spinner fullscreen />
 
@@ -1087,18 +1164,14 @@ export default function SpiritDetailPage() {
     ?? displaySpirit.otherDetail?.notes
   )?.trim()
 
-  // 에디션(자식 variant)은 자체 이미지가 없고 이미지는 마스터(부모)에만 저장된다.
-  // 표시용 갤러리 이미지는 본인 것을 우선하되, 없으면 마스터 이미지로 폴백한다.
-  const galleryImages = (displaySpirit.images && displaySpirit.images.length > 0)
-    ? displaySpirit.images
-    : displaySpirit.sourceImageUrl
-      ? [{ id: -1, imageUrl: displaySpirit.sourceImageUrl, isPrimary: true, sortOrder: 0 }]
-      : []
-
   const canonicalUrl = isEn
     ? (spiritSeo?.canonicalUrlEn ?? buildCanonical(`/en/spirits/${spirit.id}`))
     : (spiritSeo?.canonicalUrlKo ?? buildCanonical(`/ko/spirits/${spirit.id}`))
-  const rawImage = galleryImages[0]?.imageUrl || displaySpirit.primaryImageUrl || spiritSeo?.primaryImageUrl
+  // 갤러리 0번은 언제나 마스터 이미지라 OG 로 쓸 수 없다 — 서버 SpiritSeoService.resolveImageUrl
+  // (본인 → 마스터 → 기본)과 같은 순서로 골라야 SSR 과 하이드레이션 뒤 값이 어긋나지 않는다.
+  const ownGalleryImage = galleryImages.find((img) =>
+    (img.variants ?? []).some((ref) => ref.spiritId === displaySpirit.id))
+  const rawImage = ownGalleryImage?.imageUrl || spiritSeo?.primaryImageUrl || galleryImages[0]?.imageUrl
   const heroImage = rawImage
     ? (rawImage.startsWith('http') ? rawImage : `${SITE_URL}${rawImage}`)
     : DEFAULT_OG_IMAGE
@@ -1183,6 +1256,7 @@ export default function SpiritDetailPage() {
           <div className="md:w-80 flex-shrink-0 p-5 md:border-r border-neutral-100 relative">
             <Gallery
               images={galleryImages}
+              labels={galleryLabels}
               nameKo={primaryName}
               selectedIdx={selectedImg}
               onSelect={setSelectedImg}
@@ -1395,6 +1469,7 @@ export default function SpiritDetailPage() {
 
       <ImageLightbox
         images={galleryImages.map((img) => img.imageUrl)}
+        labels={galleryLabels}
         initialIndex={lightboxIdx >= 0 ? lightboxIdx : 0}
         open={lightboxIdx >= 0}
         onClose={() => setLightboxIdx(-1)}

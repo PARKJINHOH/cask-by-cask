@@ -7,8 +7,10 @@ import {
   SITE_NAME,
   SITE_SEARCH_PARAM,
   SITE_SOCIAL_PROFILES,
+  SITE_TAGLINE,
   SITE_URL,
 } from '@/shared/config/site'
+import { ABOUT_CONTENT, SERVICE_LAUNCH_DATE } from '@/shared/config/aboutContent'
 
 /**
  * Schema.org JSON-LD 빌더 헬퍼 모음.
@@ -247,8 +249,14 @@ export function buildSpiritBreadcrumbSchema(params: {
 // 질의를 이 도메인이 아니라 인스타그램·스레드 계정으로 해석하고 있었다. Organization 을
 // 홈에 심고 sameAs 로 그 계정들을 되묶어, 브랜드 엔티티의 중심을 도메인으로 옮긴다.
 //
-// Google 가이드상 Organization 은 사이트에서 한 페이지(홈)에만 넣는다. 여러 페이지에
-// 흩어 놓으면 어느 쪽이 대표인지 모호해진다.
+// Organization 전체 노드는 **홈과 소개 페이지 두 곳에만** 싣는다. "한 페이지에만" 이라는
+// 원래 규칙에서 소개 페이지를 예외로 두는 이유는 셋이다.
+//   1. 두 출력이 이 빌더 하나에서 나오므로 내용이 갈릴 수 없다.
+//   2. `@id` 가 같아 노드를 병합하는 소비자에게는 여전히 하나다.
+//   3. Google 은 구조화 데이터를 **페이지 단위**로 평가한다. 소개 페이지의 `mainEntity`
+//      참조가 가리킬 노드가 그 페이지에 없으면 아무것도 가리키지 않는 셈이라,
+//      엔티티를 정의하라고 만든 페이지에 끊긴 참조만 남는다.
+// 그 외 페이지는 전체 노드 대신 `buildOrganizationRef` 로 최소 노드만 참조한다.
 
 /** 그래프 노드 상호 참조용 고정 @id. 페이지 URL 과 겹치지 않도록 프래그먼트를 쓴다. */
 export const ORGANIZATION_ID = `${SITE_URL}/#organization`
@@ -277,10 +285,20 @@ const ORGANIZATION_DESCRIPTION = {
   en: 'A Korean spirits information community collecting detailed specs, tasting notes, and user ratings for whisky, wine, cognac, and other spirits.',
 } as const
 
+/** Organization 이 다루는 주제. 실제로 카탈로그에 있는 것만 적는다. */
+const ORGANIZATION_KNOWS_ABOUT = {
+  ko: ['위스키', '와인', '꼬냑', '럼', '데킬라', '진', '시음 노트', '주류 평점', '주류 리뷰'],
+  en: ['Whisky', 'Wine', 'Cognac', 'Rum', 'Tequila', 'Gin', 'Tasting notes', 'Spirits ratings', 'Spirits reviews'],
+} as const
+
 /**
  * Organization 스키마 — 브랜드 엔티티 그 자체.
  *
  * sameAs 에는 이 사이트가 소유한 계정만 넣는다(`SITE_SOCIAL_PROFILES` 주석 참고).
+ *
+ * 개인이 운영하는 커뮤니티라 `founder`·`address`·`legalName`·`email` 은 **의도적으로 비운다**.
+ * 사업자 등록이 없는데 legalName 을 지어내면 중립이 아니라 악신호이고, 개인 정보는 공개 범위 밖이다.
+ * 테스트가 이 필드들의 부재를 단언하므로 추가하려면 그 결정부터 뒤집어야 한다.
  */
 export function buildOrganizationSchema(lang: 'ko' | 'en' = 'ko') {
   return {
@@ -288,7 +306,8 @@ export function buildOrganizationSchema(lang: 'ko' | 'en' = 'ko') {
     '@id': ORGANIZATION_ID,
     name: SITE_NAME,
     alternateName: [...SITE_ALTERNATE_NAMES],
-    url: `${SITE_URL}/`,
+    // 루트(`/`)는 308 로 `/{lang}` 에 리다이렉트된다 — 엔티티의 대표 URL 이 리다이렉트면 안 된다.
+    url: `${SITE_URL}/${lang}`,
     logo: {
       '@type': 'ImageObject',
       url: SITE_LOGO,
@@ -297,8 +316,74 @@ export function buildOrganizationSchema(lang: 'ko' | 'en' = 'ko') {
     },
     image: DEFAULT_OG_IMAGE,
     description: ORGANIZATION_DESCRIPTION[lang],
+    slogan: SITE_TAGLINE[lang],
+    foundingDate: SERVICE_LAUNCH_DATE,
+    knowsAbout: [...ORGANIZATION_KNOWS_ABOUT[lang]],
+    knowsLanguage: ['ko', 'en'],
+    publishingPrinciples: `${SITE_URL}/${lang}/operation-policy`,
+    mainEntityOfPage: `${SITE_URL}/${lang}/about`,
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer support',
+      url: `${SITE_URL}/${lang}/inquiry`,
+      availableLanguage: ['Korean', 'English'],
+    },
     sameAs: [...SITE_SOCIAL_PROFILES],
   }
+}
+
+/**
+ * 다른 페이지에서 `publisher` 로 쓰는 **최소 Organization 노드**.
+ *
+ * 전체 노드를 뿌리면 대표 엔티티가 모호해지고, 반대로 `@id` 만 적으면 그 페이지에 노드가 없어
+ * 아무것도 가리키지 못한다. 이름·URL·로고만 담은 자족 노드가 그 사이의 정답이다.
+ *
+ * 로고는 반드시 `SITE_LOGO`(512px)여야 한다 — `/logo.png` 는 100×100 이라 schema.org 의
+ * 최소 112px 을 넘지 못한다(`site.ts` 주석 참고).
+ */
+export function buildOrganizationRef(lang: 'ko' | 'en' = 'ko') {
+  return {
+    '@type': 'Organization',
+    '@id': ORGANIZATION_ID,
+    name: SITE_NAME,
+    url: `${SITE_URL}/${lang}`,
+    logo: {
+      '@type': 'ImageObject',
+      url: SITE_LOGO,
+      width: SITE_LOGO_SIZE,
+      height: SITE_LOGO_SIZE,
+    },
+  }
+}
+
+/**
+ * 소개 페이지 그래프.
+ *
+ * SSR(page.tsx 경유)과 하이드레이션 뒤(AboutPage 의 SeoMeta)가 같은 배열을 쓴다.
+ * `mainEntity` 가 가리킬 Organization 노드를 같은 페이지에 실어야 참조가 성립한다.
+ */
+export function buildAboutJsonLdGraph(lang: 'ko' | 'en' = 'ko') {
+  const canonical = `${SITE_URL}/${lang}/about`
+  const copy = ABOUT_CONTENT[lang]
+  return [
+    buildOrganizationSchema(lang),
+    {
+      '@type': 'AboutPage',
+      '@id': canonical,
+      url: canonical,
+      name: copy.heading,
+      description: copy.lead[0],
+      inLanguage: lang === 'en' ? 'en' : 'ko',
+      isPartOf: {
+        '@type': 'WebSite',
+        '@id': WEBSITE_ID,
+        url: `${SITE_URL}/${lang}`,
+        name: SITE_NAME,
+      },
+      mainEntity: { '@id': ORGANIZATION_ID },
+      primaryImageOfPage: { '@type': 'ImageObject', url: DEFAULT_OG_IMAGE },
+    },
+  ]
 }
 
 /**

@@ -62,6 +62,13 @@ export const adminSpiritApi = {
   setPrimaryImage: (id: number, imageId: number) =>
     axiosInstance.patch<ApiResponse<null>>(`/api/admin/spirits/${id}/images/${imageId}/primary`),
 
+  /** 이미지에 지정할 에디션 집합을 통째로 교체한다. 빈 배열이면 공통 이미지가 된다. */
+  assignImageVariants: (id: number, imageId: number, variantIds: number[]) =>
+    axiosInstance.patch<ApiResponse<AdminSpiritImageItem>>(
+      `/api/admin/spirits/${id}/images/${imageId}/variants`,
+      { variantIds },
+    ),
+
   reorderImages: (id: number, imageIds: number[]) =>
     axiosInstance.patch<ApiResponse<AdminSpiritImageItem[]>>(`/api/admin/spirits/${id}/images/reorder`, { imageIds }),
 

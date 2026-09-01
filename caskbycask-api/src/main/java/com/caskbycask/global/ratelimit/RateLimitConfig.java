@@ -128,6 +128,12 @@ public class RateLimitConfig {
                         "message-send",
                         pp.matcher(HttpMethod.POST, "/api/messages"),
                         20, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),
+                // 요청 한 번이 외부 사이트 요청 한 번이 된다 — 우리 서버가 남의 게시판을
+                // 두드리는 빈도를 사용자 단위로 묶어 둔다.
+                new RateLimitRule(
+                        "review-import-fetch",
+                        pp.matcher(HttpMethod.POST, "/api/review-imports/fetch"),
+                        10, Duration.ofMinutes(1), RateLimitRule.KeyType.IP_OR_USER),
                 new RateLimitRule(
                         "public-content-translation",
                         pp.matcher(HttpMethod.POST, "/api/translations"),

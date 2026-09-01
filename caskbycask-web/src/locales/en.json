@@ -928,6 +928,57 @@
     }
   },
   "review": {
+    "import": {
+      "title": "Import my review from elsewhere",
+      "noSaveBadge": "Nothing is saved",
+      "experimental": "Beta",
+      "openLabel": "Import my review from elsewhere (experimental)",
+      "close": "Close",
+      "experimentalNote": "This is an experimental feature. Review formats vary a lot, so it may not recognise yours — when that happens nothing is filled in and we just tell you why.",
+      "clear": "Clear",
+      "description": "Paste a review you wrote yourself on DCInside, Arca.live or Naver Cafe and we will fill in the nose, palate, finish and overall fields. Check everything before you submit.",
+      "tabPaste": "Paste text",
+      "tabLink": "From a link",
+      "pastePlaceholder": "Paste the review text as it is.\n\nNose: …\nPalate: …\nFinish: …\nOverall: …",
+      "linkPlaceholder": "https://gall.dcinside.com/mgallery/board/view/?id=whiskey&no=…",
+      "linkSupported": "Only public posts that open without a login can be fetched (DCInside galleries, Arca.live). For Naver Cafe, Instagram and Threads, copy the text and paste it instead.",
+      "keepSourceLink": "Keep the original link at the end of the overall note",
+      "submit": "Import",
+      "loading": "Importing…",
+      "confirmOverwrite": "You have already entered something. Overwrite it with the imported text?",
+      "appliedCount": "Filled {{count}} field(s). Please check them before submitting.",
+      "warningCount": "{{count}} item(s) need your attention",
+      "sourceAppended": "The original link was added to the end of the overall note — {{url}}",
+      "field": {
+        "score": "Scores",
+        "general": "General"
+      },
+      "blocked": {
+        "comparisonTitle": "Comparison reviews cannot be imported",
+        "comparisonBody": "This looks like a review comparing two or more bottles. A review is saved against a single spirit, so it cannot be imported as is. Paste only the part about one bottle, or write it yourself.",
+        "unlabeledTitle": "Could not find nose, palate and finish",
+        "unlabeledBody": "The text has no markers separating nose, palate and finish, so nothing was filled in. Writing it yourself is more accurate than splitting it wrongly.",
+        "manualAction": "Enter it myself"
+      },
+      "error": {
+        "fetchFailed": "Could not fetch the post from that link. Open the post, copy the text and paste it instead.",
+        "empty": "The fetched post was empty. Please copy the text and paste it instead."
+      },
+      "warn": {
+        "notFound": "This field was not found in the text. Please fill it in yourself.",
+        "duplicated": "The same section appears twice; only the last one was imported. Please check it.",
+        "truncated": "Trimmed to {{max}} characters.",
+        "tooShort": "Under {{min}} characters, so it cannot be submitted as is. Please add more.",
+        "overallMissing": "No overall section was found. Please write one yourself.",
+        "overallInferred": "No overall marker was found, so the last paragraph was moved into the overall field.",
+        "overallRepeated": "Several overall sections were found; only the last one was used.",
+        "leftoverMerged": "Text that belonged to no section was added before the overall note.",
+        "overallOnly": "Only a total score of {{value}} was found. Nose, palate and finish each need their own score.",
+        "partial": "Only some scores were found, so all were cleared. Enter all three or leave all three empty.",
+        "inlineFallback": "There were no line breaks, so the split points were estimated. Please double-check.",
+        "spiritMismatch": "Could not find '{{name}}' in the text. Please confirm this is the right spirit."
+      }
+    },
     "scoreNotRated": "Not rated",
     "scoreNotRatedHint": "Leave blank to keep this review out of the average",
     "scoreClear": "Clear score",
@@ -1015,6 +1066,8 @@
     "aromaSearchPlaceholder": "Search or type to add custom...",
     "aromaNoMatch": "No match — press Add to save as custom",
     "aromaProfile": {
+        "expand": "Show aroma profile",
+        "collapse": "Hide aroma profile",
       "byReviewer": "{{nickname}}'s aroma profile",
       "title": "Aroma Profile",
       "add": "+ Profile",
@@ -1035,8 +1088,6 @@
       "removeAxisConfirm": "Removing this aroma leaves fewer than 3 profile axes, so this profile will also be deleted. Continue?",
         "textAlternative": "Aroma intensity list",
         "itemValue": "{{aroma}} intensity {{intensity}}, {{label}}",
-        "expand": "Show aroma profile",
-        "collapse": "Hide aroma profile",
         "phase": {
         "NOSE": "Nose",
         "PALATE": "Taste",
@@ -1794,7 +1845,8 @@
     }
   },
   "footer": {
-    "brandAlias": "CaskByCask (캐바캐)",
+    "brandAlias": "CaskByCask (캐스크바이캐스크 · 캐바캐)",
+    "about": "About",
     "inquiry": "Contact Us",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",

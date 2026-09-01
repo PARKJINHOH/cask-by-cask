@@ -1,5 +1,5 @@
 import type { SeoSnapshotData } from '@/shared/utils/seoHelpers'
-import { SITE_SOCIAL_LINKS } from '@/shared/config/site'
+import { BRAND_ALIAS_LINE, SITE_NAME, SITE_SOCIAL_LINKS } from '@/shared/config/site'
 
 interface Props {
   snapshot: SeoSnapshotData | null
@@ -239,7 +239,20 @@ export default function SeoFallback({ snapshot }: Props) {
         rel="me" 는 계정 프로필 bio 의 역링크와 짝을 이루는 신원 관계 선언이다.
       */}
       <footer className="mx-auto mt-6 max-w-5xl px-2 text-sm">
-        <h2 className="font-bold text-neutral-700">
+        {/*
+          브랜드 블록. 사이트 이름과 한국어 별칭을 서버 HTML 에 남긴다 — 예전에는
+          '캐스크바이캐스크' 가 JSON-LD 의 alternateName 과 PC 전용 클라이언트 푸터에만 있어서,
+          크롤러가 받는 HTML 어디에도 이 사이트의 한국어 이름이 없었다.
+          같은 문구를 MainLayout 의 PC·모바일 푸터도 렌더하므로 화면과 어긋나지 않는다.
+        */}
+        <p className="font-bold text-neutral-700">{SITE_NAME}</p>
+        <p className="text-neutral-500">{BRAND_ALIAS_LINE[snapshot.lang]}</p>
+        <p className="mt-2">
+          <a className="text-amber-800 hover:underline" href={`/${snapshot.lang}/about`}>
+            {snapshot.lang === 'en' ? 'About CaskByCask' : '서비스 소개'}
+          </a>
+        </p>
+        <h2 className="mt-4 font-bold text-neutral-700">
           {snapshot.lang === 'en' ? 'Official accounts' : '공식 계정'}
         </h2>
         <ul className="mt-2 flex flex-wrap gap-4">

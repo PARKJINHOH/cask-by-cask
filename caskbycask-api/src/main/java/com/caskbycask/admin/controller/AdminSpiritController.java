@@ -255,6 +255,18 @@ public class AdminSpiritController {
         ));
     }
 
+    @PatchMapping("/{id}/images/{imageId}/variants")
+    public ResponseEntity<ApiResponse<SpiritImageResponse>> assignImageVariants(
+            @PathVariable Long id,
+            @PathVariable Long imageId,
+            @RequestBody SpiritImageVariantAssignRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                spiritService.assignSpiritImageVariantsForManager(
+                        id, imageId, request.variantIds(), userDetails.getUserId())
+        ));
+    }
+
     @PatchMapping("/{id}/images/reorder")
     public ResponseEntity<ApiResponse<List<SpiritImageResponse>>> reorderImages(
             @PathVariable Long id,

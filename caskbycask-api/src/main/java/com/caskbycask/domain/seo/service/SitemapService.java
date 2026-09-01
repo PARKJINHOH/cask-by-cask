@@ -100,6 +100,7 @@ public class SitemapService {
         appendMultilingualUrl(sb, "/tier-lists", null);
         appendMultilingualUrl(sb, "/taste-trees", null);
         appendMultilingualUrl(sb, "/price-tracker", null);
+        appendMultilingualUrl(sb, "/about", null);
         appendMultilingualUrl(sb, "/terms", null);
         appendMultilingualUrl(sb, "/privacy", null);
         appendMultilingualUrl(sb, "/operation-policy", null);

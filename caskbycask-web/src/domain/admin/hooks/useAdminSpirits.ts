@@ -113,6 +113,18 @@ export function useSetPrimarySpiritImage() {
   })
 }
 
+/** 이미지 ↔ 에디션 지정 교체. 성공 시 이미지 카드와 에디션 탭 미리보기가 함께 갱신된다. */
+export function useAssignSpiritImageVariants() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, imageId, variantIds }: { id: number; imageId: number; variantIds: number[] }) =>
+      adminSpiritApi.assignImageVariants(id, imageId, variantIds),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ['admin-spirit-detail', id] })
+    },
+  })
+}
+
 export function useReorderSpiritImages() {
   const qc = useQueryClient()
   return useMutation({

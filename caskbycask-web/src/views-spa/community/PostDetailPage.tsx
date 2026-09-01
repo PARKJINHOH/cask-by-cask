@@ -18,7 +18,7 @@ import AdultBadge from '@/shared/components/AdultBadge'
 import { formatDotDateTime } from '@/shared/utils/format'
 import SeoMeta, { buildCanonical } from '@/shared/components/SeoMeta'
 import { SITE_URL } from '@/shared/config/site'
-import { buildBreadcrumbSchema } from '@/shared/utils/seoSchema'
+import { buildBreadcrumbSchema, buildOrganizationRef } from '@/shared/utils/seoSchema'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 
@@ -197,12 +197,7 @@ export default function PostDetailPage() {
                   ? buildCanonical(`/ko/users/${post.authorId}/reviews`)
                   : undefined,
               },
-          publisher: {
-            '@type': 'Organization',
-            name: 'CaskByCask',
-            url: SITE_URL,
-            logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
-          },
+          publisher: buildOrganizationRef('ko'),
           citation: post.sourceUrls.length ? post.sourceUrls : undefined,
           keywords: post.hashtags.length ? post.hashtags.join(', ') : undefined,
           commentCount: post.commentCount,

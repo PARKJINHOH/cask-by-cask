@@ -381,9 +381,18 @@ public class SpiritDetailService {
         };
     }
 
+    /** 그룹 갤러리가 필요 없는 경로(관리자 상세 등) — groupImages 는 비운다. */
     @Transactional(readOnly = true)
     public SpiritDetailResponse buildFullDetailResponse(Spirit spirit,
                                                          List<SpiritImageResponse> images,
+                                                         List<SpiritVariantResponse> variants) {
+        return buildFullDetailResponse(spirit, images, List.of(), variants);
+    }
+
+    @Transactional(readOnly = true)
+    public SpiritDetailResponse buildFullDetailResponse(Spirit spirit,
+                                                         List<SpiritImageResponse> images,
+                                                         List<SpiritImageResponse> groupImages,
                                                          List<SpiritVariantResponse> variants) {
         SpiritCommonDetailResponse commonDetail =
                 SpiritCommonDetailResponse.from(spirit.getCommonDetail());
@@ -407,7 +416,7 @@ public class SpiritDetailService {
                         .toList()
                 : List.of();
 
-        return SpiritDetailResponse.of(spirit, images, producerLogoImages,
+        return SpiritDetailResponse.of(spirit, images, groupImages, producerLogoImages,
                 commonDetail, whiskyDetail, wineDetail, cognacDetail, otherDetail, variants);
     }
 

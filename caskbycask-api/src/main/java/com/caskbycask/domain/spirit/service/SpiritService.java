@@ -12,6 +12,7 @@ import com.caskbycask.domain.seo.service.SpiritIndexingEventPublisher;
 import com.caskbycask.domain.spirit.dto.*;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.SpiritImage;
+import com.caskbycask.domain.spirit.entity.SpiritImageVariant;
 import com.caskbycask.domain.spirit.entity.SpiritRegisterRequest;
 import com.caskbycask.domain.spirit.entity.SpiritVariantLink;
 import com.caskbycask.domain.spirit.entity.enums.RequestStatus;
@@ -22,6 +23,7 @@ import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.spirit.entity.enums.WineRegion;
 import com.caskbycask.domain.spirit.entity.enums.WineVintageStatus;
 import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
+import com.caskbycask.domain.spirit.repository.SpiritImageVariantRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRegisterRequestRepository;
 import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.spirit.repository.SpiritVariantLinkRepository;
@@ -55,10 +57,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Year;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -80,6 +85,7 @@ public class SpiritService {
 
     private final SpiritRepository spiritRepository;
     private final SpiritImageRepository spiritImageRepository;
+    private final SpiritImageVariantRepository spiritImageVariantRepository;
     private final SpiritVariantLinkRepository variantLinkRepository;
     private final SpiritRegisterRequestRepository registerRequestRepository;
     private final ProducerRepository producerRepository;
@@ -215,10 +221,11 @@ public class SpiritService {
                 .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_NOT_FOUND));
 
         List<SpiritImageResponse> images = displayImages(spirit);
+        List<SpiritImageResponse> groupImages = groupGalleryImages(spirit);
 
         List<SpiritVariantResponse> variants = getVariantsResponse(spirit, true);
 
-        return spiritDetailService.buildFullDetailResponse(spirit, images, variants);
+        return spiritDetailService.buildFullDetailResponse(spirit, images, groupImages, variants);
     }
 
     /** 관리자 상세 조회 — 상태(ACTIVE/HIDDEN/PENDING) 무관 */
@@ -247,9 +254,13 @@ public class SpiritService {
     private SpiritDetailResponse buildAdminSpiritDetail(Spirit spirit, User manager) {
         Long id = spirit.getId();
 
-        List<SpiritImageResponse> images = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id)
-                .stream()
-                .map(SpiritImageResponse::from)
+        List<SpiritImage> ownImages = spiritImageRepository.findBySpiritIdOrderBySortOrderAscIdAsc(id);
+        // 관리자 화면은 자기 주류의 이미지만 다루지만, 각 이미지에 어떤 에디션이 지정됐는지는 보여야 한다.
+        Map<Long, List<SpiritImageResponse.VariantRef>> refsByImage =
+                variantRefsByImage(ownImages, resolveGalleryOwners(spirit));
+        List<SpiritImageResponse> images = ownImages.stream()
+                .map(image -> SpiritImageResponse.of(
+                        image, spirit, refsByImage.getOrDefault(image.getId(), List.of())))
                 .toList();
 
         Map<Long, Spirit> variantsMap = resolveVariants(spirit, false);
@@ -269,6 +280,112 @@ public class SpiritService {
         return images.stream()
                 .map(SpiritImageResponse::from)
                 .toList();
+    }
+
+    /**
+     * 에디션 그룹 통합 갤러리 — 마스터 + 모든 ACTIVE 하위 에디션의 이미지를 한 벌로 만든다.
+     *
+     * <p>정렬은 그룹 안 어느 페이지에서 보든 같다(마스터 먼저, 그다음 에디션 displayOrder 순).
+     * 에디션을 바꿔도 썸네일 줄이 재배치되지 않고 선택만 옮겨 가야 하기 때문이다.
+     * 어느 에디션 이미지인지는 각 항목의 spiritId·표시명으로 구분한다.
+     *
+     * <p>소유자는 parent_id 계층만 본다 — {@code resolveVariants} 의 MANUAL 링크 폴백은
+     * "다른 제품"이지 같은 그룹의 에디션이 아니다.
+     * HIDDEN/PENDING 에디션은 제외한다(삭제는 {@code hide()} 소프트 삭제라 이 필터가 곧 삭제 필터다).
+     * 반면 마스터는 상태와 무관하게 포함한다 — 현행 displayImages 폴백과
+     * SpiritSeoService.resolveImageUrl 이 모두 부모 상태를 보지 않으므로 동작을 바꾸지 않는다.
+     */
+    private List<SpiritImageResponse> groupGalleryImages(Spirit spirit) {
+        List<Spirit> owners = resolveGalleryOwners(spirit);
+
+        List<SpiritImage> images = spiritImageRepository
+                .findBySpiritIdInOrderBySortOrderAscIdAsc(owners.stream().map(Spirit::getId).toList());
+        Map<Long, List<SpiritImage>> imagesByOwner = images.stream()
+                .collect(Collectors.groupingBy(image -> image.getSpirit().getId()));
+        Map<Long, List<SpiritImageResponse.VariantRef>> refsByImage = variantRefsByImage(images, owners);
+
+        List<SpiritImageResponse> result = new ArrayList<>();
+        for (Spirit owner : owners) {
+            for (SpiritImage image : imagesByOwner.getOrDefault(owner.getId(), List.of())) {
+                result.add(SpiritImageResponse.of(
+                        image, owner, refsByImage.getOrDefault(image.getId(), List.of())));
+            }
+        }
+        return result;
+    }
+
+    /** 그룹 갤러리의 소유자 목록 — 마스터 먼저, 그다음 ACTIVE 에디션(displayOrder 순). */
+    private List<Spirit> resolveGalleryOwners(Spirit spirit) {
+        Spirit master = resolveGalleryMaster(spirit);
+
+        // findByParentId 가 COALESCE(displayOrder, 999999), id 순으로 정렬해 준다.
+        List<Spirit> owners = new ArrayList<>();
+        owners.add(master);
+        spiritRepository.findByParentId(master.getId()).stream()
+                .filter(variant -> variant.getStatus() == SpiritStatus.ACTIVE)
+                .forEach(owners::add);
+        return owners;
+    }
+
+    /**
+     * 이미지별 "이 이미지를 쓰는 에디션" 목록.
+     *
+     * <p>두 경로를 합친다:
+     * <ul>
+     *   <li>spirit_image_variant 링크 — 마스터에 올린 이미지를 여러 에디션이 함께 쓰는 방식</li>
+     *   <li>소유자가 에디션이면 소유자 자신 — 에디션이 직접 이미지를 갖던 예전 데이터 호환</li>
+     * </ul>
+     * 결과는 owners 순서(마스터 → displayOrder)로 정렬하고 중복은 제거한다.
+     * owners 에 없는 에디션(숨김·대기·삭제)을 가리키는 낡은 링크는 여기서 자연히 걸러진다.
+     */
+    private Map<Long, List<SpiritImageResponse.VariantRef>> variantRefsByImage(
+            List<SpiritImage> images, List<Spirit> owners) {
+        if (images.isEmpty()) return Map.of();
+
+        // owners 순서를 그대로 쓰려고 LinkedHashMap 으로 만든다.
+        LinkedHashMap<Long, Spirit> ownerById = new LinkedHashMap<>();
+        owners.forEach(owner -> ownerById.put(owner.getId(), owner));
+
+        Map<Long, Set<Long>> variantIdsByImage = new HashMap<>();
+        spiritImageVariantRepository
+                .findBySpiritImageIdIn(images.stream().map(SpiritImage::getId).toList())
+                .forEach(link -> variantIdsByImage
+                        .computeIfAbsent(link.getSpiritImageId(), key -> new HashSet<>())
+                        .add(link.getSpiritId()));
+        for (SpiritImage image : images) {
+            Spirit owner = ownerById.get(image.getSpirit().getId());
+            if (owner != null && owner.getParent() != null) {
+                variantIdsByImage.computeIfAbsent(image.getId(), key -> new HashSet<>())
+                        .add(owner.getId());
+            }
+        }
+
+        Map<Long, List<SpiritImageResponse.VariantRef>> result = new HashMap<>();
+        variantIdsByImage.forEach((imageId, variantIds) -> {
+            List<SpiritImageResponse.VariantRef> refs = ownerById.values().stream()
+                    .filter(owner -> variantIds.contains(owner.getId()))
+                    .map(SpiritImageResponse::variantRefOf)
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (!refs.isEmpty()) result.put(imageId, refs);
+        });
+        return result;
+    }
+
+    /**
+     * 갤러리 기준 마스터.
+     *
+     * <p>findByIdWithAllDetails 는 parent 를 fetch join 하지 않아 프록시로 온다. 표시명 계산이
+     * wineDetail 까지 읽으므로, 프록시를 그대로 쓰면 지연 로딩이 두 번 터진다. 한 쿼리로 당겨 온다.
+     */
+    private Spirit resolveGalleryMaster(Spirit spirit) {
+        if (spirit.getParent() == null) {
+            return spirit;
+        }
+        Long masterId = spirit.getParent().getId();
+        return spiritRepository.findAllByIdWithCommonAndWineDetail(List.of(masterId)).stream()
+                .findFirst()
+                .orElse(spirit.getParent());
     }
 
     /**
@@ -912,6 +1029,8 @@ public class SpiritService {
         }
 
         spiritImageService.deleteImagesBySpiritId(id);
+        // 이 주류가 에디션이었다면, 마스터 이미지에 걸려 있던 지정도 함께 지운다.
+        spiritImageVariantRepository.deleteBySpiritId(id);
         translationCacheInvalidator.invalidateSpirit(id);
         spiritRepository.delete(spirit);
         notifyIndexing(spirit);
@@ -1641,6 +1760,44 @@ public class SpiritService {
             Long spiritId, Long imageId, Long userId) {
         requireSpiritForManager(spiritId, userId);
         return spiritImageService.setPrimaryImage(spiritId, imageId);
+    }
+
+    /**
+     * 이미지에 지정할 에디션 집합을 통째로 교체한다.
+     *
+     * <p>이미지 1장을 여러 에디션이 공유할 수 있다 — 같은 라벨 디자인을 쓰는 배치들이
+     * 같은 파일을 중복 업로드하지 않게 하는 것이 이 기능의 목적이다.
+     */
+    @Transactional
+    public SpiritImageResponse assignSpiritImageVariantsForManager(
+            Long spiritId, Long imageId, List<Long> variantIds, Long userId) {
+        Spirit spirit = requireSpiritForManager(spiritId, userId);
+        SpiritImage image = spiritImageRepository.findByIdAndSpiritId(imageId, spiritId)
+                .orElseThrow(() -> new CustomException(ErrorCode.SPIRIT_IMAGE_NOT_FOUND));
+
+        Long masterId = spirit.getParent() != null ? spirit.getParent().getId() : spiritId;
+        Set<Long> allowed = spiritRepository.findByParentId(masterId).stream()
+                .map(Spirit::getId)
+                .collect(Collectors.toSet());
+
+        // 남의 그룹 에디션을 붙이지 못하게 막는다. 중복 입력은 조용히 접는다.
+        Set<Long> requested = new LinkedHashSet<>(variantIds != null ? variantIds : List.of());
+        if (!allowed.containsAll(requested)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        spiritImageVariantRepository.deleteBySpiritImageId(imageId);
+        // 삭제와 삽입이 한 트랜잭션에 있다 — unique 제약에 걸리지 않게 삭제를 먼저 밀어낸다.
+        spiritImageVariantRepository.flush();
+        if (!requested.isEmpty()) {
+            spiritImageVariantRepository.saveAll(requested.stream()
+                    .map(variantId -> SpiritImageVariant.of(imageId, variantId))
+                    .toList());
+        }
+
+        return SpiritImageResponse.of(image, spirit,
+                variantRefsByImage(List.of(image), resolveGalleryOwners(spirit))
+                        .getOrDefault(imageId, List.of()));
     }
 
     @Transactional

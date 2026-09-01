@@ -971,6 +971,11 @@ export default function MainLayout() {
                 <p className="text-xs font-bold text-neutral-700">{t('footer.support')}</p>
                 <ul className="flex items-center gap-3">
                   <li>
+                    <Link to="/about" className="text-xs text-neutral-500 transition-colors hover:text-primary-800">
+                      {t('footer.about')}
+                    </Link>
+                  </li>
+                  <li className="border-l border-neutral-200 pl-3">
                     <Link to="/faq" className="text-xs text-neutral-500 transition-colors hover:text-primary-800">
                       {t('menu.faq')}
                     </Link>
@@ -1018,6 +1023,12 @@ export default function MainLayout() {
       <footer className="border-t border-neutral-200 bg-canvas pt-5 pb-[calc(1.25rem+4rem+env(safe-area-inset-bottom))] lg:hidden">
         <div className="user-layout-container flex flex-col items-center gap-3 px-4">
           <p className="text-xs font-bold text-neutral-700">CaskByCask</p>
+          {/* 별칭 줄은 PC 푸터에만 있었다. 서버 폴백(SeoFallback)이 모든 화면 폭에서 이 줄을
+              내보내므로, 모바일에도 같은 문구가 있어야 화면과 서버 HTML 이 어긋나지 않는다. */}
+          <p className="-mt-2 text-xs text-neutral-400">{t('footer.brandAlias')}</p>
+          <Link to="/about" className="text-xs text-neutral-500 hover:text-primary-700">
+            {t('footer.about')}
+          </Link>
           <SocialFooterLinks />
         </div>
       </footer>

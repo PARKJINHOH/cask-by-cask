@@ -9,6 +9,7 @@ import {
   getDefaultMetadata,
   getPublicRouteMetadata,
   getDefaultRouteSeoSnapshot,
+  getAboutJsonLd,
   getHomeSeoSnapshot,
   getHomeJsonLd,
   getTierListMetadata,
@@ -162,6 +163,8 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
     // generateMetadata 의 getPublicRouteMetadata 와 짝을 이룬다. 이 분기가 없던 동안
     // 생산자·약관·FAQ 등 default 라우트 전체가 제목만 있고 본문이 빈 채로 크롤됐다.
     snapshot = await getDefaultRouteSeoSnapshot(parsed.lang, parsed.canonicalPath)
+    // 소개는 브랜드 엔티티를 정의하는 페이지라, 홈과 함께 Organization 전체 노드를 싣는다.
+    if (parsed.canonicalPath === 'about') jsonLdData = getAboutJsonLd(parsed.lang)
   }
 
   if (!snapshot && parsed.resourcePath

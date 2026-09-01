@@ -15,12 +15,16 @@ import {
 } from '@/shared/utils/seoIndexing'
 import { appendWineVintageDisplay } from '@/domain/spirit/utils/spiritDisplayName'
 import {
+  buildAboutJsonLdGraph,
   buildHomeJsonLdGraph,
+  buildOrganizationRef,
   buildSpiritBreadcrumbSchema,
   buildSpiritProductSchema,
   DEFAULT_SEO_TEXT,
   SPIRITS_CRUMB_LABEL,
 } from '@/shared/utils/seoSchema'
+// 소개 페이지 본문은 서버·SPA 가 같은 상수를 쓴다(단일 출처).
+import { ABOUT_CONTENT } from '@/shared/config/aboutContent'
 // 생산자 폴백은 화면과 같은 라벨·같은 지역명을 써야 한다. 다른 문자열을 쓰면 크롤러 전용 텍스트가 된다.
 import { PRODUCER_TYPE_LABEL } from '@/domain/producer/types/producer.types'
 import { reviewCommentToText } from '@/domain/review/utils/reviewRichText'
@@ -889,7 +893,7 @@ export function parsePath(segments: string[]): ParsedPath {
   }
 
   const knownPublicRoots = new Set([
-    'ranking', 'terms', 'privacy', 'operation-policy', 'faq', 'calendar', 'social',
+    'about', 'ranking', 'terms', 'privacy', 'operation-policy', 'faq', 'calendar', 'social',
   ])
   if (remaining.length === 1 && knownPublicRoots.has(remaining[0])) {
     return { type: 'default', lang, canonicalPath: remaining.join('/') }
@@ -1732,12 +1736,9 @@ export async function getNoticeDetailJsonLd(
         'inLanguage': 'ko-KR',
         'isAccessibleForFree': true,
         'author': { '@type': 'Organization', 'name': 'CaskByCask', 'url': SITE_URL },
-        'publisher': {
-          '@type': 'Organization',
-          'name': 'CaskByCask',
-          'url': SITE_URL,
-          'logo': { '@type': 'ImageObject', 'url': `${SITE_URL}/logo.png` },
-        },
+        // @id 로 홈·소개의 Organization 과 같은 엔티티임을 밝힌다. 익명 노드로 두면
+        // 'CaskByCask 라는 어떤 조직'이 매 페이지마다 따로 인식된다.
+        'publisher': buildOrganizationRef('ko'),
       },
       {
         '@type': 'BreadcrumbList',
@@ -1759,6 +1760,20 @@ const DEFAULT_ROUTE_METADATA: Record<string, {
   ko: { title: string; description: string; h1?: string }
   en: { title: string; description: string; h1?: string }
 }> = {
+  // 브랜드 엔티티 페이지. 다른 항목과 달리 title 에 `— CaskByCask` 를 붙이지 않는다 —
+  // 제목 안에 브랜드 토큰이 두 번 들어가기 때문이다.
+  about: {
+    ko: {
+      title: 'CaskByCask(캐스크바이캐스크) 소개 — 주류 정보 커뮤니티',
+      description: '위스키·와인·꼬냑 주류 정보와 사용자 평점 리뷰를 모으는 한국어 커뮤니티 CaskByCask(캐스크바이캐스크, 캐바캐)를 소개합니다.',
+      h1: 'CaskByCask(캐스크바이캐스크) 소개',
+    },
+    en: {
+      title: 'About CaskByCask — Korean Spirits Information Community',
+      description: 'About CaskByCask (캐스크바이캐스크), a Korean-language community collecting whisky, wine and cognac information with user ratings and reviews.',
+      h1: 'About CaskByCask (캐스크바이캐스크)',
+    },
+  },
   ranking: {
     ko: { title: '활동 점수 랭킹 — CaskByCask', description: '주간·월간·전체 기간별 CaskByCask 사용자 활동 점수와 레벨 순위를 확인하세요.' },
     en: { title: 'Community Rankings — CaskByCask', description: 'Explore weekly, monthly, and all-time CaskByCask community activity rankings.' },
@@ -1928,10 +1943,52 @@ export async function getDefaultRouteSeoSnapshot(
   if (segments[0] === 'producers' && segments[1]) {
     return getProducerSeoSnapshot(segments[1], lang)
   }
+  // 소개는 브랜드 엔티티를 정의하는 페이지다. 정적 폴백(h1+설명 1줄)으로 두면
+  // 그 역할을 맡은 페이지가 사이트에서 가장 얇아지므로 전용 스냅샷을 쓴다.
+  if (segments.length === 1 && segments[0] === 'about') {
+    return getAboutSeoSnapshot(lang)
+  }
   if (segments.length === 1) {
     return getStaticRouteSeoSnapshot(lang, segments[0])
   }
   return null
+}
+
+/**
+ * 소개 페이지의 raw HTML 본문.
+ *
+ * 본문은 `ABOUT_CONTENT` 하나에서 오고 `AboutPage` 가 같은 상수를 렌더하므로,
+ * 서버 HTML 과 하이드레이션 뒤 화면이 글자 단위로 같다.
+ */
+function getAboutSeoSnapshot(lang: 'ko' | 'en' | null): SeoSnapshotData {
+  const resolvedLang = normalizeLang(lang)
+  const copy = ABOUT_CONTENT[resolvedLang]
+  const labels = localLabels(resolvedLang)
+  return {
+    kind: 'page',
+    lang: resolvedLang,
+    eyebrow: copy.eyebrow,
+    title: copy.heading,
+    description: copy.lead[0],
+    image: null,
+    metrics: [],
+    details: copy.facts.map((fact) => ({ label: fact.label, value: fact.value })),
+    // 첫 리드 문단은 위 description 이 이미 렌더하므로 나머지 문단부터 담는다.
+    // h1 은 스냅샷이 따로 렌더하므로 여기에 넣지 않는다(문서에 h1 이 둘이 된다).
+    bodyHtml: [
+      ...copy.lead.slice(1).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`),
+      `<h2>${escapeHtml(copy.offeringsHeading)}</h2>`,
+      `<ul>${copy.offerings.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`,
+    ].join(''),
+    sections: [{
+      heading: copy.keyPagesHeading,
+      items: copy.keyPages.map((page) => ({ title: page.label, href: page.href })),
+    }],
+    links: [
+      { label: labels.home, href: `/${resolvedLang}` },
+      { label: labels.spirits, href: `/${resolvedLang}/spirits` },
+    ],
+  }
 }
 
 /**
@@ -2648,6 +2705,8 @@ export async function getHomeSeoSnapshot(lang: 'ko' | 'en' | null): Promise<SeoS
       { label: isEn ? 'Event calendar' : '행사 캘린더', href: `/${resolvedLang}/calendar` },
       { label: isEn ? 'YouTube gallery' : '유튜브 갤러리', href: `/${resolvedLang}/youtube` },
       { label: 'FAQ', href: `/${resolvedLang}/faq` },
+      // 브랜드 엔티티 페이지 — 홈에서 내려가는 내부 링크가 있어야 크롤러가 일찍 만난다.
+      { label: isEn ? 'About' : '서비스 소개', href: `/${resolvedLang}/about` },
       // 게시판과 공지는 한국어 원문으로 신호를 통합하므로 항상 /ko 경로를 가리킨다.
       { label: isEn ? 'Community' : '커뮤니티', href: '/ko/community/all' },
       { label: 'BYOB', href: '/ko/community/byob' },
@@ -2666,6 +2725,18 @@ export function getHomeJsonLd(lang: 'ko' | 'en' | null): object {
   return {
     '@context': 'https://schema.org',
     '@graph': buildHomeJsonLdGraph(normalizeLang(lang)),
+  }
+}
+
+/**
+ * 소개 페이지 JSON-LD.
+ *
+ * AboutPage 가 하이드레이션 뒤 같은 배열을 다시 실으므로 서버·클라이언트가 어긋나지 않는다.
+ */
+export function getAboutJsonLd(lang: 'ko' | 'en' | null): object {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': buildAboutJsonLdGraph(normalizeLang(lang)),
   }
 }
 
@@ -3647,17 +3718,10 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
         'image': image || undefined,
         'keywords': post.hashtags?.length ? post.hashtags.join(', ') : undefined,
         'citation': post.sourceUrls?.length ? post.sourceUrls : undefined,
-        'publisher': {
-          '@type': 'Organization',
-          'name': 'CaskByCask',
-          'url': SITE_URL,
-          'logo': { '@type': 'ImageObject', 'url': `${SITE_URL}/logo.png` },
-        },
-        'author': {
-          '@type': 'Organization',
-          'name': '소식관리자',
-          'url': SITE_URL,
-        },
+        'publisher': buildOrganizationRef('ko'),
+        // 예전에는 '소식관리자' 라는 이름의 Organization 이 SITE_URL 을 자기 주소로 선언했다 —
+        // 우리 도메인에 조직이 둘 있다고 말하는 셈이라 브랜드 엔티티 통합을 방해했다.
+        'author': buildOrganizationRef('ko'),
       }
     : {
         '@type': 'DiscussionForumPosting',
@@ -3674,11 +3738,7 @@ export async function getCommunityPostJsonLd(boardType: string, id: string, lang
         'isAccessibleForFree': true,
         'image': image || undefined,
         'comment': comments.length > 0 ? comments : undefined,
-        'publisher': {
-          '@type': 'Organization',
-          'name': 'CaskByCask',
-          'url': SITE_URL,
-        },
+        'publisher': buildOrganizationRef('ko'),
         'author': {
           '@type': 'Person',
           'name': post.authorNickname || post.authorName || 'User',
