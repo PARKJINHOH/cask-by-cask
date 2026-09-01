@@ -85,7 +85,7 @@ function MyPastReviewsPanel({
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<ReviewItem | null>(null)
 
-  const { data, isLoading } = useMyReviews(0, spiritCategory ?? null)
+  const { data, isLoading } = useMyReviews({ page: 0, category: spiritCategory ?? null })
 
   const fetched = data?.content ?? []
   const rows = fetched.filter((review) => review.id !== excludeReviewId)

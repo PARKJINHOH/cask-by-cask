@@ -761,7 +761,7 @@ function isKnownPrivatePath(segments: string[]): boolean {
   const exact = new Set([
     'login', 'signup', 'oauth/callback', 'oauth/signup', 'account-recovery', 'inquiry',
     'notifications', 'mypage', 'price-tracker/register',
-    'taste-trees/new', 'taste-trees/mine', 'photo-card',
+    'taste-trees/new', 'taste-trees/mine', 'photo-card', 'community/byob/mine',
     'request/spirit', 'request/spirit/my', 'request/producer',
     'request/feedback', 'request/feedback/new',
   ])

@@ -1,6 +1,7 @@
 package com.caskbycask.domain.review.repository;
 
 import com.caskbycask.domain.review.entity.Review;
+import com.caskbycask.domain.review.entity.enums.MyReviewSort;
 import com.caskbycask.domain.spirit.entity.Spirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.user.entity.User;
@@ -20,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -215,7 +217,7 @@ class ReviewQueryRepositoryTest {
     @Test
     @DisplayName("내 리뷰 목록은 숨김 리뷰·비ACTIVE 주류 리뷰까지 본인 것 전부를 최신순으로 반환한다")
     void searchMyReviewsReturnsAllOwnReviews() {
-        Page<Review> result = reviewRepository.searchMyReviews(owner.getId(), null, PageRequest.of(0, 10));
+        Page<Review> result = myReviews(owner, null, null, MyReviewSort.LATEST, "ko", PageRequest.of(0, 10));
 
         assertThat(result.getTotalElements()).isEqualTo(6);
         assertThat(result.getContent())
@@ -230,22 +232,20 @@ class ReviewQueryRepositoryTest {
     @Test
     @DisplayName("내 리뷰 목록의 카테고리 필터는 해당 카테고리만 반환하고 페이징 메타데이터도 정확하다")
     void searchMyReviewsFiltersByCategory() {
-        Page<Review> whisky = reviewRepository.searchMyReviews(
-                owner.getId(), SpiritCategory.WHISKY, PageRequest.of(0, 2));
+        Page<Review> whisky = myReviews(owner, SpiritCategory.WHISKY, null, MyReviewSort.LATEST, "ko", PageRequest.of(0, 2));
         assertThat(whisky.getTotalElements()).isEqualTo(3);
         assertThat(whisky.getTotalPages()).isEqualTo(2);
         assertThat(whisky.getContent()).hasSize(2);
 
         // 공개 목록에서는 제외되는 비ACTIVE 주류도 내 리뷰에서는 조회된다
-        Page<Review> other = reviewRepository.searchMyReviews(
-                owner.getId(), SpiritCategory.OTHER, PageRequest.of(0, 10));
+        Page<Review> other = myReviews(owner, SpiritCategory.OTHER, null, MyReviewSort.LATEST, "ko", PageRequest.of(0, 10));
         assertThat(other.getContent()).extracting(Review::getComment).containsExactly("other-hidden");
     }
 
     @Test
     @DisplayName("내 리뷰 목록은 타인 리뷰를 반환하지 않는다")
     void searchMyReviewsExcludesOtherUsers() {
-        Page<Review> result = reviewRepository.searchMyReviews(other.getId(), null, PageRequest.of(0, 10));
+        Page<Review> result = myReviews(other, null, null, MyReviewSort.LATEST, "ko", PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Review::getComment).containsExactly("other-user");
     }
@@ -264,6 +264,108 @@ class ReviewQueryRepositoryTest {
         Map<SpiritCategory, Long> emptyCounts =
                 reviewRepository.countMyReviewsByCategory(persistUser("none@example.com", "none01").getId());
         assertThat(emptyCounts.values()).allMatch(count -> count == 0L);
+    }
+
+    @Test
+    @DisplayName("내 리뷰 검색은 한글·영문 주류명 어느 쪽에 걸려도 찾고, 대소문자·앞뒤 공백을 무시한다")
+    void searchMyReviewsMatchesKeywordOnBothNames() {
+        assertThat(comments(myReviews(owner, null, "라가불린", MyReviewSort.LATEST, "ko", PageRequest.of(0, 10))))
+                .containsExactly("lagavulin-1");
+
+        assertThat(comments(myReviews(owner, null, "  bAlVeNiE  ", MyReviewSort.LATEST, "ko", PageRequest.of(0, 10))))
+                .containsExactlyInAnyOrder("balvenie-1", "hidden-whisky");
+    }
+
+    @Test
+    @DisplayName("빈 검색어는 필터로 취급하지 않고, 카테고리와 함께 걸면 둘 다 적용된다")
+    void searchMyReviewsCombinesCategoryAndKeyword() {
+        assertThat(myReviews(owner, null, "   ", MyReviewSort.LATEST, "ko", PageRequest.of(0, 10))
+                .getTotalElements()).isEqualTo(6);
+
+        assertThat(comments(myReviews(owner, SpiritCategory.WHISKY, "라가불린",
+                MyReviewSort.LATEST, "ko", PageRequest.of(0, 10))))
+                .containsExactly("lagavulin-1");
+
+        // 카테고리가 어긋나면 이름이 맞아도 걸리지 않는다
+        assertThat(myReviews(owner, SpiritCategory.COGNAC, "라가불린",
+                MyReviewSort.LATEST, "ko", PageRequest.of(0, 10)).getTotalElements()).isZero();
+    }
+
+    @Test
+    @DisplayName("작성일 정렬은 최신순·오래된순이 서로 뒤집힌 순서를 낸다")
+    void searchMyReviewsSortsByCreatedAt() {
+        List<String> latest = comments(myReviews(owner, null, null, MyReviewSort.LATEST, "ko", PageRequest.of(0, 10)));
+        List<String> oldest = comments(myReviews(owner, null, null, MyReviewSort.OLDEST, "ko", PageRequest.of(0, 10)));
+
+        assertThat(oldest).containsExactlyElementsOf(latest.reversed());
+    }
+
+    @Test
+    @DisplayName("점수 정렬은 높은순·낮은순으로 동작하고 점수 없는 리뷰는 항상 뒤로 간다")
+    void searchMyReviewsSortsByScore() {
+        User scorer = persistUser("scorer@example.com", "scorer1");
+        Spirit spirit = persistActiveSpirit("점수 테스트", "Score Test", SpiritCategory.WHISKY);
+        entityManager.persist(scoredReview(scorer, spirit, "score-60", new BigDecimal("60")));
+        entityManager.persist(scoredReview(scorer, spirit, "score-90", new BigDecimal("90")));
+        entityManager.persist(scoredReview(scorer, spirit, "score-75", new BigDecimal("75")));
+        // 피니시를 비우면 @PrePersist 가 총점을 null 로 둔다 — 점수 없는 리뷰
+        entityManager.persist(scoredReview(scorer, spirit, "score-none", null));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(comments(myReviews(scorer, null, null, MyReviewSort.SCORE_DESC, "ko", PageRequest.of(0, 10))))
+                .containsExactly("score-90", "score-75", "score-60", "score-none");
+        assertThat(comments(myReviews(scorer, null, null, MyReviewSort.SCORE_ASC, "ko", PageRequest.of(0, 10))))
+                .containsExactly("score-60", "score-75", "score-90", "score-none");
+    }
+
+    @Test
+    @DisplayName("이름 정렬은 표시 언어를 따르고, 영문명이 없으면 한글명으로 폴백해 정렬한다")
+    void searchMyReviewsSortsByNameFollowingLanguage() {
+        User namer = persistUser("namer@example.com", "namer01");
+        // ko 기준: 가마다 < 나마다 < 다마다 / en 기준: Alpha < Zulu < (영문명 없어 '다마다'로 폴백)
+        entityManager.persist(review(namer,
+                persistActiveSpirit("다마다", "Alpha Spirit", SpiritCategory.WHISKY), "ko-3-en-1"));
+        entityManager.persist(review(namer,
+                persistActiveSpirit("가마다", "Zulu Spirit", SpiritCategory.WHISKY), "ko-1-en-2"));
+        // name_en 은 NOT NULL 이라 '없음'은 빈 문자열로 들어온다 — 정렬도 그때 한글명으로 폴백해야 한다
+        entityManager.persist(review(namer,
+                persistActiveSpirit("나마다", "", SpiritCategory.WHISKY), "ko-2-en-fallback"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(comments(myReviews(namer, null, null, MyReviewSort.NAME_ASC, "ko", PageRequest.of(0, 10))))
+                .containsExactly("ko-1-en-2", "ko-2-en-fallback", "ko-3-en-1");
+        assertThat(comments(myReviews(namer, null, null, MyReviewSort.NAME_DESC, "ko", PageRequest.of(0, 10))))
+                .containsExactly("ko-3-en-1", "ko-2-en-fallback", "ko-1-en-2");
+
+        // en 모드에서는 영문명 기준 — 영문명이 없는 '나마다'는 한글명으로 폴백해 맨 뒤로 간다
+        assertThat(comments(myReviews(namer, null, null, MyReviewSort.NAME_ASC, "en", PageRequest.of(0, 10))))
+                .containsExactly("ko-3-en-1", "ko-1-en-2", "ko-2-en-fallback");
+    }
+
+    private Page<Review> myReviews(User user, SpiritCategory category, String keyword,
+                                   MyReviewSort sort, String lang, PageRequest pageable) {
+        return reviewRepository.searchMyReviews(user.getId(), category, keyword, sort, lang, pageable);
+    }
+
+    private List<String> comments(Page<Review> page) {
+        return page.getContent().stream().map(Review::getComment).toList();
+    }
+
+    /**
+     * 총점은 엔티티가 향·맛·피니시의 평균으로 계산하므로 세부 점수를 움직여야 한다.
+     * {@code each} 가 null 이면 피니시를 비워 총점이 없는 리뷰가 된다.
+     */
+    private Review scoredReview(User user, Spirit spirit, String comment, BigDecimal each) {
+        return Review.builder()
+                .user(user)
+                .spirit(spirit)
+                .noseScore(each != null ? each : new BigDecimal("80"))
+                .tasteScore(each != null ? each : new BigDecimal("80"))
+                .finishScore(each)
+                .comment(comment)
+                .build();
     }
 
     private User persistUser(String email, String nickname) {

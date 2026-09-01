@@ -327,6 +327,8 @@
     "signup": "Sign Up",
     "logout": "Logout",
     "mypage": "My Page",
+    "myReviews": "My Reviews",
+    "language": "Language",
     "admin": "Admin",
     "more": "More",
     "maturingPower": "Lv.{{level}}"
@@ -555,6 +557,9 @@
     "founded": "Founded",
     "website": "Website",
     "otherSpirits": "Spirits from this producer",
+    "searchAriaLabel": "Search spirits from this producer",
+    "noSearchResult": "No results found.",
+    "noSearchResultDesc": "Try a different search term.",
     "empty": "No spirits registered yet."
   },
   "producerRequest": {
@@ -1251,7 +1256,6 @@
     "noItemDesc": "Add spirits to your favorites from the detail page!",
     "add": "Add to Favorites",
     "remove": "Remove",
-    "tab": "Favorites",
     "favorites": "Favorites"
   },
   "mypage": {
@@ -1266,8 +1270,6 @@
     "maturingTab": "Level",
     "reviewsTab": "Reviews",
       "wishlistTab": "Favorites",
-      "tasteTreesTab": "Taste Trees",
-    "byobTab": "BYOB",
     "collectionTab": "Bottle Cabinet",
     "priceReportsTab": "Price Reports",
     "priceAlertsTab": "Price Alerts",
@@ -1287,6 +1289,15 @@
       "pendingCreatedAt": "Requested",
       "pendingEmpty": "No pending reviews.",
       "approvedTab": "Approved reviews",
+      "sortLabel": "Sort by",
+      "sort": {
+        "LATEST": "Newest",
+        "OLDEST": "Oldest",
+        "SCORE_DESC": "Highest score",
+        "SCORE_ASC": "Lowest score",
+        "NAME_ASC": "Name (A-Z)",
+        "NAME_DESC": "Name (Z-A)"
+      },
       "pendingTab": "Pending approval",
       "pendingEdit": "Edit",
       "pendingDelete": "Delete",
@@ -1889,6 +1900,10 @@
     "edit": "Edit Gathering",
     "noPost": "No gatherings found.",
     "noPostDesc": "Host or join a BYOB gathering!",
+    "myGatherings": "My Gatherings",
+    "myGatheringsDesc": "BYOB gatherings you host or have joined.",
+    "host": "Host",
+    "bottleMore": "+{{count}} more",
     "participants": "Participants",
     "participantsCount": "{{count}}/{{max}}",
     "location": "Location",
@@ -2645,7 +2660,6 @@
     "notFoundDesc": "The share link is invalid or the tier list has been deleted."
   },
   "social": {
-    "mypageTab": "Social posts",
     "publishTitle": "Publish to social media",
     "publishHelp": "Publishing runs separately after save. The original is saved even if social publishing fails.",
     "editRetryHelp": "A platform not requested on the first save cannot be added later. Only failed publications can be retried.",
@@ -2683,9 +2697,6 @@
     "consentRequired": "Please accept the social publishing notice.",
     "completeSettings": "Please complete the social publishing settings.",
     "deleteSourceWarning": "Posts already published to Instagram or Threads are not deleted automatically. Delete them directly on the platform.",
-    "historyTitle": "Social publication history",
-    "historyHelp": "Only posts requested after this feature was introduced are shown. Delete posts directly on Instagram or Threads.",
-    "historyEmpty": "No social publication history yet.",
     "hubTitle": "Latest CaskByCask reviews and news",
     "hubDescription": "See the latest reviews and news featured on our official Instagram and Threads accounts.",
     "hubEmpty": "No published social posts yet.",

@@ -99,16 +99,26 @@ export default function ByobListPage() {
           <p className="text-sm text-neutral-500 mt-1">{t('byob.subtitle')}</p>
         </div>
         {isLoggedIn && (
-          <Link
-            to="/community/byob/write"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
-              bg-primary-800 text-white hover:bg-primary-900 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            {t('byob.write')}
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* 내가 주최·참여한 모임은 마이페이지가 아니라 이 메뉴 안에서 본다 */}
+            <Link
+              to="/community/byob/mine"
+              className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg
+                border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 transition-colors"
+            >
+              {t('byob.myGatherings')}
+            </Link>
+            <Link
+              to="/community/byob/write"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
+                bg-primary-800 text-white hover:bg-primary-900 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              {t('byob.write')}
+            </Link>
+          </div>
         )}
       </div>
 

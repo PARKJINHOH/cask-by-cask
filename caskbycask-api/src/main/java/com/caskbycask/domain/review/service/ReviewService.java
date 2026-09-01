@@ -3,6 +3,7 @@ package com.caskbycask.domain.review.service;
 import com.caskbycask.domain.review.dto.*;
 import com.caskbycask.domain.review.entity.Review;
 import com.caskbycask.domain.review.entity.ReviewImage;
+import com.caskbycask.domain.review.entity.enums.MyReviewSort;
 import com.caskbycask.domain.review.entity.enums.ReviewSort;
 import com.caskbycask.domain.review.repository.ReviewRepository;
 import com.caskbycask.domain.score.constant.ScoreActions;
@@ -59,11 +60,15 @@ public class ReviewService {
         return withImages(reviewRepository.findBySpiritForDisplay(spiritId, sorted));
     }
 
-    /** 마이페이지 "내 리뷰" 목록 — 카테고리 필터 지원, 최신순 정렬은 쿼리에서 처리한다. */
+    /**
+     * 마이페이지 "내 리뷰" 목록 — 카테고리 필터·주류명 검색·정렬을 지원한다.
+     * 정렬은 Spring Data Sort 가 아니라 {@link MyReviewSort} 로 받아 쿼리에서 처리한다.
+     */
     @Transactional(readOnly = true)
-    public Page<ReviewResponse> getMyReviews(Long userId, SpiritCategory category, Pageable pageable) {
+    public Page<ReviewResponse> getMyReviews(Long userId, SpiritCategory category, String keyword,
+                                             MyReviewSort sort, String lang, Pageable pageable) {
         Pageable paged = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
-        return withImages(reviewRepository.searchMyReviews(userId, category, paged));
+        return withImages(reviewRepository.searchMyReviews(userId, category, keyword, sort, lang, paged));
     }
 
     /** 마이페이지 "내 리뷰" 카테고리 탭의 개수 배지 */

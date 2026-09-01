@@ -12,11 +12,15 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/social-publications")
 @RequiredArgsConstructor
 public class SocialPublicationController {
+
+    private static final int MAX_SOURCE_IDS = 50;
 
     private final SocialPublishRequestService publishRequestService;
 
@@ -34,10 +38,31 @@ public class SocialPublicationController {
             @PathVariable SocialSourceType type,
             @PathVariable Long sourceId,
             @AuthenticationPrincipal CustomUserDetails user) {
-        boolean admin = user.getRole() == com.caskbycask.domain.user.entity.enums.Role.SUPER_ADMIN
-                || user.getRole() == com.caskbycask.domain.user.entity.enums.Role.ADMIN;
         return ResponseEntity.ok(ApiResponse.success(
-                publishRequestService.states(type, sourceId, user.getUserId(), admin)));
+                publishRequestService.states(type, sourceId, user.getUserId(), isAdmin(user))));
+    }
+
+    /**
+     * 원본 여러 건의 게시 상태를 한 번에 조회한다 — 목록 화면이 카드마다 위 엔드포인트를 부르면 N+1 이 된다.
+     * 한 페이지 분량만 허용하도록 ID 개수를 제한한다.
+     */
+    @GetMapping("/sources")
+    public ResponseEntity<ApiResponse<Map<Long, List<SocialPublicationResponse>>>> statesBySources(
+            @RequestParam SocialSourceType type,
+            @RequestParam List<Long> ids,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        List<Long> limited = ids.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .limit(MAX_SOURCE_IDS)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(
+                publishRequestService.statesBySourceIds(type, limited, user.getUserId(), isAdmin(user))));
+    }
+
+    private boolean isAdmin(CustomUserDetails user) {
+        return user.getRole() == com.caskbycask.domain.user.entity.enums.Role.SUPER_ADMIN
+                || user.getRole() == com.caskbycask.domain.user.entity.enums.Role.ADMIN;
     }
 
     @PostMapping("/{id}/retry")

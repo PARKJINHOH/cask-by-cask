@@ -2,12 +2,17 @@ package com.caskbycask.domain.review.repository;
 
 import com.caskbycask.domain.review.entity.QReview;
 import com.caskbycask.domain.review.entity.Review;
+import com.caskbycask.domain.review.entity.enums.MyReviewSort;
 import com.caskbycask.domain.spirit.entity.QSpirit;
 import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.SpiritStatus;
 import com.caskbycask.domain.user.entity.QUser;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.Order;
+import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.StringExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,13 +40,7 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
         if (category != null) {
             predicate.and(spirit.category.eq(category));
         }
-        String normalizedKeyword = normalizeKeyword(keyword);
-        if (normalizedKeyword != null) {
-            predicate.and(
-                    spirit.nameKo.containsIgnoreCase(normalizedKeyword)
-                            .or(spirit.nameEn.containsIgnoreCase(normalizedKeyword))
-            );
-        }
+        applyKeyword(predicate, keyword, spirit);
 
         // ── 1. 데이터 조회 (user·spirit fetch join 으로 N+1 방지) ──
         List<Review> content = queryFactory
@@ -97,7 +96,8 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
     }
 
     @Override
-    public Page<Review> searchMyReviews(Long userId, SpiritCategory category, Pageable pageable) {
+    public Page<Review> searchMyReviews(Long userId, SpiritCategory category, String keyword,
+                                        MyReviewSort sort, String lang, Pageable pageable) {
         QReview review = QReview.review;
         QSpirit spirit = QSpirit.spirit;
         QUser user = QUser.user;
@@ -106,13 +106,14 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
         if (category != null) {
             predicate.and(spirit.category.eq(category));
         }
+        applyKeyword(predicate, keyword, spirit);
 
         List<Review> content = queryFactory
                 .selectFrom(review)
                 .join(review.user, user).fetchJoin()
                 .join(review.spirit, spirit).fetchJoin()
                 .where(predicate)
-                .orderBy(review.createdAt.desc(), review.id.desc())
+                .orderBy(myReviewOrder(sort, lang, review, spirit))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -151,8 +152,72 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
                 .and(spirit.status.eq(SpiritStatus.ACTIVE));
     }
 
+    /** 주류명(한/영) 부분 일치 — 공개 목록과 내 리뷰가 같은 규칙을 쓴다. */
+    private void applyKeyword(BooleanBuilder predicate, String keyword, QSpirit spirit) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        if (normalizedKeyword == null) return;
+        predicate.and(
+                spirit.nameKo.containsIgnoreCase(normalizedKeyword)
+                        .or(spirit.nameEn.containsIgnoreCase(normalizedKeyword))
+        );
+    }
+
     /** 공백만 있는 검색어는 필터로 취급하지 않는다. */
     private String normalizeKeyword(String keyword) {
         return StringUtils.hasText(keyword) ? keyword.trim() : null;
+    }
+
+    /**
+     * 내 리뷰 정렬. 어떤 기준이든 {@code review.id} 를 마지막 키로 두어 페이지 경계가 흔들리지 않게 한다.
+     * 점수는 nullable 이라 항상 뒤로 보낸다.
+     */
+    private OrderSpecifier<?>[] myReviewOrder(MyReviewSort sort, String lang, QReview review, QSpirit spirit) {
+        return switch (sort != null ? sort : MyReviewSort.LATEST) {
+            case OLDEST -> new OrderSpecifier<?>[]{ review.createdAt.asc(), review.id.asc() };
+            case SCORE_DESC -> new OrderSpecifier<?>[]{ review.totalScore.desc().nullsLast(), review.id.desc() };
+            case SCORE_ASC -> new OrderSpecifier<?>[]{ review.totalScore.asc().nullsLast(), review.id.asc() };
+            case NAME_ASC -> nameOrder(Order.ASC, lang, review, spirit);
+            case NAME_DESC -> nameOrder(Order.DESC, lang, review, spirit);
+            default -> new OrderSpecifier<?>[]{ review.createdAt.desc(), review.id.desc() };
+        };
+    }
+
+    /**
+     * 이름 정렬. 화면 제목이 "주류명 + 시리즈 식별자"(에디션 값은 부제)이므로 같은 순서로 이어 정렬한다.
+     * 값이 없는 정규 제품은 빈 문자열로 취급해 일반 문자열 정렬과 동일하게 둔다.
+     */
+    private OrderSpecifier<?>[] nameOrder(Order order, String lang, QReview review, QSpirit spirit) {
+        return new OrderSpecifier<?>[]{
+                new OrderSpecifier<>(order, localizedName(lang, spirit), OrderSpecifier.NullHandling.NullsLast),
+                new OrderSpecifier<>(order, localizedSeriesIdentifier(lang, spirit).coalesce("")),
+                new OrderSpecifier<>(order, localizedVariantValue(lang, spirit).coalesce("")),
+                order == Order.ASC ? review.id.asc() : review.id.desc(),
+        };
+    }
+
+    private StringExpression localizedName(String lang, QSpirit spirit) {
+        return "en".equalsIgnoreCase(lang)
+                ? new CaseBuilder()
+                    .when(spirit.nameEn.isNotNull().and(spirit.nameEn.ne(""))).then(spirit.nameEn)
+                    .otherwise(spirit.nameKo)
+                : spirit.nameKo;
+    }
+
+    private StringExpression localizedSeriesIdentifier(String lang, QSpirit spirit) {
+        return "en".equalsIgnoreCase(lang)
+                ? new CaseBuilder()
+                    .when(spirit.seriesIdentifierEn.isNotNull().and(spirit.seriesIdentifierEn.ne("")))
+                    .then(spirit.seriesIdentifierEn)
+                    .otherwise(spirit.seriesIdentifier)
+                : spirit.seriesIdentifier;
+    }
+
+    private StringExpression localizedVariantValue(String lang, QSpirit spirit) {
+        return "en".equalsIgnoreCase(lang)
+                ? new CaseBuilder()
+                    .when(spirit.variantValueEn.isNotNull().and(spirit.variantValueEn.ne("")))
+                    .then(spirit.variantValueEn)
+                    .otherwise(spirit.variantValue)
+                : spirit.variantValue;
     }
 }

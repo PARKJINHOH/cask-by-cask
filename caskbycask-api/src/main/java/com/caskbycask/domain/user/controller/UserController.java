@@ -10,6 +10,7 @@ import com.caskbycask.domain.review.dto.CreateVariantReviewRequest;
 import com.caskbycask.domain.review.dto.ReviewImagePlanItem;
 import com.caskbycask.domain.review.dto.VariantReviewRequestResponse;
 import com.caskbycask.domain.review.dto.UserReviewCategoryCountResponse;
+import com.caskbycask.domain.review.entity.enums.MyReviewSort;
 import com.caskbycask.domain.review.entity.enums.VariantReviewRequestStatus;
 import com.caskbycask.domain.review.service.ReviewService;
 import com.caskbycask.domain.review.service.VariantReviewRequestService;
@@ -198,13 +199,20 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    /**
+     * 마이페이지 "내 리뷰" 목록.
+     * keyword·sort·lang 은 모두 기본값이 있어, 보내지 않는 기존 클라이언트는 종전과 동일하게 최신순 전체를 받는다.
+     */
     @GetMapping("/me/reviews")
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getMyReviews(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) SpiritCategory category,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "LATEST") MyReviewSort sort,
+            @RequestParam(defaultValue = "ko") String lang,
             @PageableDefault(size = 10) Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(
-                PageResponse.from(reviewService.getMyReviews(userDetails.getUserId(), category, pageable))));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(
+                reviewService.getMyReviews(userDetails.getUserId(), category, keyword, sort, lang, pageable))));
     }
 
     /** 정적 경로가 {reviewId} 보다 먼저 매칭되도록 위에 선언한다. */

@@ -5,6 +5,7 @@ import type {
   CreateVariantReviewRequest,
   RecentReviewItem,
   ReviewEmbedItem,
+  MyReviewSort,
   ReviewItem,
   ReviewImagePlanItem,
   UpdateReviewRequest,
@@ -81,13 +82,26 @@ export const reviewApi = {
   deleteReview: (spiritId: number, reviewId: number) =>
     axiosInstance.delete<ApiResponse<null>>(`/api/spirits/${spiritId}/reviews/${reviewId}`),
 
-  getMyReviews: (params?: { page?: number; size?: number; category?: SpiritCategory }) =>
+  /**
+   * 마이페이지 "내 리뷰" 목록.
+   * keyword·sort·lang 은 값이 있을 때만 보낸다 — 서버 기본값(전체·최신순·ko)을 그대로 쓰기 위함이다.
+   */
+  getMyReviews: (params?: {
+    page?: number
+    size?: number
+    category?: SpiritCategory
+    keyword?: string
+    sort?: MyReviewSort
+    lang?: 'ko' | 'en'
+  }) =>
     axiosInstance.get<ApiResponse<PageResponse<ReviewItem>>>('/api/users/me/reviews', {
-      // category 는 값이 있을 때만 전송 (빈 값 전송 시 서버가 필터로 오인하지 않도록)
       params: {
         page: params?.page,
         size: params?.size,
         ...(params?.category ? { category: params.category } : {}),
+        ...(params?.keyword ? { keyword: params.keyword } : {}),
+        ...(params?.sort ? { sort: params.sort } : {}),
+        ...(params?.lang ? { lang: params.lang } : {}),
       },
     }),
 

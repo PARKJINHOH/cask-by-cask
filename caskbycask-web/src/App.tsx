@@ -38,6 +38,7 @@ const PostFormPage = lazy(() => import('@/views-spa/community/PostFormPage'))
 const ByobListPage = lazy(() => import('@/views-spa/community/ByobListPage'))
 const ByobDetailPage = lazy(() => import('@/views-spa/community/ByobDetailPage'))
 const ByobFormPage = lazy(() => import('@/views-spa/community/ByobFormPage'))
+const ByobMinePage = lazy(() => import('@/views-spa/community/ByobMinePage'))
 const PhotoGalleryPage = lazy(() => import('@/views-spa/community/PhotoGalleryPage'))
 const PhotoPostDetailPage = lazy(() => import('@/views-spa/community/PhotoPostDetailPage'))
 const PhotoCardPage = lazy(() => import('@/views-spa/PhotoCardPage'))
@@ -187,6 +188,8 @@ export default function App() {
               {/* 이미지 갤러리 글쓰기는 포토카드 편집기로 보낸다 —
                   PostFormPage 는 photo 를 FREE 로 저장하므로 진입 자체를 막는다 */}
               <Route path="community/photo/write" element={<Navigate to="/photo-card" replace />} />
+              {/* 정적 경로라 community/byob/:id 보다 먼저 선언한다 */}
+              <Route path="community/byob/mine" element={<ByobMinePage />} />
               <Route path="community/byob/write" element={<ByobFormPage />} />
               <Route path="community/byob/:id/edit" element={<ByobFormPage />} />
 <Route path="mypage" element={<MyPage />} />

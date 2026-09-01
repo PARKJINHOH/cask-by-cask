@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Spinner from '@/shared/components/Spinner'
@@ -14,15 +14,20 @@ import {
   useMyReviews,
 } from '../hooks/useReviews'
 import { formatDate, formatScore, optionalScoreColor, NO_SCORE_TEXT } from '@/shared/utils/format'
-import type { ReviewItem, VariantReviewRequestItem } from '../types/review.types'
+import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from '@/shared/hooks/useDebouncedValue'
+import type { MyReviewSort, ReviewItem, VariantReviewRequestItem } from '../types/review.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
 import { reviewCommentToText } from '../utils/reviewRichText'
 import { reviewSpiritLabel, variantRequestSpiritLabel } from '../utils/reviewDisplay'
 import { myReviewEditPath, myReviewRequestEditPath } from '../utils/reviewRoutes'
 import ReviewImageStrip from './ReviewImageStrip'
+import ReviewSocialLinks from './ReviewSocialLinks'
+import { useSourceSocialPublications } from '@/domain/social/hooks/useSocialPublications'
 
 type ReviewTab = 'approved' | 'pending' | 'rejected'
+
+const SORT_VALUES: MyReviewSort[] = ['LATEST', 'OLDEST', 'SCORE_DESC', 'SCORE_ASC', 'NAME_ASC', 'NAME_DESC']
 
 function ScoreBar({ label, value }: { label: string; value: number | null }) {
   return (
@@ -56,12 +61,28 @@ export default function MyReviewList() {
 
   const [activeTab, setActiveTab] = useState<ReviewTab>('approved')
   const [category, setCategory] = useState<SpiritCategory | null>(null)
+  // 정렬·검색은 승인 리뷰 탭에만 있다 — 대기·반려는 별도 엔티티(에디션 요청)라 서버가 받지 않는다.
+  const [sort, setSort] = useState<MyReviewSort>('LATEST')
+  const [keywordInput, setKeywordInput] = useState('')
   const [approvedPage, setApprovedPage] = useState(0)
   const [pendingPage, setPendingPage] = useState(0)
   const [rejectedPage, setRejectedPage] = useState(0)
 
+  const debouncedKeyword = useDebouncedValue(keywordInput, SEARCH_DEBOUNCE_MS)
+
+  // 조건이 바뀌면 늘 첫 페이지부터 다시 본다.
+  useEffect(() => {
+    setApprovedPage(0)
+  }, [sort, debouncedKeyword])
+
   const { data: approvedData, isLoading: isApprovedLoading, isFetching: isApprovedFetching } =
-    useMyReviews(approvedPage, category)
+    useMyReviews({
+      page: approvedPage,
+      category,
+      keyword: debouncedKeyword,
+      sort,
+      lang: isEn ? 'en' : 'ko',
+    })
   const { data: pendingData, isLoading: isPendingLoading, isFetching: isPendingFetching } =
     useMyReviewRequests(pendingPage, 'PENDING', category)
   const { data: rejectedData, isLoading: isRejectedLoading, isFetching: isRejectedFetching } =
@@ -73,6 +94,10 @@ export default function MyReviewList() {
   const deleteRequestMutation = useDeleteMyReviewRequest()
 
   const approvedReviews = approvedData?.content ?? []
+  const { data: socialByReviewId } = useSourceSocialPublications(
+    'REVIEW',
+    approvedReviews.map((review) => review.id),
+  )
   const pendingRequests = pendingData?.content ?? []
   const rejectedRequests = rejectedData?.content ?? []
   // 상태 탭의 배지는 카테고리 필터와 무관한 전체 건수를 보여준다.
@@ -92,7 +117,7 @@ export default function MyReviewList() {
     activeTab === 'approved' ? approvedCounts
       : activeTab === 'pending' ? pendingCounts
       : rejectedCounts
-  const isFiltered = category !== null
+  const isFiltered = category !== null || debouncedKeyword.trim().length > 0
 
   // 상태 탭이 바뀌면 카테고리 필터도 초기화한다 (탭마다 보유 카테고리가 다르기 때문).
   const handleTabChange = (tab: ReviewTab) => {
@@ -132,7 +157,9 @@ export default function MyReviewList() {
   const emptyState = (title: string, description: string) => (
     <EmptyState
       title={isFiltered ? t('review.noFilterResult') : title}
-      description={isFiltered ? t('mypage.reviews.noCategoryResultDesc') : description}
+      description={isFiltered
+        ? (debouncedKeyword.trim() ? t('review.noFilterResultDesc') : t('mypage.reviews.noCategoryResultDesc'))
+        : description}
       className="border border-neutral-200 rounded-2xl bg-white"
     />
   )
@@ -168,6 +195,62 @@ export default function MyReviewList() {
         counts={activeCounts}
         className="border-b border-neutral-200 pb-3"
       />
+
+      {activeTab === 'approved' && (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as MyReviewSort)}
+            aria-label={t('mypage.reviews.sortLabel')}
+            className="text-sm border border-neutral-300 rounded-lg px-3 py-1.5 bg-white
+              focus:outline-none focus:ring-2 focus:ring-primary-400 text-neutral-700"
+          >
+            {SORT_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {t(`mypage.reviews.sort.${value}`)}
+              </option>
+            ))}
+          </select>
+
+          <form
+            role="search"
+            onSubmit={(e) => e.preventDefault()}
+            className="relative w-full lg:w-72 flex-shrink-0"
+          >
+            <svg
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <line x1="16.5" y1="16.5" x2="21" y2="21" strokeLinecap="round" />
+            </svg>
+            <input
+              type="search"
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+              placeholder={t('review.searchSpiritPlaceholder')}
+              aria-label={t('review.searchSpiritAriaLabel')}
+              className="w-full rounded-full border border-neutral-200 bg-white py-2 pl-9 pr-9 text-sm text-neutral-800
+                placeholder:text-neutral-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100
+                [&::-webkit-search-cancel-button]:hidden"
+            />
+            {keywordInput && (
+              <button
+                type="button"
+                onClick={() => setKeywordInput('')}
+                aria-label={t('review.searchClear')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-neutral-400
+                  transition-colors hover:bg-neutral-100 hover:text-neutral-600 cursor-pointer"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                  <line x1="6" y1="6" x2="18" y2="18" strokeLinecap="round" />
+                  <line x1="18" y1="6" x2="6" y2="18" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+          </form>
+        </div>
+      )}
 
       {isActiveLoading ? (
         <div className="flex justify-center py-12">
@@ -205,6 +288,7 @@ export default function MyReviewList() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
+                        <ReviewSocialLinks publications={socialByReviewId?.[String(review.id)]} />
                         <ReviewImageStrip images={review.images} compact />
                         <span
                           className="text-xl font-bold tabular-nums"

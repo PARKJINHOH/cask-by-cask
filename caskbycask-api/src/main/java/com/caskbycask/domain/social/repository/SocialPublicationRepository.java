@@ -46,6 +46,8 @@ public interface SocialPublicationRepository extends JpaRepository<SocialPublica
     List<Long> findIdsByStatus(@Param("status") SocialPublicationStatus status, Pageable pageable);
 
     List<SocialPublication> findByBundleIdOrderByPlatformAsc(Long bundleId);
+    @EntityGraph(attributePaths = {"bundle"})
+    List<SocialPublication> findByBundleIdInOrderByPlatformAsc(Collection<Long> bundleIds);
     Optional<SocialPublication> findByIdAndBundleRequestedById(Long id, Long userId);
 
     @EntityGraph(attributePaths = {"bundle"})

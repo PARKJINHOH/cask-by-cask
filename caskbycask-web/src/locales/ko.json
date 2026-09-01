@@ -327,6 +327,8 @@
     "signup": "회원가입",
     "logout": "로그아웃",
     "mypage": "마이페이지",
+    "myReviews": "내 리뷰",
+    "language": "언어",
     "admin": "관리자",
     "more": "더보기",
     "maturingPower": "Lv.{{level}}"
@@ -555,6 +557,9 @@
     "founded": "설립",
     "website": "웹사이트",
     "otherSpirits": "이 생산자의 술",
+    "searchAriaLabel": "이 생산자의 주류 검색",
+    "noSearchResult": "검색 결과가 없습니다.",
+    "noSearchResultDesc": "다른 검색어를 입력해보세요.",
     "empty": "등록된 술이 없습니다."
   },
   "producerRequest": {
@@ -1256,8 +1261,6 @@
     "maturingTab": "레벨",
     "reviewsTab": "내 리뷰",
       "wishlistTab": "즐겨찾기",
-      "tasteTreesTab": "취향 트리",
-    "byobTab": "BYOB 이력",
     "collectionTab": "주류보관함",
     "priceReportsTab": "내 가격 등록",
     "priceAlertsTab": "내 목표가 알림",
@@ -1277,6 +1280,15 @@
       "pendingCreatedAt": "요청일",
       "pendingEmpty": "승인 대기 중인 리뷰가 없습니다.",
       "approvedTab": "승인리뷰",
+      "sortLabel": "정렬 기준",
+      "sort": {
+        "LATEST": "최신순",
+        "OLDEST": "오래된순",
+        "SCORE_DESC": "점수 높은순",
+        "SCORE_ASC": "점수 낮은순",
+        "NAME_ASC": "이름 오름차순",
+        "NAME_DESC": "이름 내림차순"
+      },
       "pendingTab": "승인대기",
       "pendingEdit": "수정",
       "pendingDelete": "삭제",
@@ -1489,7 +1501,6 @@
     "noItemDesc": "술 상세 페이지에서 즐겨찾기에 추가해보세요!",
     "add": "즐겨찾기 추가",
     "remove": "제거",
-    "tab": "즐겨찾기",
     "favorites": "즐겨찾기"
   },
   "unsaved": {
@@ -1889,6 +1900,10 @@
     "edit": "모임 수정",
     "noPost": "등록된 모임이 없습니다.",
     "noPostDesc": "BYOB 모임을 등록하거나 참여해보세요!",
+    "myGatherings": "내 모임",
+    "myGatheringsDesc": "내가 주최했거나 참여한 BYOB 모임입니다.",
+    "host": "주최",
+    "bottleMore": "외 {{count}}종",
     "participants": "참여자",
     "participantsCount": "{{count}}/{{max}}명",
     "location": "장소",
@@ -2645,7 +2660,6 @@
     "notFoundDesc": "공유 링크가 잘못되었거나 삭제된 티어리스트입니다."
   },
   "social": {
-    "mypageTab": "SNS 게시 이력",
     "publishTitle": "SNS 자동 게시",
     "publishHelp": "저장 후 별도 작업으로 공식 계정에 게시됩니다. SNS 게시에 실패해도 원본은 정상적으로 저장됩니다.",
     "editRetryHelp": "최초 작성 때 요청하지 않은 플랫폼에는 나중에 새로 게시할 수 없습니다. 실패한 게시만 다시 시도할 수 있습니다.",
@@ -2683,9 +2697,6 @@
     "consentRequired": "SNS 게시 동의 내용을 확인해 주세요.",
     "completeSettings": "SNS 게시 설정을 완료해 주세요.",
     "deleteSourceWarning": "이미 Instagram 또는 Threads에 게시된 콘텐츠는 자동으로 삭제되지 않습니다. 해당 플랫폼에서 직접 삭제해 주세요.",
-    "historyTitle": "SNS 게시 이력",
-    "historyHelp": "기능 도입 이후 요청한 게시물만 표시됩니다. 삭제는 Instagram 또는 Threads에서 직접 진행해 주세요.",
-    "historyEmpty": "아직 SNS 게시 이력이 없습니다.",
     "hubTitle": "CaskByCask 최신 리뷰·소식",
     "hubDescription": "공식 Instagram과 Threads에 소개된 최신 리뷰와 소식을 한곳에서 확인하세요.",
     "hubEmpty": "아직 공개된 SNS 게시물이 없습니다.",

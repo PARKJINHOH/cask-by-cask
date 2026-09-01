@@ -3,13 +3,13 @@ import { matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Breadcrumb, { type Crumb } from './Breadcrumb'
 import { requestLeave } from '@/shared/hooks/useUnsavedChangesGuard'
+import { MY_REVIEWS_PATH } from '@/domain/review/utils/reviewRoutes'
 
 interface IndicatorConfig {
   items: Crumb[]
   backTo?: string
 }
 
-const MY_REVIEWS_PATH = '/mypage?tab=reviews'
 
 function exact(path: string, pathname: string) {
   return matchPath({ path, end: true }, pathname)
@@ -120,6 +120,12 @@ function getIndicatorConfig(pathname: string, state: unknown, t: TFunction): Ind
     return {
       items: [homeCrumb(t), { label: t('menu.community'), to: '/community/all' }, { label: t('menu.communityByob'), to: '/community/byob' }, { label: t('pageIndicator.edit') }],
       backTo: detailTo,
+    }
+  }
+  if (exact('/community/byob/mine', pathname)) {
+    return {
+      items: [homeCrumb(t), { label: t('menu.community'), to: '/community/all' }, { label: t('menu.communityByob'), to: '/community/byob' }, { label: t('pageIndicator.myContent') }],
+      backTo: '/community/byob',
     }
   }
   if (exact('/community/byob/write', pathname)) {

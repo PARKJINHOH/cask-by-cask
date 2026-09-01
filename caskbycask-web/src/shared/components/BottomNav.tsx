@@ -1,6 +1,8 @@
-﻿import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useRequireLogin } from '@/domain/auth/hooks/useRequireLogin'
+import MyReviewsIcon from '@/shared/components/icons/MyReviewsIcon'
+import { MY_REVIEWS_PATH } from '@/domain/review/utils/reviewRoutes'
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -21,17 +23,6 @@ function SearchIcon() {
     >
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  )
-}
-
-function HeartIcon({ active }: { active: boolean }) {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24"
-      fill={active ? 'currentColor' : 'none'}
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-    >
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
   )
 }
@@ -58,8 +49,9 @@ export default function BottomNav() {
   const isSpirits = location.pathname.startsWith('/spirits')
   const isMypage  = location.pathname.startsWith('/mypage')
   const currentTab = new URLSearchParams(location.search).get('tab')
-  const isWishlist   = isMypage && currentTab === 'wishlist'
-  const isMypageMain = isMypage && currentTab !== 'wishlist'
+  // PC 는 헤더 아이콘이, 모바일은 이 자리가 "내 리뷰" 진입점이다.
+  const isMyReviews  = isMypage && currentTab === 'reviews'
+  const isMypageMain = isMypage && currentTab !== 'reviews'
 
   const tabs = [
     {
@@ -75,11 +67,11 @@ export default function BottomNav() {
       onClick: () => navigate('/spirits'),
     },
     {
-      label:  t('wishlist.tab'),
-      icon:   <HeartIcon active={isWishlist} />,
-      active: isWishlist,
+      label:  t('nav.myReviews'),
+      icon:   <MyReviewsIcon />,
+      active: isMyReviews,
       // 로그인이 필요하면 지금 보던 화면을 실어 보낸다 — 로그인 후 홈으로 떨어지지 않게.
-      onClick: () => requireLogin(() => navigate('/mypage?tab=wishlist')),
+      onClick: () => requireLogin(() => navigate(MY_REVIEWS_PATH)),
     },
     {
       label:  t('nav.mypage'),

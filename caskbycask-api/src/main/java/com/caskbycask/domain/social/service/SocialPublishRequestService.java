@@ -25,8 +25,12 @@ import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -278,6 +282,73 @@ public class SocialPublishRequestService {
                 .flatMap(bundle -> publicationRepository.findByBundleIdOrderByPlatformAsc(bundle.getId()).stream())
                 .map(SocialPublicationResponse::from)
                 .toList();
+    }
+
+    /**
+     * 원본 여러 건의 게시 상태를 한 번에 읽는다 (마이페이지 "내 리뷰" 목록처럼 카드가 여러 개일 때).
+     *
+     * <p>판정 규칙은 {@link #states} 와 같다 — 원본 하나마다 content 로 먼저 찾고 없으면 origin 으로 폴백하며,
+     * 관리자가 아니면 본인이 요청한 묶음만 본다. 다만 조회는 원본마다 돌지 않고 쿼리 3회로 끝낸다.</p>
+     *
+     * @return 원본 ID → 게시 상태 목록. 게시 이력이 없는 ID 는 키 자체가 없다.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, List<SocialPublicationResponse>> statesBySourceIds(
+            SocialSourceType type, List<Long> sourceIds, Long userId, boolean admin) {
+        if (sourceIds == null || sourceIds.isEmpty()) return Map.of();
+
+        Map<Long, List<SocialPublishBundle>> byContent =
+                groupBundles(bundleRepository.findByContentTypeAndContentIdIn(type, sourceIds),
+                        SocialPublishBundle::getContentId, userId, admin);
+        Map<Long, List<SocialPublishBundle>> byOrigin =
+                groupBundles(bundleRepository.findByOriginTypeAndOriginIdIn(type, sourceIds),
+                        SocialPublishBundle::getOriginId, userId, admin);
+
+        // 원본별로 쓸 묶음을 고른 뒤, 게시 행은 한 번에 읽어 묶음 ID 로 되돌린다.
+        Map<Long, List<SocialPublishBundle>> chosen = new LinkedHashMap<>();
+        for (Long sourceId : sourceIds) {
+            List<SocialPublishBundle> bundles = byContent.get(sourceId);
+            if (bundles == null || bundles.isEmpty()) bundles = byOrigin.get(sourceId);
+            if (bundles != null && !bundles.isEmpty()) chosen.put(sourceId, bundles);
+        }
+        if (chosen.isEmpty()) return Map.of();
+
+        List<Long> bundleIds = chosen.values().stream().flatMap(List::stream)
+                .map(SocialPublishBundle::getId).toList();
+        Map<Long, List<SocialPublication>> publicationsByBundle = new HashMap<>();
+        for (SocialPublication publication : publicationRepository.findByBundleIdInOrderByPlatformAsc(bundleIds)) {
+            publicationsByBundle
+                    .computeIfAbsent(publication.getBundle().getId(), key -> new ArrayList<>())
+                    .add(publication);
+        }
+
+        Map<Long, List<SocialPublicationResponse>> result = new LinkedHashMap<>();
+        chosen.forEach((sourceId, bundles) -> {
+            List<SocialPublicationResponse> responses = bundles.stream()
+                    .flatMap(bundle -> publicationsByBundle
+                            .getOrDefault(bundle.getId(), List.of()).stream())
+                    .map(SocialPublicationResponse::from)
+                    .toList();
+            if (!responses.isEmpty()) result.put(sourceId, responses);
+        });
+        return result;
+    }
+
+    /** 소유자 필터를 적용해 묶음을 원본 ID 로 모은다. */
+    private Map<Long, List<SocialPublishBundle>> groupBundles(
+            List<SocialPublishBundle> bundles,
+            java.util.function.Function<SocialPublishBundle, Long> keyOf,
+            Long userId, boolean admin) {
+        Map<Long, List<SocialPublishBundle>> grouped = new HashMap<>();
+        for (SocialPublishBundle bundle : bundles) {
+            boolean mine = bundle.getRequestedBy() != null
+                    && bundle.getRequestedBy().getId().equals(userId);
+            if (!admin && !mine) continue;
+            Long key = keyOf.apply(bundle);
+            if (key == null) continue;
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(bundle);
+        }
+        return grouped;
     }
 
     private void bindAndQueue(SocialSourceType originType, Long originId,

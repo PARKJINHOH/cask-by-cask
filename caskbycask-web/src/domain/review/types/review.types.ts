@@ -1,6 +1,15 @@
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 
 
+/** 마이페이지 "내 리뷰" 정렬 기준. 백엔드 MyReviewSort enum 을 미러링한다. */
+export type MyReviewSort =
+  | 'LATEST'
+  | 'OLDEST'
+  | 'SCORE_DESC'
+  | 'SCORE_ASC'
+  | 'NAME_ASC'
+  | 'NAME_DESC'
+
 export interface ReviewImageItem {
   id: number
   imageUrl: string

@@ -27,6 +27,8 @@ import AdminIcon from '@/shared/components/icons/AdminIcon'
 import ProducerIcon from '@/shared/components/icons/ProducerIcon'
 import InstagramIcon from '@/shared/components/icons/InstagramIcon'
 import ThreadsIcon from '@/shared/components/icons/ThreadsIcon'
+import MyReviewsIcon from '@/shared/components/icons/MyReviewsIcon'
+import { MY_REVIEWS_PATH } from '@/domain/review/utils/reviewRoutes'
 import { SITE_SOCIAL_LINKS } from '@/shared/config/site'
 import AttendanceButton from '@/domain/score/components/AttendanceButton'
 import axios from 'axios'
@@ -43,6 +45,12 @@ const ForcePasswordChangeModal = lazy(() => import('@/domain/user/components/For
 
 
 const SEEN_KEY = 'notice:lastSeenId'
+
+/** 프로필 드롭다운의 언어 전환 목록. 비로그인은 폭이 좁아 KO/EN 축약을 쓰는 GuestLangToggle 이 맡는다. */
+const LANGUAGES = [
+  { code: 'ko' as const, label: '한국어' },
+  { code: 'en' as const, label: 'English' },
+]
 
 function SocialFooterLinks({ className = '' }: { className?: string }) {
   const { t } = useTranslation()
@@ -384,65 +392,8 @@ function GNB() {
   )
 }
 
-// ── 언어 토글 버튼 ────────────────────────────────────────────
-
-function LangToggle() {
-  const { i18n } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  const selectLang = (lang: string) => {
-    changeLanguage(lang as 'ko' | 'en')
-    setOpen(false)
-  }
-
-  const languages = [
-    { code: 'ko', label: '한국어 (KO)' },
-    { code: 'en', label: 'English (EN)' },
-  ]
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="언어 선택 / Select Language"
-        className="flex items-center justify-center p-2 rounded-lg text-neutral-500 hover:text-primary-800 hover:bg-neutral-100 transition-all duration-150 select-none cursor-pointer"
-      >
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="2" y1="12" x2="22" y2="12" />
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-lg shadow-lg border border-neutral-100 py-1 z-50">
-          {languages.map((lang) => (
-            <button
-              key={lang.code}
-              onClick={() => selectLang(lang.code)}
-              className={`w-full text-left px-3 py-2 text-xs font-semibold hover:bg-neutral-50 transition-colors cursor-pointer
-                ${i18n.language === lang.code ? 'text-primary-800 bg-primary-50/50' : 'text-neutral-600'}`}
-            >
-              {lang.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+// ── 언어 토글 버튼 (비로그인 전용) ────────────────────────────
+// 로그인 사용자의 언어 전환은 UserDropdown 패널 안에 인라인으로 들어가 있다.
 
 function GuestLangToggle() {
   const { i18n } = useTranslation()
@@ -699,7 +650,7 @@ function HeaderSearch() {
 // ── 사용자 드롭다운 ───────────────────────────────────────────
 
 function UserDropdown() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user, isLoggedIn, isAuthReady, setUser } = useAuthStore()
   const { logout } = useAuth()
   const navigate = useNavigate()
@@ -822,7 +773,7 @@ function UserDropdown() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-lg border
+        <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-lg border
           border-neutral-100 py-1 z-50">
           <Link
             to="/mypage"
@@ -836,6 +787,16 @@ function UserDropdown() {
               <circle cx="12" cy="7" r="4" />
             </svg>
             {t('nav.mypage')}
+          </Link>
+
+          <Link
+            to={MY_REVIEWS_PATH}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-2 text-sm text-neutral-700
+              hover:bg-neutral-50 transition-colors"
+          >
+            <MyReviewsIcon className="w-4 h-4 text-neutral-400" />
+            {t('nav.myReviews')}
           </Link>
 
           {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' ||
@@ -855,6 +816,29 @@ function UserDropdown() {
               {user?.role === 'PARTNER' ? '파트너 콘솔' : t('nav.admin')}
             </Link>
           )}
+
+          <div className="my-1 border-t border-neutral-100" />
+
+          {/* 언어 전환 — 드롭다운 안의 드롭다운은 모바일에서 다루기 어려워 인라인으로 편다.
+              changeLanguage 는 로케일 접두사를 바꾸며 하드 내비게이션하므로 setOpen(false) 가 필요 없다. */}
+          <div className="flex items-center gap-2 px-4 py-2">
+            <span className="text-xs font-medium text-neutral-400 flex-shrink-0">{t('nav.language')}</span>
+            <div className="ml-auto flex gap-1">
+              {LANGUAGES.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => changeLanguage(lang.code)}
+                  aria-current={i18n.language === lang.code ? 'true' : undefined}
+                  className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors cursor-pointer
+                    ${i18n.language === lang.code
+                      ? 'text-primary-800 bg-primary-50/50'
+                      : 'text-neutral-600 hover:bg-neutral-50'}`}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="my-1 border-t border-neutral-100" />
 
@@ -925,9 +909,20 @@ export default function MainLayout() {
           <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
             {showAuthedActions && <AttendanceButton />}
             {showAuthedActions && <NotificationBell />}
-            {/* 비로그인 상태의 언어 전환은 UserDropdown 안의 GuestLangToggle 이 맡는다 —
-                여기서 함께 띄우면 토글이 두 개로 보인다 */}
-            {showAuthedActions && <LangToggle />}
+            {/* 내 리뷰 바로가기 — 모바일은 헤더 대신 하단탭(BottomNav)이 맡으므로 PC 에서만 띄운다 */}
+            {showAuthedActions && (
+              <Link
+                to={MY_REVIEWS_PATH}
+                aria-label={t('nav.myReviews')}
+                title={t('nav.myReviews')}
+                className="hidden lg:inline-flex items-center justify-center p-2 rounded-lg text-neutral-500
+                  hover:text-primary-800 hover:bg-neutral-100 transition-all duration-150"
+              >
+                <MyReviewsIcon />
+              </Link>
+            )}
+            {/* 로그인 사용자의 언어 전환은 UserDropdown 안으로 들어갔다 —
+                비로그인은 같은 드롭다운의 GuestLangToggle 이 맡는다 */}
             <UserDropdown />
           </div>
         </div>

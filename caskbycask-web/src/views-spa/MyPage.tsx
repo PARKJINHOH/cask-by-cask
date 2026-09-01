@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/domain/auth/store/authStore'
@@ -10,7 +10,6 @@ import AccountSettings from '@/domain/user/components/AccountSettings'
 import MaturingPowerSection from '@/domain/score/components/MaturingPowerSection'
 import MessagesTab from '@/domain/message/components/MessagesTab'
 import BlockedUsersTab from '@/domain/user/components/BlockedUsersTab'
-import ByobHistoryTab from '@/domain/byob/components/ByobHistoryTab'
 import { BottleCollectionTab } from '@/domain/user-bottle/components/BottleCollectionTab'
 import MyPriceReportsTab from '@/domain/pricetracker/components/MyPriceReportsTab'
 import MyPriceAlertsTab from '@/domain/pricetracker/components/MyPriceAlertsTab'
@@ -18,17 +17,15 @@ import LevelBadge from '@/shared/components/LevelBadge'
 import DefaultAvatar from '@/shared/components/DefaultAvatar'
 import SeoMeta from '@/shared/components/SeoMeta'
 import { useMessageList } from '@/domain/message/hooks/useMessages'
-import SocialHistoryTab from '@/domain/social/components/SocialHistoryTab'
 
-type Tab = 'maturing' | 'reviews' | 'social' | 'wishlist' | 'tasteTrees' | 'byob' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'blocks' | 'settings'
+// SNS 게시이력·취향트리·BYOB 이력은 각 메뉴가 자기 "내 것"을 책임진다 —
+// 마이페이지는 더 이상 그 목록을 그리지 않는다.
+type Tab = 'maturing' | 'reviews' | 'wishlist' | 'collection' | 'priceReports' | 'priceAlerts' | 'messages' | 'blocks' | 'settings'
 
 const ALL_TABS: { value: Tab; labelKey: string; adminHidden?: boolean }[] = [
   { value: 'maturing',     labelKey: 'mypage.maturingTab',    adminHidden: true },
   { value: 'reviews',      labelKey: 'mypage.reviewsTab' },
-  { value: 'social',       labelKey: 'social.mypageTab' },
   { value: 'wishlist',     labelKey: 'mypage.wishlistTab' },
-  { value: 'tasteTrees',   labelKey: 'mypage.tasteTreesTab' },
-  { value: 'byob',         labelKey: 'mypage.byobTab' },
   { value: 'collection',   labelKey: 'mypage.collectionTab' },
   { value: 'priceReports', labelKey: 'mypage.priceReportsTab' },
   { value: 'priceAlerts',  labelKey: 'mypage.priceAlertsTab' },
@@ -48,7 +45,7 @@ export default function MyPage() {
   const authUser = useAuthStore((s) => s.user)
   const { data: profile } = useMe()
   const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const role = profile?.role ?? authUser?.role ?? ''
   const isAdmin = role === 'ADMIN'
@@ -68,6 +65,19 @@ export default function MyPage() {
       setTab(tabParam)
     }
   }, [tabParam]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * 탭을 고르면 URL 에도 남긴다.
+   * 헤더·하단탭의 「내 리뷰」는 항상 `?tab=reviews` 로 들어오는데, 화면에서 탭을 바꿔도 URL 이
+   * 그대로면 같은 주소를 다시 눌렀을 때 tabParam 이 안 바뀌어 화면이 따라오지 않는다.
+   * 뒤로가기 동작은 지금과 같아야 하므로 push 가 아니라 replace 로 바꾼다.
+   */
+  const selectTab = (value: Tab) => {
+    setTab(value)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', value)
+    setSearchParams(next, { replace: true })
+  }
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['me'] })
@@ -153,7 +163,7 @@ export default function MyPage() {
           {tabs.map(({ value, labelKey }) => (
             <button
               key={value}
-              onClick={() => setTab(value)}
+              onClick={() => selectTab(value)}
               className={`flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-xl transition-all gap-3
                 ${
                   tab === value
@@ -178,7 +188,7 @@ export default function MyPage() {
             {tabs.map(({ value, labelKey }) => (
               <button
                 key={value}
-                onClick={() => setTab(value)}
+                onClick={() => selectTab(value)}
                 className={`inline-flex items-center transition-colors border-b-2 -mb-px
                   whitespace-nowrap flex-shrink-0
                   text-xs px-2.5 py-2 gap-1
@@ -203,18 +213,7 @@ export default function MyPage() {
           <div>
             {tab === 'maturing'  && <MaturingPowerSection profile={profile ?? { id: 0, email, nickname, role, createdAt: '' }} />}
             {tab === 'reviews'   && <MyReviewList />}
-            {tab === 'social'    && <SocialHistoryTab />}
             {tab === 'wishlist'  && <MyFavorites />}
-            {tab === 'tasteTrees' && (
-              <div className="rounded-2xl border border-neutral-200 bg-white p-6">
-                <h2 className="text-lg font-black text-neutral-950">{t('tasteTree.myTrees')}</h2>
-                <p className="mt-2 text-sm text-neutral-500">{t('tasteTree.myTreesDesc')}</p>
-                <Link to="/taste-trees/mine" className="mt-5 inline-flex rounded-lg bg-primary-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-900">
-                  {t('tasteTree.openMyTrees')}
-                </Link>
-              </div>
-            )}
-            {tab === 'byob'        && <ByobHistoryTab />}
             {tab === 'collection'  && <BottleCollectionTab />}
             {tab === 'priceReports' && <MyPriceReportsTab />}
             {tab === 'priceAlerts'  && <MyPriceAlertsTab />}

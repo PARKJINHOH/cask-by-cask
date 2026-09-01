@@ -12,6 +12,7 @@ import type {
   CreateReviewRequest,
   CreateVariantReviewRequest,
   ReviewImagePlanItem,
+  MyReviewSort,
   UpdateReviewRequest,
   VariantReviewRequestStatus,
 } from '../types/review.types'
@@ -26,17 +27,36 @@ export function useReviews(spiritId: number, page = 0) {
 
 export const MY_REVIEWS_PAGE_SIZE = 10
 
-export function useMyReviews(page = 0, category: SpiritCategory | null = null) {
+/** 마이페이지 "내 리뷰"(승인 리뷰) 목록 조회 조건. 공개 목록의 useUserReviews 와 같은 모양이다. */
+export interface MyReviewsQueryParams {
+  page?: number
+  category?: SpiritCategory | null
+  keyword?: string
+  sort?: MyReviewSort
+  /** 이름 정렬 기준 언어 — 서버가 ko 는 nameKo, en 은 nameEn(없으면 nameKo)로 정렬한다. */
+  lang?: 'ko' | 'en'
+}
+
+export function useMyReviews(params: MyReviewsQueryParams = {}) {
+  const { page = 0, category = null, keyword = '', sort = 'LATEST', lang = 'ko' } = params
+  const normalizedKeyword = keyword.trim()
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   const isAuthReady = useAuthStore((s) => s.isAuthReady)
   return useQuery({
-    queryKey: ['my-reviews', page, category],
+    queryKey: ['my-reviews', page, category, normalizedKeyword, sort, lang],
     queryFn: () =>
       reviewApi
-        .getMyReviews({ page, size: MY_REVIEWS_PAGE_SIZE, category: category ?? undefined })
+        .getMyReviews({
+          page,
+          size: MY_REVIEWS_PAGE_SIZE,
+          category: category ?? undefined,
+          keyword: normalizedKeyword || undefined,
+          sort,
+          lang,
+        })
         .then((res) => res.data.data!),
     enabled: isAuthReady && isLoggedIn,
-    // 페이지·카테고리 전환 시 이전 결과를 유지해 목록과 페이지네이션이 깜빡이지 않도록 한다.
+    // 페이지·카테고리·검색·정렬 전환 시 이전 결과를 유지해 목록과 페이지네이션이 깜빡이지 않도록 한다.
     placeholderData: keepPreviousData,
   })
 }

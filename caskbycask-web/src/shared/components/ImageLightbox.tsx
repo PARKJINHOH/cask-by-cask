@@ -1,6 +1,7 @@
 import { Fragment, useState, useEffect, useCallback, useRef } from 'react'
 import { Dialog, Transition, TransitionChild, DialogPanel } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
+import { useBackClose } from '@/shared/hooks/useBackClose'
 
 interface Props {
   images: string[]
@@ -14,6 +15,7 @@ interface Props {
 const MIN_SCALE = 1
 const MAX_SCALE = 5
 const SWIPE_THRESHOLD = 60 // px — 확대 안 한 상태에서 좌우 스와이프로 이전/다음
+const CLOSE_SWIPE_THRESHOLD = 100 // px — 확대 안 한 상태에서 아래로 끌어내려 닫기
 const TAP_MOVE_TOLERANCE = 10 // px — 이 이하로 움직이면 '탭'으로 간주
 const DOUBLE_TAP_MS = 300
 const SYNTHETIC_DOUBLE_CLICK_GUARD_MS = 500
@@ -43,6 +45,9 @@ export default function ImageLightbox({ images, labels, initialIndex = 0, open, 
     midX: 0,
     midY: 0,
     swipeDx: 0,
+    swipeDy: 0,
+    /** 스와이프 방향은 첫 이동에서 한 번만 정한다 — 도중에 바뀌면 화면이 흔들린다. */
+    axis: 'none' as 'none' | 'x' | 'y',
     moved: false,
     lastTapAt: 0,
     lastTouchEndAt: 0,
@@ -52,6 +57,9 @@ export default function ImageLightbox({ images, labels, initialIndex = 0, open, 
     viewRef.current = v
     setView(v)
   }, [])
+
+  // 기기 뒤로가기로 페이지가 넘어가지 않고 뷰어만 닫히게 한다.
+  useBackClose(open, onClose)
 
   const resetZoom = useCallback(() => {
     setSmooth(true)
@@ -176,6 +184,8 @@ export default function ImageLightbox({ images, labels, initialIndex = 0, open, 
       st.startTx = viewRef.current.tx
       st.startTy = viewRef.current.ty
       st.swipeDx = 0
+      st.swipeDy = 0
+      st.axis = 'none'
       st.moved = false
       st.mode = viewRef.current.scale > 1 ? 'pan' : 'swipe'
       setSmooth(false)
@@ -211,7 +221,13 @@ export default function ImageLightbox({ images, labels, initialIndex = 0, open, 
       } else if (st.mode === 'swipe' && e.touches.length === 1) {
         const t = e.touches[0]
         st.swipeDx = t.clientX - st.startX
-        if (Math.abs(st.swipeDx) > TAP_MOVE_TOLERANCE) st.moved = true
+        st.swipeDy = t.clientY - st.startY
+        if (Math.abs(st.swipeDx) > TAP_MOVE_TOLERANCE || Math.abs(st.swipeDy) > TAP_MOVE_TOLERANCE) {
+          st.moved = true
+          if (st.axis === 'none') st.axis = Math.abs(st.swipeDx) > Math.abs(st.swipeDy) ? 'x' : 'y'
+        }
+        // 아래로 끄는 동안 이미지가 손가락을 따라와 닫히는 중임을 알린다.
+        if (st.axis === 'y' && st.swipeDy > 0) apply({ scale: 1, tx: 0, ty: st.swipeDy })
       }
     },
     [apply],
@@ -224,7 +240,13 @@ export default function ImageLightbox({ images, labels, initialIndex = 0, open, 
       const wasSwipe = st.mode === 'swipe'
       const tapPoint = { x: st.startX, y: st.startY }
 
-      if (wasSwipe && images.length > 1 && Math.abs(st.swipeDx) > SWIPE_THRESHOLD) {
+      // 아래로 충분히 끌어내렸으면 닫는다. 확대 상태는 mode 가 'pan' 이라 팬 제스처와 싸우지 않는다.
+      const closing = wasSwipe && st.axis === 'y' && st.swipeDy > CLOSE_SWIPE_THRESHOLD
+      if (closing) {
+        onClose()
+      } else if (wasSwipe && st.axis === 'y') {
+        resetZoom()
+      } else if (wasSwipe && images.length > 1 && Math.abs(st.swipeDx) > SWIPE_THRESHOLD) {
         st.swipeDx < 0 ? next() : prev()
       } else if (!st.moved && (st.mode === 'swipe' || st.mode === 'pan')) {
         // 탭 — 더블탭이면 줌 토글
@@ -240,11 +262,13 @@ export default function ImageLightbox({ images, labels, initialIndex = 0, open, 
       }
 
       if (e.touches.length === 0) {
-        if (viewRef.current.scale <= MIN_SCALE + 0.01) resetZoom()
+        // 닫히는 중이라면 되돌리지 않는다 — 끌어내린 자리에서 그대로 사라져야 자연스럽다.
+        if (!closing && viewRef.current.scale <= MIN_SCALE + 0.01) resetZoom()
         st.mode = 'none'
+        st.axis = 'none'
       }
     },
-    [images.length, next, prev, zoomAt, resetZoom],
+    [images.length, next, prev, zoomAt, resetZoom, apply, onClose],
   )
 
   if (images.length === 0) return null

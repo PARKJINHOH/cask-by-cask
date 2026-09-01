@@ -25,6 +25,19 @@ export const socialApi = {
     )
     return response.data.data ?? []
   },
+  /**
+   * 원본 여러 건의 게시 상태를 한 번에 조회한다 (목록 화면용).
+   * 카드마다 sourceStates 를 부르면 페이지당 요청이 카드 수만큼 늘어난다.
+   * 응답의 키는 JSON 객체 키라 문자열이다 — 조회할 때 String(id) 로 찾을 것.
+   */
+  sourcesStates: async (sourceType: SocialSourceType, sourceIds: number[]) => {
+    if (sourceIds.length === 0) return {} as Record<string, SocialPublication[]>
+    const response = await axiosInstance.get<ApiResponse<Record<string, SocialPublication[]>>>(
+      '/api/social-publications/sources',
+      { params: { type: sourceType, ids: sourceIds.join(',') } },
+    )
+    return response.data.data ?? {}
+  },
   myHistory: async (page = 0, size = 20) => {
     const response = await axiosInstance.get<ApiResponse<PageResponse<SocialPublication>>>(
       '/api/social-publications/me', { params: { page, size } },
