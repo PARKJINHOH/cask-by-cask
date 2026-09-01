@@ -12,6 +12,7 @@ CaskByCask (캐스크바이캐스크) 는 다음을 제공합니다:
 
 ## 핵심 페이지
 
+- [서비스 소개](https://www.caskbycask.net/ko/about): CaskByCask(캐스크바이캐스크·캐바캐)가 무엇인지, 서비스 정보
 - [홈](https://www.caskbycask.net/): 최신·인기 주류, 공지사항, 카테고리 진입
 - [주류 카탈로그](https://www.caskbycask.net/spirits): 전체 주류 검색·필터링 (카테고리·국가·도수·평점·키워드)
 - [위스키 카탈로그](https://www.caskbycask.net/spirits?category=WHISKY): 위스키 전용

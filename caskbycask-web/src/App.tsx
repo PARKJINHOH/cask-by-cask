@@ -80,6 +80,7 @@ const AdminEmailPage = lazy(() => import('@/views-spa/admin/AdminEmailPage'))
 const AdminEmailHistoryPage = lazy(() => import('@/views-spa/admin/AdminEmailHistoryPage'))
 const ReviewFormPage = lazy(() => import('@/views-spa/ReviewFormPage'))
 const ReviewEditPage = lazy(() => import('@/views-spa/ReviewEditPage'))
+const AboutPage = lazy(() => import('@/views-spa/AboutPage'))
 const InquiryPage = lazy(() => import('@/views-spa/InquiryPage'))
 const FaqPage = lazy(() => import('@/views-spa/FaqPage'))
 const EventCalendarPage = lazy(() => import('@/views-spa/EventCalendarPage'))
@@ -134,6 +135,7 @@ export default function App() {
             <Route path="oauth/callback" element={<OAuthCallbackPage />} />
             <Route path="oauth/signup" element={<OAuthSignupPage />} />
             <Route path="account-recovery" element={<AccountRecoveryPage />} />
+            <Route path="about" element={<AboutPage />} />
             <Route path="terms" element={<TermsPage />} />
             <Route path="privacy" element={<PrivacyPage />} />
             <Route path="operation-policy" element={<OperationPolicyPage />} />

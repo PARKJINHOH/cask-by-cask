@@ -1845,7 +1845,8 @@
     }
   },
   "footer": {
-    "brandAlias": "CaskByCask (캐바캐)",
+    "brandAlias": "CaskByCask (캐스크바이캐스크 · 캐바캐)",
+    "about": "About",
     "inquiry": "Contact Us",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",

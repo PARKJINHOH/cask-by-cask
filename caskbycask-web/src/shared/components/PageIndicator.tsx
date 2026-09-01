@@ -83,6 +83,7 @@ function getIndicatorConfig(pathname: string, state: unknown, t: TFunction): Ind
   if (exact('/ranking', pathname)) return { items: sectionCrumbs(t, t('pageIndicator.ranking'), '/ranking') }
   if (exact('/calendar', pathname)) return { items: sectionCrumbs(t, t('menu.calendar'), '/calendar') }
   if (exact('/faq', pathname)) return { items: sectionCrumbs(t, t('menu.faq'), '/faq') }
+  if (exact('/about', pathname)) return { items: sectionCrumbs(t, t('footer.about'), '/about') }
   if (exact('/inquiry', pathname)) return { items: sectionCrumbs(t, t('pageIndicator.inquiry'), '/inquiry') }
 
   if (exact('/login', pathname)) {

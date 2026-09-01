@@ -40,6 +40,29 @@ export const SITE_SOCIAL_LINKS = [
 /** `Organization.sameAs` 용 URL 목록. */
 export const SITE_SOCIAL_PROFILES: readonly string[] = SITE_SOCIAL_LINKS.map((link) => link.url)
 
+/**
+ * 브랜드 한 줄 소개.
+ *
+ * `Organization.slogan` 과 푸터에 표시되는 `app.tagline` 이 **같은 문자열**이어야 한다 —
+ * 스키마가 화면에 없는 말을 하면 안 된다. locale JSON 의 `app.tagline` 을 바꾸면 여기도 바꾼다.
+ */
+export const SITE_TAGLINE = {
+  ko: '위스키·와인·꼬냑 커뮤니티',
+  en: 'Whisky · Wine · Cognac Review Community',
+} as const
+
+/**
+ * 푸터에 노출하는 한국어 별칭 줄.
+ *
+ * locale JSON 의 `footer.brandAlias` 와 **같은 문자열**이어야 한다. 서버 폴백(SeoFallback)은
+ * i18next 를 쓸 수 없어 이 상수를 읽고, 화면 푸터(MainLayout)는 번역키를 읽는다.
+ * 둘이 갈리면 크롤러가 받는 HTML 과 사람이 보는 화면이 달라진다.
+ */
+export const BRAND_ALIAS_LINE = {
+  ko: '캐스크바이캐스크 (캐바캐)',
+  en: 'CaskByCask (캐스크바이캐스크 · 캐바캐)',
+} as const
+
 /** 주류 카탈로그 검색이 쓰는 쿼리 파라미터. SearchAction 타깃과 화면이 같은 값을 쓴다. */
 export const SITE_SEARCH_PARAM = 'keyword'
 

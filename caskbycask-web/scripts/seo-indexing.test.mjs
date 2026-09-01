@@ -50,6 +50,9 @@ const CASES = [
   // ── 공개 다국어 경로 ────────────────────────────────────────
   ['/ko', multilingual('/ko')],
   ['/en', multilingual('/en')],
+  // 이 스위트는 죽은 API 포트를 향한다 — 소개 페이지가 API 장애 중에도 색인 가능함을 함께 증명한다.
+  ['/ko/about', multilingual('/ko/about')],
+  ['/en/about', multilingual('/en/about')],
   ['/ko/terms', multilingual('/ko/terms')],
   ['/en/terms', multilingual('/en/terms')],
   ['/ko/faq', multilingual('/ko/faq')],
