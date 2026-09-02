@@ -32,6 +32,14 @@ export function formatBoardDate(dateStr: string): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** 항상 절대 날짜로 표기한다: yyyy.mm.dd (상대 시간이 오히려 헷갈리는 리뷰 목록 등) */
+export function formatDotDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  const mo = String(d.getMonth() + 1).padStart(2, '0')
+  const da = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}.${mo}.${da}`
+}
+
 export function formatDate(dateStr: string, lang = 'ko'): string {
   const d = new Date(dateStr)
   const diff = Date.now() - d.getTime()

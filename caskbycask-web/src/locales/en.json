@@ -989,7 +989,6 @@
     "scoreClear": "Clear score",
     "title": "Reviews",
     "userReviewsTitle": "{{nickname}}'s Reviews",
-    "nthReview": "Review #{{index}}",
     "userReviewsEmpty": "No reviews written yet.",
     "userReviewsEmptyDesc": "There are no reviews to show yet.",
     "searchSpiritPlaceholder": "Search by spirit name",

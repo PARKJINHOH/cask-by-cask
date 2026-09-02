@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { formatDate, formatScore, optionalScoreColor } from '@/shared/utils/format'
+import { formatDotDate, formatScore, optionalScoreColor } from '@/shared/utils/format'
 import { parseAromaNotes, supportsAromaProfiles } from '../utils/aroma'
 import type { AromaNotes } from '../utils/aroma'
 import type { ReviewItem as ReviewItemType } from '../types/review.types'
@@ -86,6 +86,24 @@ function ReviewSection({ label, score, note, aromaNotes }: ReviewSectionProps) {
   )
 }
 
+/**
+ * 리뷰 총점.
+ *
+ * 헤더의 **우측 상단**에 둔다. 모바일은 헤더가 세로로 쌓여 작성자 줄과 액션 줄이 나뉘므로
+ * 작성자 줄 오른쪽 끝에, PC 는 한 줄이라 액션 줄 맨 오른쪽에 놓는다 —
+ * 두 자리 중 화면 폭에 맞는 하나만 렌더된다(반대쪽은 display:none).
+ */
+function TotalScore({ value, className = '' }: { value: number | null; className?: string }) {
+  return (
+    <span
+      className={`shrink-0 text-2xl font-bold tabular-nums leading-none ${className}`}
+      style={{ color: optionalScoreColor(value) }}
+    >
+      {formatScore(value)}
+    </span>
+  )
+}
+
 function ReviewHeaderDivider() {
   return <span aria-hidden="true" className="h-8 w-px shrink-0 bg-neutral-200" />
 }
@@ -152,28 +170,26 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
               profileImageUrl: review.userProfileImageUrl,
 }}
             size="sm"
+            avatarSize="lg"
+            nameClassName="text-sm font-bold"
+            levelIconSize={13}
             onlyReviews={true}
             disableNicknameHover={true}
             subLine={
               <span className="flex flex-col gap-0.5 min-w-0">
                 {reviewVariantLabel && (
-                  <span className="font-semibold text-primary-700 truncate max-w-[220px] sm:max-w-[320px]">
+                  <span className="text-sm font-semibold text-primary-700 truncate max-w-[220px] sm:max-w-[320px]">
                     {reviewVariantLabel}
                   </span>
                 )}
-                <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-neutral-400">
-                  {review.userReviewCount && review.userReviewCount >= 2 && (
-                    <span className="font-semibold text-neutral-500">
-                      {t('review.nthReview', { index: review.userReviewIndex })}
-                    </span>
-                  )}
-                  <span>{formatDate(review.createdAt, i18n.language)}</span>
-                </span>
+                <span className="text-neutral-400">{formatDotDate(review.createdAt)}</span>
               </span>
             }
           />
+          {/* 모바일 — 작성자 줄 오른쪽 끝 */}
+          <TotalScore value={review.totalScore} className="ml-auto sm:hidden" />
         </div>
-        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:justify-end sm:flex-shrink-0">
+        <div className="flex w-full min-w-0 items-center justify-end gap-2 sm:w-auto sm:flex-shrink-0">
           {hasAromaProfiles && (
             <>
               {/* PC: 카드 안에서 옆으로 펼친다 */}
@@ -196,7 +212,7 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
           )}
           {hasAromaProfiles && <ReviewHeaderDivider />}
           {review.images.length > 0 && (
-            <div className="min-w-0 flex-1 overflow-x-auto sm:flex-none">
+            <div className="min-w-0 overflow-x-auto">
               <ReviewImageStrip images={review.images} />
             </div>
           )}
@@ -221,11 +237,10 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
               aromaProfiles: review.aromaProfiles ?? [],
             }}
           />
-          <span className="ml-auto shrink-0 text-2xl font-bold tabular-nums sm:ml-0" style={{ color: optionalScoreColor(review.totalScore) }}>
-            {formatScore(review.totalScore)}
-          </span>
+          {/* 모바일에서는 액션 줄 왼쪽 끝으로 보낸다 — 오른쪽에 몰린 아로마·이미지·공유와 성격이 다르다.
+              PC 는 한 줄이라 기존 자리(공유 다음)를 지킨다. */}
           {isOwner && (
-            <div className="flex gap-2">
+            <div className="order-first mr-auto flex shrink-0 gap-2 sm:order-none sm:mr-0">
               <button onClick={() => onEdit(review)} className="text-sm text-neutral-400 hover:text-neutral-700 transition-colors">
                 {t('common.edit')}
               </button>
@@ -234,6 +249,8 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
               </button>
             </div>
           )}
+          {/* PC — 헤더 한 줄의 맨 오른쪽 */}
+          <TotalScore value={review.totalScore} className="hidden sm:inline-block" />
         </div>
       </div>
 

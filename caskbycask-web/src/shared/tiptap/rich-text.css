@@ -75,13 +75,23 @@
     min-height: clamp(300px, 52svh, 520px);
   }
 
+  /* ⚠️ height/max-height 를 여기서 **다시** 풀어야 한다.
+     미디어 쿼리는 특정도를 올려 주지 않으므로, 위 `.di-richtext`(0,1,0) 의 height:auto 는
+     미디어 쿼리 밖에 있는 `.di-richtext.di-richtext--compact|--basic`(0,2,0) 의 고정 height 를
+     이기지 못한다. 그대로 두면 높이는 고정인데 overflow 는 visible 이라
+     내용이 길어져도 스크롤이 생기지 않고 잘려 마지막 줄을 편집할 수 없다. */
+
   /* 짧은 입력 폼(문의하기 등)은 더 낮게 */
   .di-richtext.di-richtext--compact {
+    height: auto;
+    max-height: none;
     min-height: 260px;
     min-height: clamp(240px, 38svh, 380px);
   }
 
   .di-richtext.di-richtext--basic {
+    height: auto;
+    max-height: none;
     min-height: 170px;
     min-height: clamp(160px, 26svh, 240px);
   }

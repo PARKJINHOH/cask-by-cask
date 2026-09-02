@@ -270,8 +270,8 @@ export default function MyReviewList() {
                     key={review.id}
                     className="p-4 bg-white rounded-xl border border-neutral-100 space-y-3"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                      <div className="min-w-0 sm:flex-1">
                         <Link
                           to={getSpiritDetailPath({
                             id: review.spiritId,
@@ -287,7 +287,7 @@ export default function MyReviewList() {
                           <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{secondaryName}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="flex items-center justify-end gap-3 sm:flex-shrink-0">
                         <ReviewSocialLinks publications={socialByReviewId?.[String(review.id)]} />
                         <ReviewImageStrip images={review.images} compact />
                         <span

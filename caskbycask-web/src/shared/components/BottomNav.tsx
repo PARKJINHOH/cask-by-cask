@@ -27,14 +27,13 @@ function SearchIcon() {
   )
 }
 
-function PersonIcon({ active }: { active: boolean }) {
+function BoardIcon({ active }: { active: boolean }) {
   return (
     <svg className="w-5 h-5" viewBox="0 0 24 24"
       fill={active ? 'currentColor' : 'none'}
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
     >
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   )
 }
@@ -50,8 +49,8 @@ export default function BottomNav() {
   const isMypage  = location.pathname.startsWith('/mypage')
   const currentTab = new URLSearchParams(location.search).get('tab')
   // PC 는 헤더 아이콘이, 모바일은 이 자리가 "내 리뷰" 진입점이다.
-  const isMyReviews  = isMypage && currentTab === 'reviews'
-  const isMypageMain = isMypage && currentTab !== 'reviews'
+  const isMyReviews = isMypage && currentTab === 'reviews'
+  const isFreeBoard = location.pathname.startsWith('/community/free')
 
   const tabs = [
     {
@@ -74,10 +73,12 @@ export default function BottomNav() {
       onClick: () => requireLogin(() => navigate(MY_REVIEWS_PATH)),
     },
     {
-      label:  t('nav.mypage'),
-      icon:   <PersonIcon active={isMypageMain} />,
-      active: isMypageMain,
-      onClick: () => requireLogin(() => navigate('/mypage')),
+      // 마이페이지는 헤더 프로필 드롭다운이 맡고, 이 자리는 커뮤니티 진입점으로 쓴다.
+      label:  t('menu.communityBoard'),
+      icon:   <BoardIcon active={isFreeBoard} />,
+      active: isFreeBoard,
+      // 자유게시판은 공개 목록이라 로그인을 요구하지 않는다.
+      onClick: () => navigate('/community/free'),
     },
   ]
 
