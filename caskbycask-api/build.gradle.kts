@@ -136,4 +136,9 @@ tasks.withType<Test> {
     )
     // SchemaDumpTest 게이트 프로퍼티 전달 (-Dschema.dump=true 일 때만 베이스라인 DDL 재생성)
     systemProperty("schema.dump", System.getProperty("schema.dump") ?: "false")
+    // 서비스 로직은 Asia/Seoul 을 기준시로 못박아 두는데(AiNewsService·SitemapService·youtube 등),
+    // 테스트는 존 없는 LocalDateTime.now() 로 기준시각을 만든다. 러너 기본 존이 UTC 인 GitHub
+    // Actions 에서는 이 둘이 9시간 어긋나 "10분 전에 실행" 같은 픽스처가 주기를 넘긴 것으로 판정된다.
+    // 운영 서버·cron(CRON_TZ=Asia/Seoul)과 같은 존으로 고정해 로컬과 CI 결과를 일치시킨다.
+    systemProperty("user.timezone", "Asia/Seoul")
 }
