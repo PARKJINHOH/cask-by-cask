@@ -139,6 +139,7 @@ interface SpiritDetailResponse {
     body?: string | null
     acidity?: string | null
     tannin?: string | null
+    notes?: string | null
   } | null
   cognacDetail?: {
     grade?: string | null
@@ -149,6 +150,7 @@ interface SpiritDetailResponse {
     ageYears?: number | null
     oakTypes?: string[] | null
     caskFinish?: string | null
+    notes?: string | null
   } | null
   otherDetail?: {
     otherType?: string | null
@@ -667,6 +669,41 @@ function boardLabel(boardType: string | null | undefined, lang: 'ko' | 'en'): st
   if (normalized === 'PHOTO') return lang === 'en' ? 'Spirits Photos' : '주류 사진'
   return lang === 'en' ? 'Community' : '커뮤니티'
 }
+
+/**
+ * 주류 상세가 서버 HTML·JSON-LD 에 실을 리뷰 목록 경로.
+ *
+ * **항상 그 페이지 자신의 id 로 부른다.** 백엔드 `findBySpiritForDisplay` 가
+ * `spirit.id = :id OR spirit.parent.id = :id` 이므로 이 한 규칙으로 원하는 결과가 나온다.
+ *   - 마스터 페이지 → 그룹 전체 리뷰 (그룹의 대표 페이지가 가장 두껍다)
+ *   - 에디션 페이지 → 자기 리뷰만
+ *
+ * 화면 ReviewList 는 에디션에서도 그룹 전체를 깔지만, 서버 HTML 까지 그렇게 하면
+ * 한 그룹의 에디션 전부(최대 15개)가 **같은 리뷰 텍스트를 복제**한다. 측정해 보니 그 블록이
+ * 에디션 본문의 49~60% 를 차지했고, 리뷰가 쌓일수록 비중이 커진다. 카탈로그의 절반가량이
+ * 에디션이라 중복 URL 이 600건대가 된다 — 이미 상당수가 색인 보류인 사이트에서 나쁜 거래다.
+ *
+ * 서버가 화면의 부분집합을 내보내는 것은 클로킹이 아니다(반대 방향만 문제다).
+ * 그룹 쿼리의 대표는 마스터이며, 에디션 페이지는 자기 시음 노트·스펙·자기 리뷰로 구분된다.
+ *
+ * aggregateRating 은 이와 별개로 **마스터 값을 유지한다** — 화면 StarScore 가 그 값을
+ * 보여주므로 마크업이 화면과 일치해야 한다는 정책 요구는 그쪽에 걸린다.
+ */
+function spiritDetailReviewsPath(numericId: string): string {
+  return `/api/spirits/${numericId}/reviews?page=0&size=5`
+}
+
+/**
+ * 리뷰 섹션 라벨.
+ *
+ * 화면 ReviewItem 이 쓰는 번역키(`review.nose`·`taste`·`finish`·`overall`)와 **같은 문자열**이어야
+ * 한다. i18next 는 클라이언트 전용이라 서버 스냅샷이 못 쓰므로 여기에 둔다. locale JSON 의
+ * 해당 키를 바꾸면 여기도 바꾼다.
+ */
+const REVIEW_LABELS = {
+  ko: { heading: '리뷰', nose: '향 (Nose)', taste: '맛 (Taste)', finish: '피니시 (Finish)', overall: '종합평가' },
+  en: { heading: 'Reviews', nose: 'Nose', taste: 'Taste', finish: 'Finish', overall: 'Overall Review' },
+} as const
 
 function localLabels(lang: 'ko' | 'en') {
   return lang === 'en'
@@ -3143,7 +3180,8 @@ export async function getSpiritDetailJsonLd(id: string, lang: 'ko' | 'en' | null
   const [seo, spirit, reviewsPage] = await Promise.all([
     getSpiritSeo(numericId),
     fetchApiData<SpiritDetailResponse>(`/api/spirits/${numericId}`),
-    fetchApiData<PageResponse<ReviewResponse>>(`/api/spirits/${numericId}/reviews?page=0&size=5`),
+    // 스냅샷 본문과 같은 함수를 써서 두 SSR 출력이 갈리지 않게 한다.
+    fetchApiData<PageResponse<ReviewResponse>>(spiritDetailReviewsPath(numericId)),
   ])
 
   if (!spirit) return null
@@ -3325,10 +3363,13 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
   const resolvedLang = normalizeLang(lang)
   const isEn = resolvedLang === 'en'
   const labels = localLabels(resolvedLang)
-  const [seo, spirit, relatedPosts] = await Promise.all([
+  const reviewLabels = REVIEW_LABELS[resolvedLang]
+  const [seo, spirit, relatedPosts, reviewsPage] = await Promise.all([
     getSpiritSeo(numericId),
     fetchApiData<SpiritDetailResponse>(`/api/spirits/${numericId}`),
     getPostsTaggedWithSpirit(numericId),
+    // 에디션 간 중복을 피하려고 자기 id 로만 부른다 — 규칙과 근거는 spiritDetailReviewsPath 참고.
+    fetchApiData<PageResponse<ReviewResponse>>(spiritDetailReviewsPath(numericId)),
   ])
   if (!spirit) return null
 
@@ -3382,6 +3423,35 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
         href: isEn ? edition.canonicalPathEn : edition.canonicalPathKo,
       }))),
   ]
+  // 카테고리별 서술형 노트. 화면(SpiritDetailPage 의 headerAdditionalInfo)이 쓰는 것과
+  // **같은 우선순위**로 고른다 — 순서가 다르면 서버 HTML 과 화면이 다른 문장을 보여준다.
+  //
+  // 이 단락이 카탈로그 페이지의 유일한 서술형 콘텐츠다. 이게 빠져 있던 동안 주류 상세의
+  // 서버 본문은 스펙 나열 334자뿐이었다. 표본 조사에서 보유율 95%(중앙값 157자)로 확인됐다.
+  const tastingNotes = (
+    spirit.whiskyDetail?.notes
+    ?? spirit.wineDetail?.notes
+    ?? spirit.cognacDetail?.notes
+    ?? spirit.otherDetail?.notes
+  )?.trim() || null
+  // 화면 ReviewItem 이 보여주는 것과 같은 구성(향·맛·피니시·종합평가)으로 만든다.
+  // comment 는 에디터에서 온 HTML 일 수 있어 평문으로 바꾼다 — 이스케이프만 하면 화면에
+  // `<p>` 같은 태그가 글자로 보인다. JSON-LD·SPA 와 같은 변환기를 써야 세 곳이 어긋나지 않는다.
+  const reviewBlocks = (reviewsPage?.content ?? [])
+    .map((review) => {
+      const parts = compactDetails([
+        { label: reviewLabels.nose, value: review.noseNote },
+        { label: reviewLabels.taste, value: review.tasteNote },
+        { label: reviewLabels.finish, value: review.finishNote },
+        { label: reviewLabels.overall, value: reviewCommentToText(review.comment) || null },
+      ])
+      if (parts.length === 0) return null
+      const score = formatDecimal(review.totalScore)
+      const head = [review.nickname?.trim(), score ? `${score}/100` : null].filter(Boolean).join(' · ')
+      return { head, parts }
+    })
+    .filter((block): block is { head: string; parts: Array<{ label: string; value: string }> } => block !== null)
+
   const recentPrice = formatPriceObservation(seo?.recentPrice, resolvedLang)
   const recentHotDeal = formatPriceObservation(seo?.recentHotDeal, resolvedLang)
   const hotDealSource = seo?.recentHotDeal?.sourceUrl?.match(/^https?:\/\//i)
@@ -3419,6 +3489,28 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: isEn ? 'Recently confirmed purchase price' : '최근 확인 가격', value: recentPrice },
       { label: isEn ? 'Recently approved special price' : '최근 승인 특가', value: recentHotDeal },
     ]),
+    // 화면은 whitespace-pre-wrap 으로 줄바꿈을 보존하므로, 빈 줄 기준으로 문단을 나눠
+    // 같은 덩어리 구분을 유지한다. 노트는 작성자가 쓴 평문이라 태그를 허용하지 않는다.
+    bodyHtml: [
+      ...(tastingNotes
+        ? tastingNotes
+          .split(/\n{2,}/)
+          .map((paragraph) => paragraph.trim())
+          .filter(Boolean)
+          .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`)
+        : []),
+      ...(reviewBlocks.length > 0
+        ? [
+          `<h2>${escapeHtml(reviewLabels.heading)}</h2>`,
+          ...reviewBlocks.map((block) => [
+            block.head ? `<p><strong>${escapeHtml(block.head)}</strong></p>` : '',
+            `<p>${block.parts
+              .map((part) => `${escapeHtml(part.label)}: ${escapeHtml(part.value).replace(/\n/g, '<br />')}`)
+              .join('<br />')}</p>`,
+          ].join('')),
+        ]
+        : []),
+    ].join('') || undefined,
     sourceUrls: hotDealSource ? [hotDealSource] : [],
     items: relatedPosts.length > 0 ? relatedPosts : undefined,
     itemsHeading: relatedPosts.length > 0

@@ -105,9 +105,12 @@ const FIXTURES = {
     avgScore: 92,
     reviewCount: 3,
   },
-  // ── 에디션/마스터 관계 — aggregateRating 출처 검증용 ──────────────────
-  // 900 은 배치(에디션), 901 이 마스터. 화면 StarScore 와 리뷰 목록이 마스터 기준이므로
-  // 스키마의 평점도 901 값이어야 한다. 900 자체 값(88.0/1)이 나오면 회귀다.
+  // ── 에디션/마스터 관계 ─────────────────────────────────────────────
+  // 900 은 배치(에디션), 901 이 마스터. 둘의 규칙이 서로 다르므로 함께 본다.
+  //   · aggregateRating → **마스터(901) 값**. 화면 StarScore 가 그 값을 보여주므로
+  //     마크업이 화면과 일치해야 한다. 900 자체 값(88.0/1)이 나오면 회귀다.
+  //   · 리뷰 본문        → **자기(900) 것만**. 마스터 리뷰까지 실으면 한 그룹의 에디션
+  //     전부가 같은 텍스트를 복제한다.
   '/api/seo/spirits/900': {
     canonicalId: 900,
     canonicalPathKo: '/ko/spirits/900-edition',
@@ -127,6 +130,40 @@ const FIXTURES = {
     nameKo: '테스트 배치 12', nameEn: 'Test Batch 12',
     category: 'WHISKY', variantType: 'NONE', country: '스코틀랜드',
     avgScore: 88.0, reviewCount: 1, scoredReviewCount: 1,
+    // 카탈로그 페이지의 유일한 서술형 콘텐츠. 화면 headerAdditionalInfo 와 같은 값이다.
+    whiskyDetail: {
+      style: 'SINGLE_MALT',
+      notes: '셰리 캐스크 특유의 건포도와 다크 초콜릿.\n\n피니시에서 은은한 오크 스파이스가 길게 남는다.',
+    },
+  },
+  // 에디션(900)은 **자기 리뷰만** 실어야 한다. 마스터(901) 리뷰까지 실으면 한 그룹의
+  // 에디션 전부가 같은 텍스트를 복제한다(측정: 본문의 49~60%, 카탈로그의 절반이 에디션).
+  // 아래 두 픽스처의 내용을 다르게 둬서 그 경계를 테스트가 지킨다.
+  '/api/spirits/901/reviews': {
+    content: [{
+      nickname: '마스터리뷰어', totalScore: 90,
+      noseNote: '마스터에만 달린 리뷰', tasteNote: null, finishNote: null,
+      comment: null, createdAt: '2026-08-02T12:00:00',
+    }],
+    totalElements: 1,
+  },
+  // 가짜 서버는 쿼리스트링을 버리므로 키는 `/api/spirits/900/reviews` 다.
+  // comment 는 에디터 HTML — 평문으로 변환되어야 한다(태그가 글자로 보이면 안 된다).
+  '/api/spirits/900/reviews': {
+    content: [
+      {
+        nickname: '테스트리뷰어',
+        totalScore: 88,
+        noseNote: '건포도와 다크 초콜릿',
+        tasteNote: null,
+        finishNote: '오크 스파이스가 길게',
+        comment: '<p>재구매 의사 있음.</p>',
+        createdAt: '2026-08-01T12:00:00',
+      },
+      // 점수만 있고 본문이 없는 리뷰는 본문에 넣지 않는다.
+      { nickname: '무텍스트', totalScore: 70, noseNote: null, tasteNote: null, finishNote: null, comment: null, createdAt: null },
+    ],
+    totalElements: 2,
   },
   '/api/spirits/901': {
     id: 901, parentId: null,
@@ -514,6 +551,35 @@ test('엔티티별 metadata', async (t) => {
     assert.equal(product.aggregateRating.ratingValue, 90.5, '에디션 자체 값(88.0)이 나오면 회귀')
     assert.equal(product.aggregateRating.ratingCount, 4)
     assert.equal(product.aggregateRating.reviewCount, 4)
+  })
+
+  // 카탈로그 1,192건이 네이버 유입의 실제 자산인데, 시음 노트가 빠져 있던 동안
+  // 크롤러가 받는 본문은 스펙 나열뿐이었다(334자). 노트 보유율은 표본에서 95%다.
+  await t.test('주류 상세: 시음 노트가 서버 HTML 본문에 들어간다', async () => {
+    const body = await readBody('/ko/spirits/900-edition')
+    assert.equal(body.status, 200)
+    assert.match(body.text, /셰리 캐스크 특유의 건포도와 다크 초콜릿/)
+    assert.match(body.text, /피니시에서 은은한 오크 스파이스/, '빈 줄로 나뉜 두 번째 문단이 누락됐다')
+    assert.equal(body.h1.length, 1, '노트는 문단으로만 들어가야 한다 — h1 이 늘면 안 된다')
+  })
+
+  // 리뷰는 지금 보유율이 낮지만 계속 쌓인다. 쌓였을 때 크롤러가 읽을 수 있어야 한다.
+  await t.test('주류 상세: 리뷰 본문이 화면과 같은 구성으로 들어간다', async () => {
+    const body = await readBody('/ko/spirits/900-edition')
+    assert.match(body.text, /리뷰/)
+    assert.match(body.text, /테스트리뷰어/)
+    assert.match(body.text, /향 \(Nose\): 건포도와 다크 초콜릿/, '화면 ReviewItem 과 같은 라벨이어야 한다')
+    assert.match(body.text, /피니시 \(Finish\): 오크 스파이스가 길게/)
+    // 에디터 HTML 이 평문으로 바뀌어야 한다 — 태그가 글자로 보이면 안 된다
+    assert.match(body.text, /종합평가: 재구매 의사 있음/)
+    assert.doesNotMatch(body.text, /&lt;p&gt;|<p>재구매/, 'comment 의 HTML 태그가 본문에 노출됐다')
+    // 점수만 있고 본문 없는 리뷰는 넣지 않는다
+    assert.doesNotMatch(body.text, /무텍스트/, '본문 없는 리뷰까지 실으면 빈 줄만 늘어난다')
+    // 에디션이 마스터 리뷰까지 실으면 형제 페이지 전부가 같은 텍스트를 복제한다.
+    assert.doesNotMatch(
+      body.text, /마스터에만 달린 리뷰/,
+      '에디션 페이지가 마스터 리뷰를 실었다 — 그룹 내 중복이 생긴다',
+    )
   })
 
   await t.test('평점 없는 주류: Product 대신 WebPage — aggregateRating 을 만들지 않는다', async () => {
