@@ -48,7 +48,6 @@ export interface SpiritRegisterRequestForm {
   whiskyNotes?: string        // 기타 정보 (위스키, 참고용 자유 입력)
   // 캐스크 및 특성 (위스키, 선택 — 관리자 등록 폼 참고용)
   caskTypes?: string[]
-  caskFinishes?: string[]
   caskTypeOther?: string
   caskDetails?: Record<string, string[]>
   isNonChillFiltered?: boolean

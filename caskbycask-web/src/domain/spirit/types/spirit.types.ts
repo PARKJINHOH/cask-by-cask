@@ -234,7 +234,6 @@ export interface WhiskyDetailResponse {
   brandName: string | null
   bottlingType: BottlingType | null
   caskTypes: WhiskyCaskType[] | null
-  caskFinishes: WhiskyCaskType[] | null
   caskTypeOther: string | null
   caskDetails: Record<WhiskyCaskType, string[]> | null
   isNonChillFiltered: boolean | null

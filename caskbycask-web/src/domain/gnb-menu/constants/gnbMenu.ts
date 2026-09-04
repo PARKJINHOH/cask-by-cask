@@ -36,6 +36,7 @@ export const GNB_MENUS: GnbItem[] = [
     children: [
       { key: 'requestSpirit',   labelKey: 'menu.requestSpirit',   to: '/request/spirit' },
       { key: 'requestProducer', labelKey: 'menu.requestProducer', to: '/request/producer' },
+      { key: 'requestVenue',    labelKey: 'menu.requestVenue',    to: '/request/venue' },
       { key: 'requestFeedback', labelKey: 'menu.requestFeedback', to: '/request/feedback' },
     ],
   },
@@ -57,9 +58,24 @@ export const GNB_MENUS: GnbItem[] = [
     children: [
       { key: 'tierList',  labelKey: 'menu.tierList',  to: '/tier-lists' },
       { key: 'tasteTree', labelKey: 'menu.tasteTree', to: '/taste-trees' },
+      // 장소 지도. 진입은 문서 허브(/venues)로 보낸다 — 지도 앱(/venue-map)은 무거워서
+      // 메뉴에서 바로 열면 첫 인상이 로딩 스피너가 된다. 허브에서 한 번 더 눌러 들어간다.
+      { key: 'venueMap',  labelKey: 'menu.venueMap',  to: '/venues' },
     ],
   },
 ]
+
+/**
+ * 기능 플래그가 꺼져 있을 때 코드가 강제로 숨기는 키.
+ *
+ * <p>DB 의 노출 설정과는 별개다 — DB 는 "관리자가 감추고 싶은가"를 담고, 이쪽은
+ * "아직 존재하지 않는가"를 담는다. 플래그가 꺼진 기능의 메뉴가 보이면 눌렀을 때 404 가 나므로
+ * 관리자가 매번 손으로 꺼 두기를 기대하면 안 된다.
+ *
+ * <p>키는 카탈로그에 그대로 남겨 둔다 — DB 저장 값이라 지우면 나중에 켤 때
+ * 이미 저장된 노출 설정이 끊긴다.
+ */
+export const VENUE_MENU_KEYS = ['venueMap', 'requestVenue'] as const
 
 export function isGnbGroup(menu: GnbItem): menu is Extract<GnbItem, { children: GnbChild[] }> {
   return 'children' in menu

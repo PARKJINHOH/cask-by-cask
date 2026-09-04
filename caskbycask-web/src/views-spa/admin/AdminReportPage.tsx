@@ -17,6 +17,7 @@ const TARGET_TYPE_OPTIONS: Array<{ value: ReportTargetType | ''; label: string }
   { value: 'REVIEW',  label: '리뷰' },
   { value: 'COMMENT', label: '댓글' },
   { value: 'IMAGE',   label: '이미지' },
+  { value: 'VENUE_COMMENT', label: '장소 후기' },
 ]
 
 const STATUS_OPTIONS: Array<{ value: ReportStatus | ''; label: string }> = [
@@ -30,6 +31,7 @@ const TARGET_TYPE_LABEL: Record<ReportTargetType, string> = {
   REVIEW:  '리뷰',
   COMMENT: '댓글',
   IMAGE:   '이미지',
+  VENUE_COMMENT: '장소 후기',
 }
 
 // ── 메인 페이지 ────────────────────────────────────────────────

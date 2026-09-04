@@ -62,6 +62,8 @@ describe('등록·수정·등록요청·에디션 DTO 가 같은 제약을 갖�
     'UpdateSpiritRequest.java',
     'SpiritRegisterRequestBody.java',
     'CreateVariantRequest.java',
+    // 공통 상세도 같은 경로로 저장된다 — 목록에서 빠져 있던 동안 옛 상한(100,000ml)이 살아남았다
+    'SpiritCommonDetailRequest.java',
   ]
 
   /** 각 DTO 가 검증해야 하는 필드 — 해당 파일에 그 필드가 있으면 제약도 있어야 한다 */

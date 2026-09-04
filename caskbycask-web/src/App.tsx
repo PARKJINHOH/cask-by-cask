@@ -52,6 +52,14 @@ const AdminRequestPage = lazy(() => import('@/views-spa/admin/AdminRequestPage')
 const AdminRequestDetailPage = lazy(() => import('@/views-spa/admin/AdminRequestDetailPage'))
 const AdminVariantRequestPage = lazy(() => import('@/views-spa/admin/AdminVariantRequestPage'))
 const AdminProducerPage = lazy(() => import('@/views-spa/admin/AdminProducerPage'))
+const VenueMapPage = lazy(() => import('@/views-spa/VenueMapPage'))
+const VenueHubPage = lazy(() => import('@/views-spa/VenueHubPage'))
+const VenueBrowsePage = lazy(() => import('@/views-spa/VenueBrowsePage'))
+const VenueCityPage = lazy(() => import('@/views-spa/VenueCityPage'))
+const VenueRequestPage = lazy(() => import('@/views-spa/VenueRequestPage'))
+const AdminVenueRequestPage = lazy(() => import('@/views-spa/admin/AdminVenueRequestPage'))
+const AdminVenuePage = lazy(() => import('@/views-spa/admin/AdminVenuePage'))
+const AdminVenueCityPage = lazy(() => import('@/views-spa/admin/AdminVenueCityPage'))
 const AdminProducerRequestPage = lazy(() => import('@/views-spa/admin/AdminProducerRequestPage'))
 const AdminProducerRequestDetailPage = lazy(() => import('@/views-spa/admin/AdminProducerRequestDetailPage'))
 const AdminReportPage = lazy(() => import('@/views-spa/admin/AdminReportPage'))
@@ -163,6 +171,11 @@ export default function App() {
             <Route path="users/:userId/bottles" element={<UserBottlePublicPage />} />
             <Route path="users/:userId/reviews" element={<UserReviewsPage />} />
             <Route path="producers/:id" element={<ProducerDetailPage />} />
+              {/* 주류 장소 문서 페이지 — 색인 대상. 탐색용 지도 앱(/venue-map)과 역할이 다르다.
+                  /venues/:segment 는 국가(영문 2자)와 장소 id(숫자)를 한 라우트에서 형태로 가른다. */}
+              <Route path="venues" element={<VenueHubPage />} />
+              <Route path="venues/:countryCode/:citySlug" element={<VenueCityPage />} />
+              <Route path="venues/:segment" element={<VenueBrowsePage />} />
             <Route path="reviews/:reviewId" element={<PublicReviewPage />} />
             <Route path="social" element={<SocialHubPage />} />
             {/* 유튜브 갤러리 — 영상 상세는 DB PK 가 아니라 유튜브 영상 ID 를 경로에 쓴다
@@ -196,6 +209,7 @@ export default function App() {
               <Route path="request/spirit" element={<SpiritRequestPage />} />
               <Route path="request/spirit/my" element={<MySpiritRequestsPage />} />
               <Route path="request/producer" element={<ProducerRequestPage />} />
+              <Route path="request/venue" element={<VenueRequestPage />} />
               <Route path="request/feedback" element={<FeedbackListPage />} />
               <Route path="request/feedback/new" element={<FeedbackFormPage />} />
               <Route path="request/feedback/:id" element={<FeedbackDetailPage />} />
@@ -212,6 +226,10 @@ export default function App() {
               그 자리에서 작업을 임시저장한 뒤 로그인으로 보낸다. */}
           <Route element={<EditorLayout />}>
             <Route path="photo-card" element={<PhotoCardPage />} />
+            {/* 주류 장소 지도 — 전체화면 앱. GNB·푸터 없이 100dvh 를 쓰고 스크롤이 잠긴다.
+                검색 유입은 /venues/* 문서 페이지가 맡고 이 화면은 noindex 다 —
+                그래서 반대로 뷰 상태(?country=&city=&venue=)를 URL 에 적극적으로 싣는다. */}
+            <Route path="venue-map" element={<VenueMapPage />} />
           </Route>
 
           <Route element={<AdminRoute />}>
@@ -227,6 +245,10 @@ export default function App() {
               <Route path="spirits/variant-requests" element={<AdminVariantRequestPage />} />
               <Route path="spirits/wine-crawler" element={<AdminWineIngestPage />} />
               <Route path="spirits/:id" element={<AdminSpiritDetailPage />} />
+              {/* 정적 경로라 /admin/venues 보다 먼저 선언한다 */}
+              <Route path="venues/requests" element={<AdminVenueRequestPage />} />
+              <Route path="venues/cities" element={<AdminVenueCityPage />} />
+              <Route path="venues" element={<AdminVenuePage />} />
               <Route path="producers" element={<AdminProducerPage />} />
               <Route path="producers/requests" element={<AdminProducerRequestPage />} />
               <Route path="producers/requests/:id" element={<AdminProducerRequestDetailPage />} />

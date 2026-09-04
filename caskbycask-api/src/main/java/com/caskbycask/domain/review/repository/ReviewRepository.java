@@ -78,6 +78,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
             SELECT r FROM Review r
             JOIN FETCH r.user
             JOIN FETCH r.spirit
+            LEFT JOIN FETCH r.venue v
+            LEFT JOIN FETCH v.city
             WHERE (r.spirit.id = :spiritId OR r.spirit.parent.id = :spiritId) AND r.isHidden = false
             """,
             countQuery = """

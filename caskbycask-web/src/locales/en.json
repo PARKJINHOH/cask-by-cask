@@ -426,7 +426,9 @@
     "faq": "FAQ",
     "tasteExplorer": "Taste Explorer",
     "tierList": "Tier Lists",
-    "tasteTree": "Taste Trees"
+    "tasteTree": "Taste Trees",
+    "venueMap": "Places",
+    "requestVenue": "Suggest a place"
   },
   "calendar": {
     "title": "Event Calendar",
@@ -731,36 +733,36 @@
       "tannin": "Tannin"
     },
     "whiskyStyle": {
-      "SINGLE_MALT":    "Single Malt",
-      "BLENDED_MALT":   "Blended Malt",
+      "SINGLE_MALT": "Single Malt",
+      "BLENDED_MALT": "Blended Malt",
       "BLENDED_WHISKY": "Blended",
-      "BOURBON":        "Bourbon",
+      "BOURBON": "Bourbon",
       "WHEATED_BOURBON": "Wheated Bourbon",
-      "TENNESSEE":      "Tennessee",
-      "RYE":            "Rye",
-      "POT_STILL":      "Single Pot Still",
-      "GRAIN_CORN":     "Grain / Corn",
-      "OTHER":          "Other"
+      "TENNESSEE": "Tennessee",
+      "RYE": "Rye",
+      "POT_STILL": "Single Pot Still",
+      "GRAIN_CORN": "Grain / Corn",
+      "OTHER": "Other"
     },
     "whiskyStyleExample": {
-      "SINGLE_MALT":    "Macallan / Balvenie / Glenfiddich",
-      "BLENDED_MALT":   "Johnnie Walker Green / Monkey Shoulder",
+      "SINGLE_MALT": "Macallan / Balvenie / Glenfiddich",
+      "BLENDED_MALT": "Johnnie Walker Green / Monkey Shoulder",
       "BLENDED_WHISKY": "Ballantine's / Johnnie Walker / Chivas Regal",
-      "BOURBON":        "Wild Turkey / Buffalo Trace",
+      "BOURBON": "Wild Turkey / Buffalo Trace",
       "WHEATED_BOURBON": "Maker's Mark",
-      "TENNESSEE":      "Jack Daniel's",
-      "RYE":            "Rye Whiskey / Bulleit Rye",
-      "POT_STILL":      "Irish / Redbreast",
-      "GRAIN_CORN":     "Grain Whisky / Haig Club",
-      "OTHER":          ""
+      "TENNESSEE": "Jack Daniel's",
+      "RYE": "Rye Whiskey / Bulleit Rye",
+      "POT_STILL": "Irish / Redbreast",
+      "GRAIN_CORN": "Grain Whisky / Haig Club",
+      "OTHER": ""
     },
     "wineType": {
-      "RED":       "Red",
-      "WHITE":     "White",
-      "ROSE":      "Rosé",
+      "RED": "Red",
+      "WHITE": "White",
+      "ROSE": "Rosé",
       "SPARKLING": "Sparkling",
-      "DESSERT":   "Dessert",
-      "ORANGE":    "Orange",
+      "DESSERT": "Dessert",
+      "ORANGE": "Orange",
       "FORTIFIED": "Fortified"
     },
     "wineVintageStatus": {
@@ -786,91 +788,91 @@
       "appellationPlaceholder": "e.g. AOC Bordeaux"
     },
     "cognacGrade": {
-      "VS":        "VS",
-      "NAPOLEON":  "Napoléon",
-      "VSOP":      "VSOP",
-      "XO":        "XO",
-      "XXO":       "XXO",
-      "EXTRA":     "Extra",
+      "VS": "VS",
+      "NAPOLEON": "Napoléon",
+      "VSOP": "VSOP",
+      "XO": "XO",
+      "XXO": "XXO",
+      "EXTRA": "Extra",
       "HORS_DAGE": "Hors d'Age",
       "NO_STATEMENT": "No Grade Statement"
     },
     "cognacCru": {
       "GRANDE_CHAMPAGNE": "Grande Champagne",
       "PETITE_CHAMPAGNE": "Petite Champagne",
-      "BORDERIES":        "Borderies",
-      "FINS_BOIS":        "Fins Bois",
-      "BONS_BOIS":        "Bons Bois",
-      "BOIS_ORDINAIRES":  "Bois Ordinaires"
+      "BORDERIES": "Borderies",
+      "FINS_BOIS": "Fins Bois",
+      "BONS_BOIS": "Bons Bois",
+      "BOIS_ORDINAIRES": "Bois Ordinaires"
     },
     "cognacBlend": {
-      "singleCru":     "Single Cru",
+      "singleCru": "Single Cru",
       "singleCruHelp": "Made from grapes of a single growing area. Uncommon — most cognac blends several.",
-      "multiCru":      "Multi-Cru Blend",
-      "multiCruHelp":  "Blends eaux-de-vie from several growing areas. This is the norm for cognac."
+      "multiCru": "Multi-Cru Blend",
+      "multiCruHelp": "Blends eaux-de-vie from several growing areas. This is the norm for cognac."
     },
     "cognacFineChampagneHelp": "A legally protected term: only Grande and Petite Champagne, with Grande Champagne at 50% or more.",
     "cognacFineChampagneNote": "Grande Champagne 50%+ with Petite Champagne",
     "cognacOak": {
-      "LIMOUSIN":   "Limousin",
-      "TRONCAIS":   "Tronçais",
-      "ALLIER":     "Allier",
-      "NEVERS":     "Nevers",
-      "VOSGES":     "Vosges",
-      "JUPILLES":   "Jupilles",
+      "LIMOUSIN": "Limousin",
+      "TRONCAIS": "Tronçais",
+      "ALLIER": "Allier",
+      "NEVERS": "Nevers",
+      "VOSGES": "Vosges",
+      "JUPILLES": "Jupilles",
       "BERTRANGES": "Bertranges",
       "FRENCH_OAK": "French Oak (origin unspecified)",
-      "OTHER":      "Other"
+      "OTHER": "Other"
     },
     "otherType": {
-      "RUM":      "Rum",
-      "GIN":      "Gin",
-      "VODKA":    "Vodka",
-      "TEQUILA":  "Tequila",
-      "MEZCAL":   "Mezcal",
-      "BRANDY":   "Brandy",
-      "LIQUEUR":  "Liqueur",
-      "SAKE":     "Sake",
-      "SOJU":     "Soju",
-      "BAIJIU":   "Baijiu",
+      "RUM": "Rum",
+      "GIN": "Gin",
+      "VODKA": "Vodka",
+      "TEQUILA": "Tequila",
+      "MEZCAL": "Mezcal",
+      "BRANDY": "Brandy",
+      "LIQUEUR": "Liqueur",
+      "SAKE": "Sake",
+      "SOJU": "Soju",
+      "BAIJIU": "Baijiu",
       "ABSINTHE": "Absinthe",
-      "BEER":     "Beer",
-      "OTHER":    "Other"
+      "BEER": "Beer",
+      "OTHER": "Other"
     },
     "taste": {
       "sweetness": "Sweetness",
-      "body":      "Body",
-      "acidity":   "Acidity",
-      "tannin":    "Tannin",
-      "unset":     "Not set",
-      "title":     "Taste"
+      "body": "Body",
+      "acidity": "Acidity",
+      "tannin": "Tannin",
+      "unset": "Not set",
+      "title": "Taste"
     },
     "wineSweetness": {
-      "DRY":          "Dry",
-      "OFF_DRY":      "Off-dry",
-      "MEDIUM":       "Medium",
+      "DRY": "Dry",
+      "OFF_DRY": "Off-dry",
+      "MEDIUM": "Medium",
       "MEDIUM_SWEET": "Medium sweet",
-      "SWEET":        "Sweet"
+      "SWEET": "Sweet"
     },
     "wineBody": {
-      "LIGHT":        "Light",
+      "LIGHT": "Light",
       "LIGHT_MEDIUM": "Light-medium",
-      "MEDIUM":       "Medium",
-      "MEDIUM_FULL":  "Medium-full",
-      "FULL":         "Full"
+      "MEDIUM": "Medium",
+      "MEDIUM_FULL": "Medium-full",
+      "FULL": "Full"
     },
     "wineIntensity": {
-      "LOW":         "Low",
-      "LOW_MEDIUM":  "Low-medium",
-      "MEDIUM":      "Medium",
+      "LOW": "Low",
+      "LOW_MEDIUM": "Low-medium",
+      "MEDIUM": "Medium",
       "MEDIUM_HIGH": "Medium-high",
-      "HIGH":        "High"
+      "HIGH": "High"
     },
     "wineCertification": {
-      "ORGANIC":     "Organic",
-      "BIODYNAMIC":  "Biodynamic",
+      "ORGANIC": "Organic",
+      "BIODYNAMIC": "Biodynamic",
       "SUSTAINABLE": "Sustainable",
-      "NONE":        "None"
+      "NONE": "None"
     },
     "noResult": {
       "title": "No results found.",
@@ -1070,8 +1072,8 @@
     "aromaSearchPlaceholder": "Search or type to add custom...",
     "aromaNoMatch": "No match — press Add to save as custom",
     "aromaProfile": {
-        "expand": "Show aroma profile",
-        "collapse": "Hide aroma profile",
+      "expand": "Show aroma profile",
+      "collapse": "Hide aroma profile",
       "byReviewer": "{{nickname}}'s aroma profile",
       "title": "Aroma Profile",
       "add": "+ Profile",
@@ -1090,9 +1092,9 @@
       "discardConfirm": "Close without saving your profile changes?",
       "deleteConfirm": "Delete the {{phase}} profile? Your selected aromas will remain.",
       "removeAxisConfirm": "Removing this aroma leaves fewer than 3 profile axes, so this profile will also be deleted. Continue?",
-        "textAlternative": "Aroma intensity list",
-        "itemValue": "{{aroma}} intensity {{intensity}}, {{label}}",
-        "phase": {
+      "textAlternative": "Aroma intensity list",
+      "itemValue": "{{aroma}} intensity {{intensity}}, {{label}}",
+      "phase": {
         "NOSE": "Nose",
         "PALATE": "Taste",
         "FINISH": "Finish"
@@ -1268,7 +1270,7 @@
     },
     "maturingTab": "Level",
     "reviewsTab": "Reviews",
-      "wishlistTab": "Favorites",
+    "wishlistTab": "Favorites",
     "collectionTab": "Bottle Cabinet",
     "priceReportsTab": "Price Reports",
     "priceAlertsTab": "Price Alerts",
@@ -2611,14 +2613,14 @@
     "deleteConfirm": "Delete this tier list?",
     "saveFirst": "Save first to share this tier list.",
     "shareCopied": "Share URL copied.",
-      "copyShare": "Copy Share URL",
-        "downloadImage": "Save Image",
-        "editModeOn": "Edit Mode",
-        "previewMode": "Preview",
-        "presentationMode": "Presentation",
-        "exitPresentation": "Exit Presentation",
-        "presentationFailed": "Could not start presentation mode.",
-        "formTitle": "Title",
+    "copyShare": "Copy Share URL",
+    "downloadImage": "Save Image",
+    "editModeOn": "Edit Mode",
+    "previewMode": "Preview",
+    "presentationMode": "Presentation",
+    "exitPresentation": "Exit Presentation",
+    "presentationFailed": "Could not start presentation mode.",
+    "formTitle": "Title",
     "formDescription": "Description",
     "titlePlaceholder": "e.g. Single malts for beginners",
     "descriptionPlaceholder": "Description is optional.",
@@ -2637,20 +2639,20 @@
     "mobileMoveToTier": "Choose tier",
     "emptyRow": "No items placed yet.",
     "poolTitle": "Candidate Items",
-      "poolCount": "{{count}} items",
-      "poolEmpty": "Add spirits, producers, or custom items below.",
-      "removeCandidate": "Remove candidate item",
-      "addTargets": "Add Items",
+    "poolCount": "{{count}} items",
+    "poolEmpty": "Add spirits, producers, or custom items below.",
+    "removeCandidate": "Remove candidate item",
+    "addTargets": "Add Items",
     "spiritTab": "Spirits",
     "producerTab": "Producers",
     "customTab": "Custom",
-      "searchSpirit": "Search spirits",
-      "selectVariant": "Choose identifier",
-      "baseEdition": "Integrated product",
-      "searchProducer": "Search producers",
-      "producerCountryFilter": "Filter by country",
-      "producerTypeFilter": "Producer type",
-      "allProducerTypes": "All types",
+    "searchSpirit": "Search spirits",
+    "selectVariant": "Choose identifier",
+    "baseEdition": "Integrated product",
+    "searchProducer": "Search producers",
+    "producerCountryFilter": "Filter by country",
+    "producerTypeFilter": "Producer type",
+    "allProducerTypes": "All types",
     "customName": "Custom item name",
     "add": "Add",
     "noImage": "No Image",
@@ -3250,5 +3252,137 @@
     "logoVariantChooseHint": "This distillery has several logo versions on file. Pick the one to use on this card.",
     "logoVariantSkip": "Continue without a logo",
     "logoVariantUse": "Use this logo"
+  },
+  "venue": {
+    "map": {
+      "title": "Bar & Bottle Shop Map",
+      "search": "Search places",
+      "allTypes": "All",
+      "myLocation": "Nearest to me",
+      "skipToList": "Skip map, go to list",
+      "webglUnsupported": "This browser can't display the map.",
+      "listStillWorks": "You can still use the address, phone and map app links in the list.",
+      "tileError": "Couldn't load the map. The list still works.",
+      "clusterGroup": "Showing {{count}} overlapping places · Show all",
+      "openMap": "View on map",
+      "selectCountry": "Country",
+      "searchCountry": "Search country or city"
+    },
+    "panel": {
+      "backToList": "List",
+      "fullPage": "Full page"
+    },
+    "sheet": {
+      "toggle": "Resize panel"
+    },
+    "tab": {
+      "info": "Info",
+      "photos": "Photos",
+      "comments": "Notes"
+    },
+    "action": {
+      "directions": "Directions",
+      "call": "Call",
+      "share": "Share"
+    },
+    "detail": {
+      "address": "Address",
+      "hours": "Hours",
+      "phone": "Phone",
+      "links": "Links",
+      "website": "Website",
+      "mapApps": "Map apps",
+      "copy": "Copy",
+      "copied": "Copied"
+    },
+    "list": {
+      "empty": "No places registered yet.",
+      "emptyFiltered": "No places match your filters.",
+      "resetFilter": "Reset filters",
+      "suggest": "Suggest a place"
+    },
+    "gallery": {
+      "empty": "No photos yet. Add photos with your visit note.",
+      "openPhoto": "View photo"
+    },
+    "comment": {
+      "placeholder": "Share your visit. What did you drink?",
+      "replyPlaceholder": "Write a reply",
+      "loginToWrite": "Sign in to share your visit",
+      "empty": "No notes yet. Be the first to share your visit.",
+      "submit": "Post",
+      "reply": "Reply",
+      "hidden": "This comment is hidden due to reports.",
+      "confirmDelete": "Delete this comment?",
+      "contentRequired": "Please write something.",
+      "saveFailed": "Couldn't save. Please try again.",
+      "removeImage": "Remove photo",
+      "photoAlt": "Visit photo",
+      "imageLimit": "You can attach up to {{max}} photos.",
+      "imageTooLarge": "Each photo must be under 10MB.",
+      "imageTotalTooLarge": "Total photo size must be under 50MB.",
+      "imageHeic": "HEIC isn't supported. On iPhone set Settings > Camera > Formats to 'Most Compatible', or upload a screenshot."
+    },
+    "type": {
+      "BAR": "Bar",
+      "BOTTLE_SHOP": "Liquor shop",
+      "OTHER": "Other"
+    },
+    "status": {
+      "ACTIVE": "Open",
+      "CLOSED": "Closed",
+      "closed": "Closed"
+    },
+    "country": {
+      "kr": "South Korea",
+      "jp": "Japan",
+      "tw": "Taiwan",
+      "hk": "Hong Kong",
+      "sg": "Singapore",
+      "us": "United States",
+      "gb": "United Kingdom",
+      "fr": "France",
+      "de": "Germany",
+      "cn": "China",
+      "th": "Thailand",
+      "vn": "Vietnam",
+      "mo": "Macau",
+      "my": "Malaysia",
+      "ph": "Philippines"
+    },
+    "spirit": {
+      "sectionTitle": "Where to drink this",
+      "sectionHint": "Collected from the places reviewers tagged.",
+      "reviewCount": "{{count}} reviews",
+      "seeAll": "View on map"
+    },
+    "picker": {
+      "label": "Where you drank it",
+      "placeholder": "Search a bar or bottle shop (optional)",
+      "none": "Not selected",
+      "clear": "Clear",
+      "noResult": "No results.",
+      "suggest": "Can't find it? Suggest a place",
+      "hint": "Places you tag here build up under 'Where to drink this' on each bottle."
+    },
+    "hub": {
+      "title": "Places",
+      "description": "Find bars and liquor shops by country and city.",
+      "countryCount": "{{count}} places",
+      "cityCount": "{{count}}",
+      "empty": "No places registered yet."
+    },
+    "request": {
+      "title": "Suggest a place",
+      "description": "Tell us about a bar or bottle shop you know. We'll add it after review.",
+      "submit": "Submit",
+      "submitted": "Thanks! We'll notify you once it's reviewed.",
+      "myRequests": "My suggestions",
+      "statusPending": "Under review",
+      "statusApproved": "Approved",
+      "statusRejected": "Rejected",
+      "empty": "You haven't suggested any places yet.",
+      "loginRequired": "Sign in to suggest a place."
+    }
   }
 }

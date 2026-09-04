@@ -56,6 +56,13 @@ public class SitemapController {
         return xml(sitemapService.generateProducerSitemap(bucket), ifNoneMatch);
     }
 
+    @GetMapping(value = "/sitemaps/venues-{bucket:\\d+}.xml", produces = MediaType.APPLICATION_XML_VALUE)
+    public ResponseEntity<String> venueSitemap(
+            @PathVariable long bucket,
+            @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
+        return xml(sitemapService.generateVenueSitemap(bucket), ifNoneMatch);
+    }
+
     @GetMapping(value = "/sitemaps/spirits-{lang:ko|en}-{bucket:\\d+}.xml", produces = MediaType.APPLICATION_XML_VALUE)
     public ResponseEntity<String> spiritSitemap(
             @PathVariable String lang,

@@ -113,14 +113,16 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
   "abvMin": null,
   "abvMax": null,
   "volumeMl": 700,
+  "volumeMlMin": null,
+  "volumeMlMax": null,
 
   "style": "SINGLE_MALT",
   "styleOther": null,
   "bottlingType": "OB",
 
   "casks": [
-    { "code": "EX_BOURBON", "isFinish": false, "details": ["American Oak Barrel"] },
-    { "code": "EX_SHERRY", "isFinish": true,  "details": ["Oloroso Sherry Butt"] }
+    { "code": "EX_BOURBON", "details": ["American Oak Barrel"] },
+    { "code": "EX_SHERRY", "details": ["Oloroso Sherry Butt (Finish)"] }
   ],
 
   "isNonChillFiltered": false,
@@ -158,19 +160,25 @@ JSON 외의 설명은 배열 뒤에 `## 메모`로 따로 적으세요.
 | 필드 | 규칙 |
 |---|---|
 | `category` | 항상 `"WHISKY"`. 관리자 화면 붙여넣기가 이 값으로 카테고리를 정한다 |
-| `nameKo` | 200자 이내. 위 "한국어 이름 규칙" 필수 적용 |
-| `nameEn` | 라벨 표기 그대로, 200자 이내 |
-| `producer` | **증류소**. 브랜드가 아님 |
-| `brandName` | 증류소와 **별개**의 상업적 브랜드명일 때만. 블렌디드가 대표적 (조니워커, 시바스리갈, 발렌타인, 페이머스 그라우스). 싱글몰트는 보통 `null` |
-| `abv` | 0~100. 배치마다 다르면 `abv`를 `null`로 두고 `abvMin`/`abvMax`에 범위 |
-| `volumeMl` | 1~30000. 표준 700, 미국 시장 750, 미니어처 50 |
+| `nameKo` | **필수**. 200자 이내. 위 "한국어 이름 규칙" 필수 적용 |
+| `nameEn` | **필수**. 라벨 표기 그대로, 200자 이내 |
+| `producer` | **증류소**를 `{ "nameKo": …, "nameEn": … }` 형태로. 브랜드가 아님. `producer`와 `brandName` 중 **하나는 필수** |
+| `brandName` | 증류소와 **별개**의 상업적 브랜드명일 때만. 블렌디드가 대표적 (조니워커, 시바스리갈, 발렌타인, 페이머스 그라우스). 싱글몰트는 보통 `null`. 200자 이내 |
+| `abv` | **필수**(단일 값 또는 범위). 0~100. 배치마다 다르면 `abv`를 `null`로 두고 `abvMin`/`abvMax`에 범위 |
+| `volumeMl` | **필수**(단일 값 또는 범위). 1~30000. 표준 700, 미국 시장 750, 미니어처 50 |
+| `volumeMlMin` / `volumeMlMax` | 같은 제품이 여러 규격으로 나올 때(700·750 등). 이때 `volumeMl`은 `null`. 1~30000 |
+
+도수·용량의 "필수"는 **에디션이 없을 때**입니다. 에디션이 있으면 각 에디션이 자기 값을 갖습니다.
 
 ## 산지
 
 `country`는 한글 국가명을 씁니다. **영국은 `스코틀랜드`·`잉글랜드`·`웨일스`·`북아일랜드` 로
 나누어 쓰세요** — 산지 코드(`GB_SCT_*` 등)가 그 단위로 붙어 있어 `영국` 으로 적으면 어긋납니다.
 그 밖에는 `아일랜드`·`미국`·`일본`·`대만`·`인도`·`대한민국` 처럼 적고,
-`region`은 한글 지역명을 씁니다.
+`region`은 100자 이내의 한글 지역명을 씁니다.
+
+`country`는 **필수**이며, 등록 폼의 국가 목록과 **글자가 정확히 같아야** 인식됩니다.
+`영국(스코틀랜드)` 처럼 괄호를 덧붙이거나 영문으로 적지 말고 위 표기 하나만 쓰세요.
 
 `regionCode`는 아래 목록에 있으면 쓰고, **없으면 `null`로 두세요**(등록 화면에서 직접 고릅니다).
 
@@ -237,9 +245,31 @@ MIZUNARA       미즈나라 캐스크    details 예) Mizunara Puncheon
 OTHER          기타 캐스크        details 예) Umeshu Cask, Peated Quarter Cask
 ```
 
-- `isFinish`: 주 숙성이 아니라 **추가 숙성(피니시)** 으로 쓰인 캐스크면 `true`
-- `details`: 각 100자 이내, 여러 개 가능. 모르면 빈 배열 `[]`
+### 피니시(추가 숙성) 표기 ★
+
+**피니시로 쓰인 캐스크는 `details` 의 그 명칭 끝에 ` (Finish)` 를 붙입니다.**
+피니시를 따로 체크하는 칸이 없으므로, 여기에 적지 않으면 그 정보는 **어디에도 남지 않습니다.**
+
+- 주 숙성 캐스크에는 붙이지 않습니다. 예) 버번 배럴 숙성 후 셰리 캐스크 피니시라면
+
+  ```
+  "casks": [
+    { "code": "EX_BOURBON", "details": ["American Oak Barrel"] },
+    { "code": "EX_SHERRY",  "details": ["Oloroso Sherry Butt (Finish)"] }
+  ]
+  ```
+
+- 같은 대분류 안에서 일부만 피니시면 **그 명칭에만** 붙입니다 —
+  `["First-fill Oloroso Sherry Butt", "PX Sherry Puncheon (Finish)"]`
+- 한글로 `(피니시)` 라고 쓰지 말고 영문 `(Finish)` 로 통일합니다
+- 피니시 여부를 모르면 붙이지 마세요. 붙는 순간 "추가 숙성"이라는 사실 주장이 됩니다
+
+### 그 밖의 캐스크 규칙
+
+- `details`: 각 100자 이내(`(Finish)` 포함), 여러 개 가능. 모르면 빈 배열 `[]`
 - 캐스크 정보를 모르면 `casks: []`
+- `code` 가 위 11개 목록에 없으면 **그 항목이 `details` 까지 통째로 버려집니다.**
+  애매하면 `OTHER` 로 넣고 구체적 명칭을 `details` 에 적으세요
 
 ### 세부 캐스크(`details`)는 **영문으로** 씁니다 ★
 
@@ -255,6 +285,7 @@ OTHER          기타 캐스크        details 예) Umeshu Cask, Peated Quarter 
 | ~~미즈나라 펀천~~ | `Mizunara Puncheon` |
 
 - 고유명사·원어 표기는 그대로 살립니다 — `Pedro Ximénez`, `Vin Doux Naturel`, `Amontillado`
+- 피니시 표기도 영문 그대로 — ~~`올로로소 셰리 벗 (피니시)`~~ 가 아니라 `Oloroso Sherry Butt (Finish)`
 - 캐스크 크기·필 등급이 공개돼 있으면 함께 적습니다 — `First-fill Oloroso Sherry Butt`
 - 한 캐스크 대분류에 여러 세부 캐스크가 쓰였으면 배열에 나열 —
   `"details": ["First-fill Oloroso Sherry Butt", "Refill Sherry Hogshead"]`
@@ -371,7 +402,7 @@ OTHER          기타 캐스크        details 예) Umeshu Cask, Peated Quarter 
       "phenolPpmMin": null,
       "phenolPpmMax": null,
 
-      "casks": [{ "code": "EX_SHERRY", "isFinish": false, "details": ["Oloroso Sherry Butt"] }],
+      "casks": [{ "code": "EX_SHERRY", "details": ["Oloroso Sherry Butt"] }],
       "notes": null
     }
   ]
@@ -392,9 +423,10 @@ RELEASE_YEAR  출시 연도    예) 2024 릴리즈, 2024 Release
 ### 규칙
 - `seriesIdentifier`(한글)는 **필수**. 모든 에디션이 공유하는 이름 조각입니다.
   예: `배치 시리즈`, `연간 릴리즈`, `1993 29년`. 100자 이내
-- `seriesIdentifierEn`은 영문 화면용. 비우면 한글이 대신 쓰입니다
-- 각 에디션의 `variantValue`(한글)는 **필수**
-  `_uncertain`에 적으세요
+- `seriesIdentifierEn`은 영문 화면용. 비우면 한글이 대신 쓰입니다. 100자 이내
+- 각 에디션의 `variantValue`(한글)는 **필수**. 100자 이내이고, 비어 있으면 그 에디션은
+  **통째로 건너뜁니다.** 판본 이름이 확실하지 않으면 지어내지 말고 `_uncertain`에 적으세요
+- `variantValueEn`(영문)은 선택. 100자 이내
 - 출시일을 적는 칸은 없습니다. 출시 시점은 `bottledDate`(병입 연월)로 남기고,
   더 정확한 날짜를 알면 그 에디션 `notes`에 문장으로 적으세요
 
@@ -416,6 +448,8 @@ casks
 
 - 최상위 도수가 배치마다 달라 `abvMin`/`abvMax` **범위**로 적었다면 물려받을 수 없습니다.
   각 에디션의 `abv`에 그 에디션의 실제 도수를 적으세요
+- 용량도 같습니다 — 최상위를 `volumeMlMin`/`volumeMlMax` 범위로 적었다면 각 에디션의
+  `volumeMl`에 그 에디션의 실제 용량을 적으세요
 - `casks`는 배열이라 `[]`(빈 배열)은 "캐스크 미상"으로 봅니다. 최상위 값을 쓰려면 `null`로 두세요
 
 **② 에디션마다 따로 적어야 하는 항목** — 최상위에서 물려받지 않습니다. 그 에디션의 값이 아니면
@@ -434,7 +468,10 @@ bottledDate  bottleNo  totalBottles  notes
 JSON을 내놓기 전에 스스로 점검하세요.
 
 - [ ] `nameKo`가 원어 발음 음차가 아니라 **국내 통용 표기**인가. `_nameKoBasis`에 근거를 적었는가
-- [ ] `style`이 채워져 있는가 (없으면 등록이 막힙니다)
+- [ ] 등록이 막히는 **필수 항목**이 모두 있는가 — `nameKo`·`nameEn`·`country`·`style`,
+      `producer`(없으면 `brandName`), 도수(`abv` 또는 `abvMin`/`abvMax`),
+      용량(`volumeMl` 또는 `volumeMlMin`/`volumeMlMax`), `isNas`/`ageStatement` 택1
+      (에디션이 있으면 에디션마다)
 - [ ] 모든 enum 값(`style`·`bottlingType`·캐스크 `code`·`variantType`·`regionCode`)이
       위 목록에 있는 철자 그대로인가
 - [ ] 에디션이 있으면 `seriesIdentifier`와 각 `variantValue`가 모두 채워졌는가
@@ -442,6 +479,7 @@ JSON을 내놓기 전에 스스로 점검하세요.
       최상위 도수를 범위(`abvMin`/`abvMax`)로 적었다면 각 에디션 `abv`를 채웠는가
 - [ ] 에디션 `notes`에 최상위 `notes` 문장을 복사해 넣지 않았는가
 - [ ] 캐스크 `details`가 **영문 표기**인가 (한글 음차가 남아 있지 않은가)
+- [ ] 피니시로 쓰인 캐스크의 `details` 끝에 ` (Finish)` 를 붙였는가. 주 숙성에 잘못 붙이지 않았는가
 - [ ] 공식 자료에 캐스크가 없을 때 전문 DB·매체·커뮤니티까지 찾아봤는가.
       커뮤니티만 근거면 `_uncertain`에 남겼는가
 - [ ] 특성 플래그를 추정으로 `true`로 만들지 않았는가
@@ -477,3 +515,6 @@ JSON을 내놓기 전에 스스로 점검하세요.
   숙성 연수·용량·특성처럼 최상위에만 적혀 온 값은 붙여넣기가 각 에디션으로 내려보내므로,
   에디션 탭을 하나씩 열어 값이 실제로 들어갔는지 확인할 것
   (상속 대상은 `spiritResearchJson.ts` 의 `EDITION_INHERITED_KEYS` 가 단일 소스다).
+- 같은 이유로 에디션이 있으면 **최상위 위스키 상세 카드가 화면에서 사라진다.** 상속 목록에 없는
+  최상위 값(브랜드명·병입 구분·최상위 `notes`)은 저장은 되지만 등록 화면에서 확인·수정할 수 없다 —
+  등록 후 주류 상세 화면에서 한 번 확인할 것.

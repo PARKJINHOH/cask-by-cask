@@ -16,7 +16,8 @@ import { useImmersiveEditing } from '@/shared/hooks/useImmersiveEditing'
 import Toast from '@/shared/components/Toast'
 import { useToast } from '@/shared/hooks/useToast'
 import { useLatestNotice } from '@/domain/notice/hooks/useNotices'
-import { GNB_MENUS, filterVisibleGnbMenus, isGnbGroup } from '@/domain/gnb-menu/constants/gnbMenu'
+import { GNB_MENUS, VENUE_MENU_KEYS, filterVisibleGnbMenus, isGnbGroup } from '@/domain/gnb-menu/constants/gnbMenu'
+import { VENUE_FEATURE_ENABLED } from '@/domain/venue/config/venueFeature'
 import type { GnbChild, GnbItem } from '@/domain/gnb-menu/constants/gnbMenu'
 import { useGnbHiddenKeys } from '@/domain/gnb-menu/hooks/useGnbMenus'
 import NotificationBell from '@/domain/notification/components/NotificationBell'
@@ -203,7 +204,13 @@ function GNB() {
   // 관리자가 숨긴 메뉴는 여기서 걸러진다. 조회 실패 시 빈 배열 → 전 메뉴 노출.
   const { data: hiddenKeys } = useGnbHiddenKeys()
   const menus = useMemo(
-    () => filterVisibleGnbMenus(GNB_MENUS, new Set(hiddenKeys ?? [])),
+    () => {
+      const hidden = new Set(hiddenKeys ?? [])
+      // 기능 플래그가 꺼져 있으면 메뉴도 숨긴다 — 보이는 채로 두면 눌렀을 때 404 가 난다.
+      // 관리자가 매번 손으로 꺼 두기를 기대할 수는 없다.
+      if (!VENUE_FEATURE_ENABLED) VENUE_MENU_KEYS.forEach((key) => hidden.add(key))
+      return filterVisibleGnbMenus(GNB_MENUS, hidden)
+    },
     [hiddenKeys],
   )
 

@@ -27,7 +27,6 @@ export interface WhiskyDetailRequest {
   brandName?: string | null
   bottlingType?: string | null
   caskTypes?: string[] | null
-  caskFinishes?: string[] | null
   caskTypeOther?: string | null
   caskDetails?: Record<string, string[]> | null
   isNonChillFiltered?: boolean | null
@@ -535,7 +534,6 @@ export interface SpiritRegisterRequestDetail {
   caskNo: string | null
   whiskyNotes: string | null
   caskTypes: string[] | null
-  caskFinishes: string[] | null
   caskTypeOther: string | null
   caskDetails: Record<string, string[]> | null
   isNonChillFiltered: boolean | null
@@ -595,7 +593,9 @@ export interface SpiritRegisterRequest {
 
 // ── Reports ────────────────────────────────────────────────────
 export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED'
-export type ReportTargetType = 'REVIEW' | 'COMMENT' | 'IMAGE'
+// 백엔드 ReportTargetType 과 짝을 이룬다. 값을 추가하면 AdminReportPage 의
+// TARGET_TYPE_LABEL(exhaustive Record)이 컴파일 에러로 알려 준다 — 그게 의도다.
+export type ReportTargetType = 'REVIEW' | 'COMMENT' | 'IMAGE' | 'VENUE_COMMENT'
 
 export interface AdminReport {
   id: number

@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "_comment": "지도 라벨 오버라이드. src/domain/venue/map/geoLabelOverrides.ts 가 읽어 basemap 위에 그린다. 좌표는 라벨을 놓을 자리이지 경계가 아니다.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "east-sea",
+        "kind": "sea",
+        "nameKo": "동해",
+        "nameEn": "East Sea",
+        "minzoom": 3,
+        "maxzoom": 7.5
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [133.5, 39.0]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "dokdo",
+        "kind": "island",
+        "nameKo": "독도",
+        "nameEn": "Dokdo",
+        "minzoom": 5,
+        "maxzoom": 22
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [131.8663, 37.2416]
+      }
+    }
+  ]
+}

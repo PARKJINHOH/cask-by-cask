@@ -155,6 +155,11 @@ public class SecurityConfig {
                         // 내 등록요청 조회는 비공개(로그인 필수) — 아래 광범위한 /api/producers/** permitAll 보다 먼저 선언
                         .requestMatchers(HttpMethod.GET, "/api/producers/requests/me", "/api/producers/requests/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/producers/**").permitAll()
+                        // 주류 장소(바·보틀샵) 공개 조회. 쓰기는 /api/admin/venues 로만 열린다.
+                        // venue.enabled=false 면 컨트롤러 빈 자체가 없어 이 매처를 통과해도 404 다.
+                        // 내 제보 조회는 비공개(로그인 필수) — 아래 광범위한 /api/venues/** permitAll 보다 먼저 선언
+                        .requestMatchers(HttpMethod.GET, "/api/venues/requests/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/popups/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/banners/**").permitAll()

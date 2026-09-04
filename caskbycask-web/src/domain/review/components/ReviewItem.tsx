@@ -183,6 +183,18 @@ export default function ReviewItem({ review, currentUserId, onEdit, onDelete, sh
                   </span>
                 )}
                 <span className="text-neutral-400">{formatDotDate(review.createdAt)}</span>
+                {/* 마신 곳 — 장소가 비공개·삭제되면 서버가 null 을 주므로 배지만 조용히 사라진다.
+                    이 배지가 술 상세의 "마실 수 있는 곳"과 같은 데이터를 반대 방향에서 보여 준다. */}
+                {review.venue && (
+                  <Link
+                    to={`/venues/${review.venue.venueId}`}
+                    className="max-w-[160px] truncate text-primary-700 hover:underline sm:max-w-[220px]"
+                  >
+                    🍸 {i18n.language === 'en'
+                      ? review.venue.nameEn || review.venue.nameKo
+                      : review.venue.nameKo}
+                  </Link>
+                )}
               </span>
             }
           />

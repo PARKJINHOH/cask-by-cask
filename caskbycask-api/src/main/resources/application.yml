@@ -145,6 +145,23 @@ youtube:
 # 리뷰 가져오기(링크) — 사용자가 다른 커뮤니티에 써 둔 자기 리뷰의 공개 게시글을 서버가 대신 읽는다.
 # 붙여넣기가 주 경로이고 이쪽은 보조 수단이라, 원문 사이트가 우리 서버 IP 를 막으면
 # 코드 배포 없이 enabled=false 로 내려도 기능은 그대로 쓸 수 있다.
+# 주류 장소(바·보틀샵) 지도.
+# 출시 전에는 false — 공개 컨트롤러 빈이 등록되지 않아 /api/venues/** 가 404 가 되고
+# 사이트맵에도 장소 shard 가 실리지 않는다. 프론트는 NEXT_PUBLIC_VENUE_ENABLED 로 따로 가린다.
+venue:
+  enabled: ${VENUE_ENABLED:false}
+  # 단축 지도 링크(maps.app.goo.gl / naver.me) 확장. 기본 꺼짐 —
+  # 구글 약관은 Places API 외의 자동 접근을 권장하지 않는다. 켜는 것은 운영자의 명시적 결정이다.
+  link-resolver:
+    enabled: ${VENUE_LINK_RESOLVER_ENABLED:false}
+    connect-timeout-ms: ${VENUE_LINK_RESOLVER_CONNECT_TIMEOUT_MS:3000}
+  # 주소 → 좌표(OSM Nominatim). 기본 꺼짐 — 정책상 1 rps·식별 UA·벌크 금지라
+  # 관리자 버튼에서만 쓸 수 있고, 사용자 제보 시점 자동 호출과는 양립하지 않는다.
+  geocoder:
+    enabled: ${VENUE_GEOCODER_ENABLED:false}
+    base-url: ${VENUE_GEOCODER_BASE_URL:https://nominatim.openstreetmap.org}
+    user-agent: ${VENUE_GEOCODER_USER_AGENT:CaskByCask/1.0 (+https://www.caskbycask.net)}
+
 review-import:
   enabled: ${REVIEW_IMPORT_ENABLED:true}
   connect-timeout-ms: ${REVIEW_IMPORT_CONNECT_TIMEOUT_MS:3000}

@@ -46,6 +46,10 @@ public class SitemapService {
     @PersistenceContext
     private EntityManager em;
 
+    /** 장소 기능이 꺼져 있으면 sitemap 에도 싣지 않는다 — 404 를 가리키는 주소를 제출하지 않는다. */
+    @Value("${venue.enabled:false}")
+    private boolean venueEnabled;
+
     @Value("${seo.site-url:https://www.caskbycask.net}")
     private String siteUrl;
 
@@ -64,6 +68,9 @@ public class SitemapService {
         // (엔드포인트 자체는 살아 있다 — 되돌리려면 이 자리에 appendSitemap 한 줄만 복구하면 된다.)
         for (long bucket : producerBuckets()) {
             appendSitemap(sb, "/sitemaps/producers-" + bucket + ".xml");
+        }
+        for (long bucket : venueBuckets()) {
+            appendSitemap(sb, "/sitemaps/venues-" + bucket + ".xml");
         }
         List<Long> spiritBuckets = spiritBuckets();
         for (String lang : List.of("ko", "en")) {
@@ -100,6 +107,10 @@ public class SitemapService {
         appendMultilingualUrl(sb, "/tier-lists", null);
         appendMultilingualUrl(sb, "/taste-trees", null);
         appendMultilingualUrl(sb, "/price-tracker", null);
+        // 장소 허브·국가·도시. 유한하고 수십 개 수준이라 별도 shard 가 필요 없다.
+        // 공개 장소가 하나도 없으면 아무것도 싣지 않는다 — 빈 목록 페이지를 색인 대상으로
+        // 제출하는 것은 빈 카테고리를 static shard 에서 빼는 것과 같은 이유로 피한다.
+        appendVenueBrowseUrls(sb);
         appendMultilingualUrl(sb, "/about", null);
         appendMultilingualUrl(sb, "/terms", null);
         appendMultilingualUrl(sb, "/privacy", null);
@@ -285,6 +296,78 @@ public class SitemapService {
             appendMultilingualUrl(sb, "/youtube/" + row[0], (LocalDateTime) row[1]);
         }
         return finishUrlSet(sb);
+    }
+
+    /**
+     * 장소 상세 sitemap.
+     *
+     * <p>{@code ACTIVE} 만 싣는다 — 폐업(CLOSED)은 페이지를 살려 두지만("그 바 아직 하나?"
+     * 라는 검색이 실제로 들어온다) 새로 색인시킬 이유는 없다.
+     *
+     * <p>{@code venue.enabled} 가 꺼져 있으면 {@link #venueBuckets()} 가 빈 목록을 돌려주므로
+     * 인덱스에도 실리지 않는다. 출시 전에 404 를 가리키는 sitemap 을 제출하지 않기 위해서다.
+     */
+    @Transactional(readOnly = true)
+    public String generateVenueSitemap(long bucket) {
+        if (bucket < 0) throw new IllegalArgumentException("Unsupported sitemap shard");
+        long minId = Math.multiplyExact(bucket, BUCKET_SIZE);
+        long maxId = Math.addExact(minId, BUCKET_SIZE);
+
+        StringBuilder sb = startUrlSet();
+        if (!venueEnabled) return finishUrlSet(sb);
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createQuery("""
+                        SELECT v.id, v.updatedAt FROM Venue v
+                        WHERE v.status = com.caskbycask.domain.venue.entity.enums.VenueStatus.ACTIVE
+                          AND v.id >= :minId AND v.id < :maxId
+                        ORDER BY v.id
+                        """)
+                .setParameter("minId", minId)
+                .setParameter("maxId", maxId)
+                .getResultList();
+
+        for (Object[] row : rows) {
+            appendMultilingualUrl(sb, "/venues/" + row[0], (LocalDateTime) row[1]);
+        }
+        return finishUrlSet(sb);
+    }
+
+    public List<Long> venueBuckets() {
+        if (!venueEnabled) return List.of();
+        return bucketsThrough(maxId("""
+                SELECT MAX(v.id) FROM Venue v
+                WHERE v.status = com.caskbycask.domain.venue.entity.enums.VenueStatus.ACTIVE
+                """));
+    }
+
+    /** 장소 허브·국가·도시 URL. 공개 장소가 있는 국가·도시만 싣는다. */
+    private void appendVenueBrowseUrls(StringBuilder sb) {
+        if (!venueEnabled) return;
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createQuery("""
+                        SELECT v.countryCode, c.slug, COUNT(v) FROM Venue v
+                        JOIN v.city c
+                        WHERE v.status = com.caskbycask.domain.venue.entity.enums.VenueStatus.ACTIVE
+                          AND c.isActive = true
+                        GROUP BY v.countryCode, c.slug
+                        ORDER BY v.countryCode, c.slug
+                        """)
+                .getResultList();
+        if (rows.isEmpty()) return;
+
+        appendMultilingualUrl(sb, "/venues", null);
+        java.util.Set<String> countries = new java.util.LinkedHashSet<>();
+        for (Object[] row : rows) {
+            countries.add((String) row[0]);
+        }
+        for (String country : countries) {
+            appendMultilingualUrl(sb, "/venues/" + country, null);
+        }
+        for (Object[] row : rows) {
+            appendMultilingualUrl(sb, "/venues/" + row[0] + "/" + row[1], null);
+        }
     }
 
     public List<Long> producerBuckets() {

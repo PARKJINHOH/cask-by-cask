@@ -1,6 +1,7 @@
 package com.caskbycask.domain.review.entity;
 
 import com.caskbycask.domain.spirit.entity.Spirit;
+import com.caskbycask.domain.venue.entity.Venue;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -16,7 +17,8 @@ import java.time.LocalDateTime;
         name = "review",
         indexes = {
                 @Index(name = "idx_review_spirit_id", columnList = "spirit_id"),
-                @Index(name = "idx_review_user_id", columnList = "user_id")
+                @Index(name = "idx_review_user_id", columnList = "user_id"),
+                @Index(name = "idx_review_venue_id", columnList = "venue_id")
         }
 )
 @SQLRestriction("deleted_at IS NULL")
@@ -37,6 +39,19 @@ public class Review extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    /**
+     * 마신 곳. 선택 사항이라 없을 수 있다.
+     *
+     * <p>이 태그가 바 사장님에게 판매 주류 목록을 갱신시키지 않고도 "여기서 마실 수 있는 술"을
+     * 만들어 낸다 — 리뷰를 쓰는 사람이 대신 채우고, 오래된 것은 신선도 컷으로 빠진다.
+     *
+     * <p>장소가 숨겨지거나 삭제돼도 이 값은 그대로 둔다. 리뷰 본문은 장소와 무관하게 살아 있어야 하고,
+     * 조회 시 장소의 status/deletedAt 으로 걸러 태그만 조용히 감춘다.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "venue_id")
+    private Venue venue;
 
     /** 점수는 셋 다 있거나 셋 다 없다 — 점수 없는 리뷰는 평균 산출에서 빠진다. */
     @Column(precision = 4, scale = 1)
@@ -136,6 +151,21 @@ public class Review extends BaseTimeEntity {
         this.noseAromaWheelNotes = noseAromaWheelNotes;
         this.tasteAromaWheelNotes = tasteAromaWheelNotes;
         this.finishAromaWheelNotes = finishAromaWheelNotes;
+    }
+
+    /**
+     * 마신 곳 태그 변경.
+     *
+     * <p>{@link #update} 의 11번째 인자로 넣지 않은 이유가 있다 — 그 메서드는 이미 같은 타입
+     * (String·BigDecimal) 위치 인자 10 개라 두 개를 뒤바꿔 넘겨도 조용히 컴파일된다.
+     * 거기에 하나를 더 얹으면 위험만 키운다.
+     *
+     * <p>규약: <b>폼이 항상 venueId 를 보낸다(null = 태그 없음), 서비스는 항상 적용한다.</b>
+     * 점수 세 칸을 "항상 함께 보낸다"로 푼 것과 같은 방식이다 — 그래야 "안 보냄"과 "지움"을
+     * 구분하려는 시도 자체가 사라진다.
+     */
+    public void changeVenue(Venue venue) {
+        this.venue = venue;
     }
 
     public void softDelete() {

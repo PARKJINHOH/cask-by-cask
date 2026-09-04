@@ -109,6 +109,16 @@ OG 메타가 바뀌어도 메신저/SNS 는 캐시한 이전 미리보기를 계
 - `/sitemaps/static.xml`: 언어 루트, 주류 목록, 실제 결과가 있는 카테고리, 주요 공개 정적 경로
 - `/sitemaps/content-{bucket}.xml`: 공지·공개 게시글·BYOB. ID 10,000 단위 shard
 - `/sitemaps/spirits-ko-{bucket}.xml`, `/sitemaps/spirits-en-{bucket}.xml`: 활성 정규 주류와 에디션의 최종 canonical. ID 10,000 단위 shard
+- `/sitemaps/producers-{bucket}.xml`: 활성 주류가 하나 이상인 생산자. ID 10,000 단위 shard
+- `/sitemaps/venues-{bucket}.xml`: 공개(ACTIVE) 주류 장소. ID 10,000 단위 shard.
+  폐업(CLOSED)은 페이지를 살려 두되 sitemap 에는 넣지 않는다 — "그 바 아직 하나?" 검색은 받되
+  새로 색인시킬 이유는 없다. `venue.enabled=false` 면 shard 자체가 index 에 실리지 않아
+  출시 전에 404 를 가리키는 주소를 제출하지 않는다.
+  장소 허브·국가·도시(`/venues`, `/venues/{국가}`, `/venues/{국가}/{도시}`)는 유한하고 수십 개라
+  `static.xml` 에 함께 실리며, 공개 장소가 1건 이상인 국가·도시만 들어간다.
+
+지도 앱(`/venue-map`)은 <b>의도적으로 제외</b>한다 — 스크롤이 잠긴 탐색용 화면이라 크롤러에게 보여 줄 본문이 없고,
+검색 유입은 위의 `/venues/*` 문서 페이지가 받는다(`isKnownPrivatePath` 에 등록되어 noindex 다).
 
 각 응답은 `Cache-Control: public, max-age=3600`과 `ETag`를 제공하고 GET/HEAD를 모두 허용한다. 주류 조회는 sitemap 전용 projection을 사용하며 `lastmod`는 MariaDB의 Asia/Seoul 시간을 `+09:00` offset으로 출력한다.
 

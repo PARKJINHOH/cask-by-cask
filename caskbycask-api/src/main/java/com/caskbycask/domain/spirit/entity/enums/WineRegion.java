@@ -17,8 +17,8 @@ import java.util.Set;
  * 산지 카탈로그 — 프로젝트 전체의 산지 단일 소스.
  *
  * <p>이름은 역사적으로 {@code WineRegion} 이지만 <b>와인 전용이 아니다</b>.
- * 각 산지는 {@code categories} 로 쓰이는 주류 카테고리를 선언한다
- * (와인 13개국 + 위스키 스코틀랜드·아일랜드·일본·대만·한국·인도·캐나다·미국).
+ * 각 산지는 {@code categories} 로 쓰이는 주류 카테고리를 선언한다.
+ * 한 국가에 여러 카테고리가 겹칠 수 있다(대한민국 = 위스키·와인·전통주).
  *
  * <p>계층은 2단이다.
  * <ul>
@@ -419,25 +419,25 @@ public enum WineRegion {
     TW_KAOHSIUNG("TW", "가오슝", "Kaohsiung", null, SpiritCategory.WHISKY),
 
     // ═══════════════════════════════════════════════════════════
-    // 대한민국 (KR) — 위스키·전통주. L1 = 시도
+    // 대한민국 (KR) — 위스키·와인·전통주. L1 = 시도
     // ═══════════════════════════════════════════════════════════
-    KR_GYEONGGI("KR", "경기도", "Gyeonggi", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_GANGWON("KR", "강원도", "Gangwon", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_CHUNGBUK("KR", "충청북도", "North Chungcheong", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_CHUNGNAM("KR", "충청남도", "South Chungcheong", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_JEONBUK("KR", "전라북도", "North Jeolla", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_JEONNAM("KR", "전라남도", "South Jeolla", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_GYEONGBUK("KR", "경상북도", "North Gyeongsang", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_GYEONGNAM("KR", "경상남도", "South Gyeongsang", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_JEJU("KR", "제주도", "Jeju", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_SEOUL("KR", "서울", "Seoul", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_INCHEON("KR", "인천", "Incheon", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_BUSAN("KR", "부산", "Busan", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_DAEGU("KR", "대구", "Daegu", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_DAEJEON("KR", "대전", "Daejeon", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_GWANGJU("KR", "광주", "Gwangju", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_ULSAN("KR", "울산", "Ulsan", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
-    KR_SEJONG("KR", "세종", "Sejong", null, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_GYEONGGI("KR", "경기도", "Gyeonggi", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_GANGWON("KR", "강원도", "Gangwon", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_CHUNGBUK("KR", "충청북도", "North Chungcheong", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_CHUNGNAM("KR", "충청남도", "South Chungcheong", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_JEONBUK("KR", "전라북도", "North Jeolla", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_JEONNAM("KR", "전라남도", "South Jeolla", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_GYEONGBUK("KR", "경상북도", "North Gyeongsang", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_GYEONGNAM("KR", "경상남도", "South Gyeongsang", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_JEJU("KR", "제주도", "Jeju", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_SEOUL("KR", "서울", "Seoul", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_INCHEON("KR", "인천", "Incheon", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_BUSAN("KR", "부산", "Busan", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_DAEGU("KR", "대구", "Daegu", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_DAEJEON("KR", "대전", "Daejeon", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_GWANGJU("KR", "광주", "Gwangju", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_ULSAN("KR", "울산", "Ulsan", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
+    KR_SEJONG("KR", "세종", "Sejong", null, SpiritCategory.WINE, SpiritCategory.WHISKY, SpiritCategory.OTHER),
 
     // ═══════════════════════════════════════════════════════════
     // 인도 (IN) — 위스키. L1 = 주
@@ -532,6 +532,7 @@ public enum WineRegion {
     // 그리스 (GR) — 와인. L1 = 행정 광역권
     // ═══════════════════════════════════════════════════════════
     GR_AEGEAN("GR", "에게해 섬", "Aegean Islands", null),
+    GR_AEGEAN_SANTORINI("GR", "산토리니", "Santorini", "GR_AEGEAN"),
     GR_MACEDONIA("GR", "마케도니아", "Macedonia", null),
     GR_PELOPONNESE("GR", "펠로폰네소스", "Peloponnese", null),
     GR_CRETE("GR", "크레타", "Crete", null),

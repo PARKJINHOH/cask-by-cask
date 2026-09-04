@@ -30,6 +30,7 @@ function fakeForm(renderedCategory = null) {
   const state = {
     category: null, nameKo: '', nameEn: '', country: null, countryCode: null,
     region: '', regionCode: null, isAbvRange: null, abvMin: '', abvMax: '',
+    isVolumeMlRange: null, volumeMlMin: '', volumeMlMax: '',
     common: {}, whisky: {}, wine: {}, cognac: {},
     isVariantSplit: false, variantType: null,
     seriesIdentifier: '', seriesIdentifierEn: '', variants: [],
@@ -53,6 +54,9 @@ function fakeForm(renderedCategory = null) {
     setIsAbvRange: (v) => { state.isAbvRange = v },
     setAbvMin: (v) => { state.abvMin = v },
     setAbvMax: (v) => { state.abvMax = v },
+    setIsVolumeMlRange: (v) => { state.isVolumeMlRange = v },
+    setVolumeMlMin: (v) => { state.volumeMlMin = v },
+    setVolumeMlMax: (v) => { state.volumeMlMax = v },
     updateCommon: (u) => { Object.assign(state.common, u) },
     updateWhisky: (u) => { Object.assign(state.whisky, u) },
     updateWine: (u) => { Object.assign(state.wine, u) },
@@ -187,7 +191,11 @@ describe('프롬프트 문서의 예시 JSON 이 경고 없이 들어간다', ()
     assert.equal(form.state.whisky.style, 'SINGLE_MALT')
     assert.equal(form.state.whisky.bottlingType, 'OB')
     assert.deepEqual(form.state.whisky.caskTypes, ['EX_BOURBON', 'EX_SHERRY'])
-    assert.deepEqual(form.state.whisky.caskFinishes, ['EX_SHERRY'])
+    // 피니시는 별도 항목이 아니라 세부 오크통 명칭의 (Finish) 표기로 들어온다
+    assert.deepEqual(form.state.whisky.caskDetails, {
+      EX_BOURBON: ['American Oak Barrel'],
+      EX_SHERRY: ['Oloroso Sherry Butt (Finish)'],
+    })
     assert.equal(form.state.common.ageStatement, 12)
     assert.equal(form.state.countryCode, 'GB-SCT')
   })
@@ -335,6 +343,35 @@ describe('도수', () => {
     assert.equal(plan.fields.isAbvRange, true)
     assert.equal(plan.fields.abvMin, '54')
     assert.equal(plan.commonDetail.abv, undefined)
+  })
+})
+
+// ── 용량 범위 ───────────────────────────────────────────
+
+describe('용량', () => {
+  test('단일 용량은 공통 상세로, 범위 지정은 끈다', () => {
+    const { plan } = buildImportPlan({ category: 'WHISKY', volumeMl: 700 })
+    assert.equal(plan.commonDetail.volumeMl, '700')
+    assert.equal(plan.fields.isVolumeMlRange, false)
+  })
+
+  test('min/max 만 있으면 범위 지정을 켜고 용량을 필수 누락으로 보지 않는다', () => {
+    // 폼·백엔드는 용량 범위를 받는데 붙여넣기만 못 읽으면 700/750 두 규격 제품이 매번 손입력이 된다
+    const { plan } = buildImportPlan({ category: 'WHISKY', volumeMlMin: 700, volumeMlMax: 750 })
+    assert.equal(plan.fields.isVolumeMlRange, true)
+    assert.equal(plan.fields.volumeMlMin, '700')
+    assert.equal(plan.fields.volumeMlMax, '750')
+    assert.equal(plan.commonDetail.volumeMl, undefined)
+    assert.ok(!plan.missingRequired.includes('용량'))
+  })
+
+  test('범위가 폼에 그대로 들어간다', () => {
+    const { plan } = buildImportPlan({ category: 'WHISKY', volumeMlMin: 700, volumeMlMax: 750 })
+    const form = fakeForm()
+    applyImportPlan(form, plan)
+    assert.equal(form.state.isVolumeMlRange, true)
+    assert.equal(form.state.volumeMlMin, '700')
+    assert.equal(form.state.volumeMlMax, '750')
   })
 })
 
@@ -584,6 +621,17 @@ describe('필수 항목이 비면 미리 알린다', () => {
   test('위스키는 스타일이 필수', () => {
     const { plan } = buildImportPlan({ category: 'WHISKY' })
     assert.ok(plan.missingRequired.includes('위스키 스타일'))
+  })
+
+  test('위스키는 증류소 대신 브랜드명만 있어도 생산자를 요구하지 않는다', () => {
+    // 폼은 증류소 또는 브랜드명 중 하나를 받는다 — 블렌디드는 라벨에 브랜드만 있는 경우가 흔하다
+    const { plan } = buildImportPlan({ category: 'WHISKY', style: 'BLENDED_WHISKY', brandName: '조니워커' })
+    assert.ok(!plan.missingRequired.includes('생산자'))
+  })
+
+  test('증류소도 브랜드명도 없으면 생산자를 알린다', () => {
+    const { plan } = buildImportPlan({ category: 'WHISKY', style: 'BLENDED_WHISKY' })
+    assert.ok(plan.missingRequired.includes('생산자'))
   })
 
   test('와인은 종류와 빈티지 연도가 필수', () => {

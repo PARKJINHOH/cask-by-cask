@@ -29,7 +29,9 @@ class WineRegionTest {
     private static final Set<String> WINE_COUNTRIES = Set.of(
             "FR", "IT", "ES", "US", "CL", "AU",
             "PT", "DE", "AT", "HU", "NZ", "AR", "ZA",
-            "CN", "GR", "GE", "LB", "UY", "JP", "IN", "CA", "GB-ENG");
+            // KR — 국내 와이너리(그랑꼬또·여포와인농장 등)가 시드에 있고, V108 에서
+            // KR_* 시도 17개가 WINE 을 지원하도록 넓혔다.
+            "CN", "GR", "GE", "LB", "UY", "JP", "IN", "CA", "GB-ENG", "KR");
 
     private static final Set<String> WHISKY_COUNTRIES = Set.of(
             "GB-SCT", "GB-ENG", "GB-WLS", "GB-NIR", "IE", "JP", "TW", "KR", "IN", "CA",

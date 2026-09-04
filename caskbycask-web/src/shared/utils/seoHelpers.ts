@@ -118,7 +118,6 @@ interface SpiritDetailResponse {
     brandName?: string | null
     bottlingType?: string | null
     caskTypes?: string[] | null
-    caskFinishes?: string[] | null
     isNonChillFiltered?: boolean | null
     isNaturalColour?: boolean | null
     isSingleCask?: boolean | null
@@ -799,7 +798,10 @@ function isKnownPrivatePath(segments: string[]): boolean {
     'login', 'signup', 'oauth/callback', 'oauth/signup', 'account-recovery', 'inquiry',
     'notifications', 'mypage', 'price-tracker/register',
     'taste-trees/new', 'taste-trees/mine', 'photo-card', 'community/byob/mine',
-    'request/spirit', 'request/spirit/my', 'request/producer',
+    // 지도 앱은 색인 대상이 아니다 — 검색 유입은 /venues/* 문서 페이지가 맡는다.
+    // (이 집합의 이름은 'private' 이지만 실제 의미는 '색인하지 않는 앱 라우트'다. photo-card 도 공개 페이지다.)
+    'venue-map',
+    'request/spirit', 'request/spirit/my', 'request/producer', 'request/venue',
     'request/feedback', 'request/feedback/new',
   ])
   if (exact.has(path)) return true
@@ -826,7 +828,7 @@ function isKnownAdminPath(segments: string[]): boolean {
     'community/prefixes', 'social', 'price-reports', 'stores', 'deals', 'score/points',
     'score/levels', 'legal', 'legal/new', 'emails/send', 'emails/history',
     'inquiries', 'logs', 'faq', 'faq/new', 'taste-trees', 'taste-trees/new',
-    'photo-cards', 'youtube',
+    'photo-cards', 'youtube', 'venues', 'venues/cities', 'venues/requests',
   ])
   if (exact.has(path)) return true
   return [
@@ -1018,6 +1020,43 @@ export function parsePath(segments: string[]): ParsedPath {
       canonicalPath: remaining.join('/'),
       resourcePath: `/api/producers/${remaining[1]}`,
     }
+  }
+  // 주류 장소 문서 페이지. 지도 앱(/venue-map)과 달리 <b>색인 대상</b>이다 —
+  // 검색 유입("강남 위스키바")은 여기가 받고, 지도는 탐색을 맡는다.
+  //
+  // /venues/{cc} 와 /venues/{id} 는 둘 다 두 세그먼트라 형태로 가른다:
+  // 국가 코드는 영문 2자, 장소 id 는 숫자다(숫자로 된 국가 코드는 없다).
+  if (remaining[0] === 'venues') {
+    if (remaining.length === 1) {
+      return { type: 'default', lang, canonicalPath: 'venues' }
+    }
+    if (remaining.length === 2 && /^\d+$/.test(remaining[1])) {
+      return {
+        type: 'default',
+        lang,
+        canonicalPath: remaining.join('/'),
+        resourcePath: `/api/venues/${remaining[1]}`,
+      }
+    }
+    if (remaining.length === 2 && /^[a-z]{2}$/.test(remaining[1])) {
+      return {
+        type: 'default',
+        lang,
+        canonicalPath: remaining.join('/'),
+        resourcePath: `/api/venues/countries/${remaining[1]}`,
+      }
+    }
+    if (remaining.length === 3
+        && /^[a-z]{2}$/.test(remaining[1])
+        && /^[a-z0-9-]+$/.test(remaining[2])) {
+      return {
+        type: 'default',
+        lang,
+        canonicalPath: remaining.join('/'),
+        resourcePath: `/api/venues/countries/${remaining[1]}/cities/${remaining[2]}`,
+      }
+    }
+    return { type: 'not-found', lang }
   }
   if (remaining[0] === 'price-tracker') {
     if (remaining.length === 1
@@ -3404,7 +3443,6 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
         score ? `${labels.score} ${score}/100` : null,
       ].filter(Boolean).join(' · ')
   const caskTypes = spirit.whiskyDetail?.caskTypes?.filter(Boolean).join(', ')
-  const caskFinishes = spirit.whiskyDetail?.caskFinishes?.filter(Boolean).join(', ')
   const grapes = spirit.wineDetail?.grapeVarieties
     ?.map((grape) => grape.name
       ? `${grape.name}${grape.percentage != null ? ` ${grape.percentage}%` : ''}`
@@ -3482,7 +3520,7 @@ export async function getSpiritSeoSnapshot(id: string, lang: 'ko' | 'en' | null)
       { label: labels.vintage, value: spirit.vintageYear ?? (spirit.wineDetail?.vintageStatus === 'NON_VINTAGE' ? 'NV' : null) },
       { label: labels.bottleNo, value: spirit.commonDetail?.bottleNo },
       { label: labels.whiskyStyle, value: spirit.whiskyDetail?.style },
-      { label: labels.cask, value: caskFinishes ? `${caskTypes || ''} / Finish: ${caskFinishes}` : caskTypes },
+      { label: labels.cask, value: caskTypes },
       { label: labels.wineType, value: spirit.wineDetail?.wineType },
       { label: labels.wineType, value: grapes },
       { label: labels.cognacGrade, value: spirit.cognacDetail?.grade },

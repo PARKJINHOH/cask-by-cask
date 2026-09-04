@@ -61,7 +61,14 @@ public record ReviewRequest(
 
         @Schema(description = "향·맛·피니시 아로마 강도 프로파일 (선택)")
         @Valid
-        List<AromaProfileRequest> aromaProfiles
+        List<AromaProfileRequest> aromaProfiles,
+
+        /**
+         * 마신 곳(venue.id). 선택 사항이며 <b>폼이 항상 보낸다</b> — null 이면 "태그 없음"이고
+         * "변경 안 함"이 아니다. 그래야 태그를 지울 방법이 사라지지 않는다.
+         */
+        @Schema(description = "마신 곳(장소 ID). null = 태그 없음")
+        Long venueId
 ) {
     /**
      * 점수가 셋 다 있는가 — 셋 다 없으면 "점수 없는 리뷰"다.
@@ -83,6 +90,6 @@ public record ReviewRequest(
             String noseAromaWheelNotes, String tasteAromaWheelNotes, String finishAromaWheelNotes
     ) {
         this(noseScore, tasteScore, finishScore, noseNote, tasteNote, finishNote, comment,
-                noseAromaWheelNotes, tasteAromaWheelNotes, finishAromaWheelNotes, null, null);
+                noseAromaWheelNotes, tasteAromaWheelNotes, finishAromaWheelNotes, null, null, null);
     }
 }

@@ -6,7 +6,7 @@ import NumberInput from '@/shared/components/NumberInput'
 
 export interface WhiskyDetailForm {
   style: string; styleOther: string; brandName: string; bottlingType: string
-  caskTypes: string[]; caskFinishes: string[]; caskTypeOther: string
+  caskTypes: string[]; caskTypeOther: string
   caskDetails: Record<string, string[]>
   isNonChillFiltered: boolean; isNaturalColour: boolean
   isSingleCask: boolean; isCaskStrength: boolean; isPeated: boolean
@@ -15,7 +15,7 @@ export interface WhiskyDetailForm {
 
 export const DEFAULT_WHISKY: WhiskyDetailForm = {
   style: 'SINGLE_MALT', styleOther: '', brandName: '', bottlingType: 'OB',
-  caskTypes: [], caskFinishes: [], caskTypeOther: '',
+  caskTypes: [], caskTypeOther: '',
   caskDetails: {},
   isNonChillFiltered: false, isNaturalColour: false, isSingleCask: false,
   isCaskStrength: false, isPeated: false, phenolPpm: '', phenolPpmMin: '', phenolPpmMax: '', notes: '',
@@ -41,22 +41,17 @@ export function WhiskyCaskSection({ value, onChange }: Props) {
     <div>
       <label className={LABEL}>
         캐스크
-        <InfoTooltip text="이 위스키에 사용된 캐스크 대분류를 체크하고, 아래에 구체적인 세부 오크통 명칭을 영문으로 적어주세요(예: Oloroso Sherry Butt). + 버튼을 눌러 여러 개를 등록할 수 있습니다. 피니시(추가 숙성) 캐스크는 우측 피니시를 체크해주세요." />
+        <InfoTooltip text="이 위스키에 사용된 캐스크 대분류를 체크하고, 아래에 구체적인 세부 오크통 명칭을 영문으로 적어주세요(예: Oloroso Sherry Butt). + 버튼을 눌러 여러 개를 등록할 수 있습니다. 피니시(추가 숙성) 캐스크는 세부 오크통 명칭 뒤에 (Finish) 를 붙여 적어주세요 — 예: Oloroso Sherry Butt (Finish)." />
       </label>
       <div className="space-y-3">
         {BROAD_CASK_CATEGORIES.map(({ code, label, placeholder }) => {
           const isChecked = value.caskTypes.includes(code)
-          const isFinish = value.caskFinishes.includes(code)
           const details = value.caskDetails?.[code] || []
 
           const handleToggle = (checked: boolean) => {
             const newCaskTypes = checked
               ? [...value.caskTypes, code]
               : value.caskTypes.filter((c) => c !== code)
-
-            const newCaskFinishes = checked
-              ? value.caskFinishes
-              : value.caskFinishes.filter((c) => c !== code)
 
             const newCaskDetails = { ...value.caskDetails }
             if (checked) {
@@ -67,14 +62,7 @@ export function WhiskyCaskSection({ value, onChange }: Props) {
               delete newCaskDetails[code]
             }
 
-            onChange({ caskTypes: newCaskTypes, caskFinishes: newCaskFinishes, caskDetails: newCaskDetails })
-          }
-
-          const handleToggleFinish = (checked: boolean) => {
-            const newCaskFinishes = checked
-              ? [...value.caskFinishes, code]
-              : value.caskFinishes.filter((c) => c !== code)
-            onChange({ caskFinishes: newCaskFinishes })
+            onChange({ caskTypes: newCaskTypes, caskDetails: newCaskDetails })
           }
 
           const handleAddDetail = () => {
@@ -115,21 +103,12 @@ export function WhiskyCaskSection({ value, onChange }: Props) {
                 : 'border-neutral-200 bg-neutral-50/40'
             }`}>
               {/* 대분류 헤더 영역 */}
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold select-none min-w-0 text-neutral-800">
                   <input type="checkbox" checked={isChecked}
                     onChange={(e) => handleToggle(e.target.checked)}
                     className="w-4 h-4 rounded text-amber-500 border-neutral-300 focus:ring-amber-500 accent-amber-500 flex-shrink-0" />
                   <span className="truncate">{label}</span>
-                </label>
-
-                <label className={`flex items-center gap-1.5 text-xs font-medium flex-shrink-0 select-none transition-all ${
-                  isChecked ? 'cursor-pointer text-amber-700' : 'opacity-30 cursor-not-allowed text-neutral-400'}`}>
-                  <input type="checkbox" disabled={!isChecked}
-                    checked={isFinish}
-                    onChange={(e) => handleToggleFinish(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded text-amber-500 border-neutral-300 focus:ring-amber-500 accent-amber-500" />
-                  피니시
                 </label>
               </div>
 

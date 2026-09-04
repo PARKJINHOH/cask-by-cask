@@ -7,6 +7,8 @@ import com.caskbycask.domain.spirit.entity.enums.SpiritCategory;
 import com.caskbycask.domain.spirit.entity.enums.VariantType;
 import com.caskbycask.domain.user.entity.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.persistence.EntityNotFoundException;
+import org.hibernate.LazyInitializationException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -84,8 +86,26 @@ public record ReviewResponse(
         @Schema(description = "리뷰 이미지 (표시 순서)")
         List<ReviewImageResponse> images,
         @Schema(description = "향·맛·피니시 아로마 강도 프로파일")
-        List<AromaProfileResponse> aromaProfiles
+        List<AromaProfileResponse> aromaProfiles,
+        @Schema(description = "마신 곳. 태그가 없거나 장소가 비공개·삭제되면 null")
+        ReviewVenueInfo venue
 ) {
+    /**
+     * 마신 곳 태그를 안전하게 읽는다.
+     *
+     * <p>{@code Venue} 에는 {@code @SQLRestriction("deleted_at IS NULL")} 이 걸려 있어,
+     * 태그된 장소가 삭제된 뒤 지연 프록시를 건드리면 초기화가 실패할 수 있다.
+     * 리뷰 본문은 장소와 무관하게 보여야 하므로 그 경우 <b>태그만 조용히 버린다</b> —
+     * 리뷰 목록 하나가 통째로 500 이 되는 것보다 태그가 사라지는 편이 낫다.
+     */
+    private static ReviewVenueInfo resolveVenue(Review review) {
+        try {
+            return ReviewVenueInfo.from(review.getVenue());
+        } catch (EntityNotFoundException | LazyInitializationException exception) {
+            return null;
+        }
+    }
+
     public static ReviewResponse from(Review review) {
         return from(review, null, null, List.of(), List.of());
     }
@@ -141,7 +161,8 @@ public record ReviewResponse(
                 userReviewIndex,
                 userReviewCount,
                 images == null ? List.of() : List.copyOf(images),
-                aromaProfiles == null ? List.of() : List.copyOf(aromaProfiles)
+                aromaProfiles == null ? List.of() : List.copyOf(aromaProfiles),
+                resolveVenue(review)
         );
     }
 }

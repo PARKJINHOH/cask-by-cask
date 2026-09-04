@@ -66,7 +66,6 @@ public class LegacyWineRegionResolver {
             alias(SpiritCategory.WHISKY, "호주", "서오스트레일리아 (앨버니)", WineRegion.AU_WESTERN_AUSTRALIA),
 
             alias(SpiritCategory.WINE, "그리스", "나우사", WineRegion.GR_MACEDONIA),
-            alias(SpiritCategory.WINE, "그리스", "산토리니", WineRegion.GR_AEGEAN),
             alias(SpiritCategory.WINE, "그리스", "아민데오", WineRegion.GR_MACEDONIA),
             alias(SpiritCategory.WINE, "남아공", "스와틀란트", WineRegion.ZA_WEST_COAST),
             alias(SpiritCategory.WINE, "남아공", "헤멜엔아르더", WineRegion.ZA_OVERBERG),

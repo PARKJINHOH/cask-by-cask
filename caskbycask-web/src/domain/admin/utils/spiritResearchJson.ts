@@ -88,6 +88,10 @@ export interface ImportPlan {
     isAbvRange?: boolean
     abvMin?: string
     abvMax?: string
+    /** 용량 범위 지정 — 단일 용량은 `commonDetail.volumeMl` 에 들어간다 */
+    isVolumeMlRange?: boolean
+    volumeMlMin?: string
+    volumeMlMax?: string
   }
   commonDetail: Record<string, unknown>
   whiskyDetail: Record<string, unknown>
@@ -272,8 +276,20 @@ export function buildImportPlan(raw: Record<string, unknown>): BuildSuccess | Bu
     }
   }
 
+  // 용량도 도수와 같은 규칙 — 폼이 단일 값과 범위 중 하나만 받으므로 단일 값이 없을 때만 범위를 본다.
   const volume = b.num('용량', raw.volumeMl, VOLUME_ML_MIN, VOLUME_ML_MAX)
-  if (volume !== undefined) spec.volumeMl = String(volume)
+  if (volume !== undefined) {
+    spec.volumeMl = String(volume)
+    fields.isVolumeMlRange = false
+  } else {
+    const volumeLo = b.num('용량 최소', raw.volumeMlMin, VOLUME_ML_MIN, VOLUME_ML_MAX)
+    const volumeHi = b.num('용량 최대', raw.volumeMlMax, VOLUME_ML_MIN, VOLUME_ML_MAX)
+    if (volumeLo !== undefined && volumeHi !== undefined) {
+      fields.volumeMlMin = String(volumeLo)
+      fields.volumeMlMax = String(volumeHi)
+      fields.isVolumeMlRange = true
+    }
+  }
 
   // 국가는 ISO3166 한글 국가명과 정확히 맞아야 선택기가 인식한다.
   // 프롬프트가 '영국(스코틀랜드)' 처럼 보조 정보를 붙여 오는 경우가 있어 괄호를 떼고 한 번 더 본다.
@@ -377,7 +393,11 @@ export function buildImportPlan(raw: Record<string, unknown>): BuildSuccess | Bu
   // 규칙 자체는 SpiritFormFields.validate 가 소유한다 — 여기는 안내일 뿐이다.
   if (!plan.fields.nameKo) plan.missingRequired.push('한국어 이름')
   if (!plan.fields.nameEn) plan.missingRequired.push('영어 이름')
-  if (!producerName) plan.missingRequired.push('생산자')
+  // 위스키만 예외 — 폼이 "증류소 또는 브랜드명 중 하나"를 받는다(SpiritFormFields.validate).
+  // 블렌디드는 증류소가 여럿이라 라벨에 브랜드만 있는 경우가 흔하다.
+  if (!producerName && !(category === 'WHISKY' && plan.whiskyDetail.brandName)) {
+    plan.missingRequired.push('생산자')
+  }
   if (!plan.fields.countryCode) plan.missingRequired.push('국가')
   if (category === 'COGNAC' && !plan.cognacDetail.grade) plan.missingRequired.push('등급')
   if (category === 'WHISKY' && !plan.whiskyDetail.style) plan.missingRequired.push('위스키 스타일')
@@ -398,7 +418,7 @@ export function buildImportPlan(raw: Record<string, unknown>): BuildSuccess | Bu
   // 에디션으로 나뉘면 도수·용량은 에디션마다 받는다(마스터 필수 아님)
   if (!plan.variants) {
     if (!plan.commonDetail.abv && !plan.fields.isAbvRange) plan.missingRequired.push('알코올 도수')
-    if (!plan.commonDetail.volumeMl) plan.missingRequired.push('용량')
+    if (!plan.commonDetail.volumeMl && !plan.fields.isVolumeMlRange) plan.missingRequired.push('용량')
   }
   if (plan.variants && !plan.variants.seriesIdentifier) plan.missingRequired.push('한글 시리즈 식별자')
 
@@ -412,6 +432,7 @@ export type ImportTargetForm = Pick<SpiritFormApi,
   | 'reset' | 'setCategory'
   | 'setNameKo' | 'setNameEn' | 'setCountryValue' | 'setRegion' | 'setRegionCode'
   | 'setIsAbvRange' | 'setAbvMin' | 'setAbvMax'
+  | 'setIsVolumeMlRange' | 'setVolumeMlMin' | 'setVolumeMlMax'
   | 'updateCommon' | 'updateWhisky' | 'updateWine' | 'updateCognac'
   | 'setIsVariantSplit' | 'setVariantType'
   | 'setSeriesIdentifier' | 'setSeriesIdentifierEn' | 'setVariants'
@@ -443,6 +464,9 @@ export function applyImportPlan(form: ImportTargetForm, plan: ImportPlan) {
   if (f.isAbvRange !== undefined) form.setIsAbvRange(f.isAbvRange)
   if (f.abvMin !== undefined) form.setAbvMin(f.abvMin)
   if (f.abvMax !== undefined) form.setAbvMax(f.abvMax)
+  if (f.isVolumeMlRange !== undefined) form.setIsVolumeMlRange(f.isVolumeMlRange)
+  if (f.volumeMlMin !== undefined) form.setVolumeMlMin(f.volumeMlMin)
+  if (f.volumeMlMax !== undefined) form.setVolumeMlMax(f.volumeMlMax)
 
   if (Object.keys(plan.commonDetail).length > 0) form.updateCommon(plan.commonDetail)
   if (Object.keys(plan.whiskyDetail).length > 0) form.updateWhisky(plan.whiskyDetail)
@@ -668,7 +692,6 @@ function buildPeat(
 function buildCasks(b: PlanBuilder, raw: unknown) {
   if (!Array.isArray(raw) || raw.length === 0) return {}
   const caskTypes: string[] = []
-  const caskFinishes: string[] = []
   const caskDetails: Record<string, string[]> = {}
   for (const item of raw) {
     const code = String((item as { code?: unknown })?.code ?? '').trim().toUpperCase()
@@ -677,9 +700,6 @@ function buildCasks(b: PlanBuilder, raw: unknown) {
       continue
     }
     if (!caskTypes.includes(code)) caskTypes.push(code)
-    if ((item as { isFinish?: unknown })?.isFinish === true && !caskFinishes.includes(code)) {
-      caskFinishes.push(code)
-    }
     const details = (item as { details?: unknown })?.details
     const list = Array.isArray(details)
       ? details.map((d) => String(d).trim().slice(0, MAX.caskDetail)).filter(Boolean)
@@ -688,7 +708,7 @@ function buildCasks(b: PlanBuilder, raw: unknown) {
   }
   if (caskTypes.length === 0) return {}
   b.mark('캐스크')
-  return { caskTypes, caskFinishes, caskDetails }
+  return { caskTypes, caskDetails }
 }
 
 /**

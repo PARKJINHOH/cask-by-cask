@@ -57,7 +57,14 @@ public record UpdateReviewRequest(
 
         @Schema(description = "아로마 강도 프로파일 (null=변경 안 함, 빈 배열=전체 삭제)")
         @Valid
-        List<AromaProfileRequest> aromaProfiles
+        List<AromaProfileRequest> aromaProfiles,
+
+        /**
+         * 마신 곳(venue.id). 선택 사항이며 <b>폼이 항상 보낸다</b> — null 이면 "태그 없음"이고
+         * "변경 안 함"이 아니다. 그래야 태그를 지울 방법이 사라지지 않는다.
+         */
+        @Schema(description = "마신 곳(장소 ID). null = 태그 없음")
+        Long venueId
 ) {
     public UpdateReviewRequest(
             BigDecimal noseScore, BigDecimal tasteScore, BigDecimal finishScore,
@@ -65,6 +72,6 @@ public record UpdateReviewRequest(
             String noseAromaWheelNotes, String tasteAromaWheelNotes, String finishAromaWheelNotes
     ) {
         this(noseScore, tasteScore, finishScore, noseNote, tasteNote, finishNote, comment,
-                noseAromaWheelNotes, tasteAromaWheelNotes, finishAromaWheelNotes, null);
+                noseAromaWheelNotes, tasteAromaWheelNotes, finishAromaWheelNotes, null, null);
     }
 }

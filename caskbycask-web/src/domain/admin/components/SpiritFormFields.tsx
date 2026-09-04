@@ -164,27 +164,21 @@ const VALID_BROAD_CATEGORIES = new Set([
 
 function migrateLegacyCasks(
   caskTypes: string[],
-  caskFinishes: string[],
   caskDetails?: Record<string, string[]> | null
 ) {
   if (caskDetails && Object.keys(caskDetails).length > 0) {
     return {
       caskTypes: caskTypes.filter(c => VALID_BROAD_CATEGORIES.has(c)),
-      caskFinishes: caskFinishes.filter(c => VALID_BROAD_CATEGORIES.has(c)),
       caskDetails
     }
   }
 
   const migratedTypes: string[] = []
-  const migratedFinishes: string[] = []
   const migratedDetails: Record<string, string[]> = {}
 
-  const addDetail = (parent: string, label: string, isFinish: boolean) => {
+  const addDetail = (parent: string, label: string) => {
     if (!migratedTypes.includes(parent)) {
       migratedTypes.push(parent)
-    }
-    if (isFinish && !migratedFinishes.includes(parent)) {
-      migratedFinishes.push(parent)
     }
     if (!migratedDetails[parent]) {
       migratedDetails[parent] = []
@@ -195,22 +189,18 @@ function migrateLegacyCasks(
   }
 
   caskTypes.forEach((c) => {
-    const isFinish = caskFinishes.includes(c)
     const legacy = LEGACY_CASK_MAP[c]
     if (legacy) {
-      addDetail(legacy.parent, legacy.label, isFinish)
+      addDetail(legacy.parent, legacy.label)
     } else if (VALID_BROAD_CATEGORIES.has(c)) {
       if (!migratedTypes.includes(c)) {
         migratedTypes.push(c)
-      }
-      if (isFinish && !migratedFinishes.includes(c)) {
-        migratedFinishes.push(c)
       }
       if (!migratedDetails[c]) {
         migratedDetails[c] = []
       }
     } else {
-      addDetail('OTHER', c, isFinish)
+      addDetail('OTHER', c)
     }
   })
 
@@ -222,7 +212,6 @@ function migrateLegacyCasks(
 
   return {
     caskTypes: migratedTypes,
-    caskFinishes: migratedFinishes,
     caskDetails: migratedDetails
   }
 }
@@ -364,7 +353,6 @@ export function useSpiritForm(options?: {
           brandName: null,
           bottlingType: null,
           caskTypes: [],
-          caskFinishes: [],
           caskTypeOther: null,
           caskDetails: {},
           isNonChillFiltered: null,
@@ -550,7 +538,6 @@ export function useSpiritForm(options?: {
           brandName: v.whiskyDetail.brandName,
           bottlingType: v.whiskyDetail.bottlingType,
           caskTypes: v.whiskyDetail.caskTypes,
-          caskFinishes: v.whiskyDetail.caskFinishes,
           caskTypeOther: v.whiskyDetail.caskTypeOther,
           caskDetails: v.whiskyDetail.caskDetails,
           isNonChillFiltered: v.whiskyDetail.isNonChillFiltered,
@@ -624,11 +611,10 @@ export function useSpiritForm(options?: {
     }
     if (s.whiskyDetail) {
       const w = s.whiskyDetail
-      const migrated = migrateLegacyCasks(w.caskTypes ?? [], w.caskFinishes ?? [], w.caskDetails)
+      const migrated = migrateLegacyCasks(w.caskTypes ?? [], w.caskDetails)
       setWhiskyDetail({
         style: w.style ?? '', styleOther: w.styleOther ?? '', brandName: w.brandName ?? '', bottlingType: w.bottlingType ?? '',
         caskTypes: migrated.caskTypes,
-        caskFinishes: migrated.caskFinishes,
         caskDetails: migrated.caskDetails,
         caskTypeOther: w.caskTypeOther ?? '',
         isNonChillFiltered: w.isNonChillFiltered ?? false, isNaturalColour: w.isNaturalColour ?? false,
@@ -727,7 +713,7 @@ export function useSpiritForm(options?: {
         style: r.whiskyStyle ?? '', styleOther: r.whiskyStyleOther ?? '',
         brandName: r.brandName ?? '', bottlingType: r.bottlingType ?? '',
         notes: r.whiskyNotes ?? '',
-        caskTypes: r.caskTypes ?? [], caskFinishes: r.caskFinishes ?? [], caskTypeOther: r.caskTypeOther ?? '',
+        caskTypes: r.caskTypes ?? [], caskTypeOther: r.caskTypeOther ?? '',
         caskDetails: r.caskDetails ?? {},
         isNonChillFiltered: r.isNonChillFiltered ?? false, isNaturalColour: r.isNaturalColour ?? false,
         isSingleCask: r.isSingleCask ?? false, isCaskStrength: r.isCaskStrength ?? false, isPeated: r.isPeated ?? false,
@@ -814,7 +800,7 @@ export function useSpiritForm(options?: {
         whiskyDetail: {
           style: r.whiskyStyle || 'SINGLE_MALT', styleOther: r.whiskyStyleOther ?? '',
           brandName: r.brandName ?? '', bottlingType: r.bottlingType || 'OB',
-          caskTypes: r.caskTypes ?? [], caskFinishes: r.caskFinishes ?? [],
+          caskTypes: r.caskTypes ?? [],
           caskTypeOther: r.caskTypeOther ?? '', caskDetails: r.caskDetails ?? {},
           isNonChillFiltered: r.isNonChillFiltered ?? false, isNaturalColour: r.isNaturalColour ?? false,
           isSingleCask: splitType === 'SINGLE_CASK' || (r.isSingleCask ?? false), isCaskStrength: r.isCaskStrength ?? false,
@@ -1041,7 +1027,6 @@ export function useSpiritForm(options?: {
           brandName: whiskyDetail.brandName || null,
           bottlingType: whiskyDetail.bottlingType || null,
           caskTypes: whiskyDetail.caskTypes,
-          caskFinishes: whiskyDetail.caskFinishes.filter((c) => whiskyDetail.caskTypes.includes(c)),
           caskTypeOther: whiskyDetail.caskTypes.includes('OTHER') ? (whiskyDetail.caskTypeOther || null) : null,
           caskDetails: Object.fromEntries(
               Object.entries(whiskyDetail.caskDetails || {}).map(([k, v]) => [
@@ -1132,7 +1117,6 @@ export function useSpiritForm(options?: {
       brandName: w.brandName || null,
       bottlingType: w.bottlingType || null,
       caskTypes,
-      caskFinishes: (w.caskFinishes || []).filter((c) => caskTypes.includes(c)),
       caskTypeOther: caskTypes.includes('OTHER') ? (w.caskTypeOther || null) : null,
       caskDetails: Object.fromEntries(
         Object.entries(w.caskDetails || {}).map(([k, v]) => [
@@ -2238,7 +2222,6 @@ function toWhiskyDetailRequest(u: Partial<WhiskyDetailForm>): Partial<WhiskyDeta
   if (u.brandName !== undefined) converted.brandName = u.brandName || null
   if (u.bottlingType !== undefined) converted.bottlingType = u.bottlingType || null
   if (u.caskTypes !== undefined) converted.caskTypes = u.caskTypes
-  if (u.caskFinishes !== undefined) converted.caskFinishes = u.caskFinishes
   if (u.caskTypeOther !== undefined) converted.caskTypeOther = u.caskTypeOther || null
   if (u.caskDetails !== undefined) converted.caskDetails = u.caskDetails
   if (u.isNonChillFiltered !== undefined) converted.isNonChillFiltered = u.isNonChillFiltered
@@ -2274,7 +2257,6 @@ function toWhiskyDetailForm(detail?: WhiskyDetailRequest): WhiskyDetailForm {
     brandName: detail.brandName ?? '',
     bottlingType: detail.bottlingType ?? '',
     caskTypes: detail.caskTypes ?? [],
-    caskFinishes: detail.caskFinishes ?? [],
     caskTypeOther: detail.caskTypeOther ?? '',
     caskDetails: detail.caskDetails ?? {},
     isNonChillFiltered: !!detail.isNonChillFiltered,

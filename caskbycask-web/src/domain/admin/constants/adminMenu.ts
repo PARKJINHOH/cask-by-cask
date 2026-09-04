@@ -80,6 +80,16 @@ export const ADMIN_NAV: AdminNavEntry[] = [
   },
   {
     type: 'group',
+    groupLabel: '주류 장소',
+    groupIcon: '🍸',
+    items: [
+      { path: '/admin/venues/requests', label: '장소 등록 요청', exact: true },
+      { path: '/admin/venues',        label: '장소 관리',      exact: true },
+      { path: '/admin/venues/cities', label: '장소 도시 관리', exact: true },
+    ],
+  },
+  {
+    type: 'group',
     groupLabel: '가격 트래커',
     groupIcon: '💰',
     items: [

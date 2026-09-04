@@ -21,4 +21,12 @@ public final class ReportConstants {
 
     // [패치 6] 게시판 댓글 자동 숨김 임계치 (완화)
     public static final int COMMENT_HIDE_THRESHOLD = 5;
+
+    /**
+     * 장소 댓글 자동 숨김 임계치 (엄격).
+     *
+     * <p>실제 업소로 손님을 보내는 기능이라 명예훼손성 글의 체류 시간이 곧 피해가 된다.
+     * 술 리뷰·댓글과 같은 3으로 둔다.
+     */
+    public static final int VENUE_COMMENT_HIDE_THRESHOLD = 3;
 }

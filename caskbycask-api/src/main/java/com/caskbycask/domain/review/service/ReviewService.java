@@ -18,6 +18,9 @@ import com.caskbycask.domain.spirit.repository.SpiritRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
+import com.caskbycask.domain.venue.entity.Venue;
+import com.caskbycask.domain.venue.entity.enums.VenueStatus;
+import com.caskbycask.domain.venue.repository.VenueRepository;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +50,7 @@ public class ReviewService {
     private final ReviewImageService reviewImageService;
     private final ReviewAromaProfileService reviewAromaProfileService;
     private final TranslationCacheInvalidator translationCacheInvalidator;
+    private final VenueRepository venueRepository;
 
     // ── 조회 ──────────────────────────────────────────────
 
@@ -129,6 +133,7 @@ public class ReviewService {
         rejectPartialScore(request.noseScore(), request.tasteScore(), request.finishScore());
 
         Review review = Review.builder()
+                .venue(resolveVenue(request.venueId()))
                 .spirit(spirit)
                 .user(user)
                 .noseScore(request.noseScore())
@@ -196,6 +201,10 @@ public class ReviewService {
                 request.tasteAromaWheelNotes() != null ? request.tasteAromaWheelNotes() : review.getTasteAromaWheelNotes(),
                 request.finishAromaWheelNotes() != null ? request.finishAromaWheelNotes() : review.getFinishAromaWheelNotes()
         );
+
+        // 마신 곳은 위치 인자로 넣지 않는다(Review.changeVenue 주석 참고).
+        // 점수와 같은 규약이다 — 폼이 항상 보내므로 null 은 "태그 없음"이지 "변경 안 함"이 아니다.
+        review.changeVenue(resolveVenue(request.venueId()));
 
         List<AromaProfileResponse> updatedProfiles = reviewAromaProfileService.replaceForReview(
                 review,
@@ -286,6 +295,18 @@ public class ReviewService {
     }
 
     // ── Private helpers ────────────────────────────────────
+
+    /**
+     * 마신 곳 해석.
+     *
+     * <p>비공개·삭제된 장소는 태그할 수 없다 — 목록에 없는 곳이 리뷰에만 붙어 있으면
+     * 눌러도 아무 데도 못 간다. 존재하지 않는 id 는 조용히 무시하지 않고 거절한다.
+     */
+    private Venue resolveVenue(Long venueId) {
+        if (venueId == null) return null;
+        return venueRepository.findByIdForDisplay(venueId, VenueStatus.PUBLIC_STATUSES)
+                .orElseThrow(() -> new CustomException(ErrorCode.VENUE_NOT_FOUND));
+    }
 
     private void rejectPartialScore(BigDecimal nose, BigDecimal taste, BigDecimal finish) {
         if (Review.isPartialScore(nose, taste, finish)) {

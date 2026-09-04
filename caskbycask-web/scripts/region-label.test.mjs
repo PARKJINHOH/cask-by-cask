@@ -24,6 +24,20 @@ const ENUM_PATH = join(
 // 순수 함수만 가져온다 — `@/` 별칭은 test-alias-register.mjs 훅이 해석한다
 const { localizeRegion, localizeSpiritRegion } =
   await import('@/shared/utils/regionName')
+const { REGION_SUGGESTIONS } = await import('@/domain/location/data/regionSuggestions')
+
+/** WineRegion.java 를 국가 코드별로 읽는다 (l1=대산지 여부) */
+function readCatalog() {
+  const src = readFileSync(ENUM_PATH, 'utf8')
+  const rx =
+  /^ {4}([A-Z][A-Z0-9_]+)[(]"([A-Z]{2}(?:-[A-Z]{2,3})?)", "([^"]*)", "([^"]*)", (null|"[A-Z0-9_]+")[,)]/gm
+  const out = {}
+  let m
+  while ((m = rx.exec(src)) !== null) {
+    ;(out[m[2]] ??= []).push({ code: m[1], ko: m[3], en: m[4], l1: m[5] === 'null' })
+  }
+  return out
+}
 
 const region = (code, cc, ko, en, parent = null, parentKo = null, parentEn = null) => ({
   code, countryCode: cc, nameKo: ko, nameEn: en,
@@ -44,12 +58,13 @@ describe('localizeSpiritRegion — 산지 코드 우선', () => {
   })
 
   test('회귀: 텍스트 사전에 없는 산지도 영어로 번역된다', () => {
-    // 이 산지들은 REGION_SUGGESTIONS 에 없어 localizeRegion 만으로는 번역되지 않는다
+    // 세부 산지(L2)는 제안 목록에 없어 localizeRegion 만으로는 번역되지 않는다.
+    // (대산지 L1 은 이제 제안 목록에 모두 들어 있어 사전만으로도 번역된다)
     const cases = [
-      ['FR_BEAUJOLAIS', 'FR', '보졸레', 'Beaujolais'],
-      ['FR_SUD_OUEST', 'FR', '쉬드우에스트', 'South West France'],
-      ['IT_PUGLIA', 'IT', '풀리아', 'Puglia'],
-      ['CL_CENTRAL_VALLEY', 'CL', '센트럴밸리', 'Central Valley'],
+      ['FR_BORDEAUX_MEDOC', 'FR', '메독', 'Médoc'],
+      ['IT_PIEMONTE_BAROLO', 'IT', '바롤로', 'Barolo'],
+      ['ES_CASTILLA_Y_LEON_RUEDA', 'ES', '루에다', 'Rueda'],
+      ['CL_COQUIMBO_ELQUI', 'CL', '엘키', 'Elqui Valley'],
     ]
     for (const [code, cc, ko, en] of cases) {
       assert.equal(localizeRegion(ko, 'en'), ko, `사전에는 여전히 없어야 한다: ${ko}`)
@@ -61,6 +76,38 @@ describe('localizeSpiritRegion — 산지 코드 우선', () => {
     assert.equal(localizeSpiritRegion(null, '스페이사이드', 'en'), 'Speyside')
     assert.equal(localizeSpiritRegion(undefined, 'Speyside', 'ko'), '스페이사이드')
     assert.equal(localizeSpiritRegion(null, null, 'en'), '')
+  })
+})
+
+describe('생산자 지역 목록 ↔ 산지 카탈로그', () => {
+  // 생산자 등록은 텍스트 제안 목록(REGION_SUGGESTIONS)을, 주류 등록은 산지 카탈로그를 쓴다.
+  // 두 목록이 갈리면 같은 나라의 지역이 화면마다 다르게 보이고, 카탈로그에 없는 이름
+  // ('충청도'·'샴페인' 등)으로 저장된 행은 산지 코드가 붙지 않아 지도·영문 라벨에서 빠진다.
+  // 카탈로그가 없는 국가(멕시코·자메이카 등)는 텍스트 전용이라 검사 대상이 아니다.
+  const catalog = readCatalog()
+  const covered = Object.entries(REGION_SUGGESTIONS).filter(([cc]) => catalog[cc])
+
+  test('카탈로그를 읽었다', () => {
+    assert.ok(covered.length >= 20, `카탈로그 국가 파싱 실패 (${covered.length}개)`)
+  })
+
+  test('제안 항목이 모두 카탈로그에 있는 이름이다 (한글·영문 모두)', () => {
+    for (const [cc, list] of covered) {
+      const byKo = new Map(catalog[cc].map((r) => [r.ko, r.en]))
+      for (const r of list) {
+        assert.ok(byKo.has(r.nameKo), `${cc}: '${r.nameKo}' 가 카탈로그에 없다`)
+        assert.equal(r.nameEn, byKo.get(r.nameKo), `${cc}: '${r.nameKo}' 의 영문명이 카탈로그와 다르다`)
+      }
+    }
+  })
+
+  test('카탈로그의 L1(대산지)이 빠짐없이 들어 있다', () => {
+    for (const [cc, list] of covered) {
+      const has = new Set(list.map((r) => r.nameKo))
+      for (const r of catalog[cc].filter((x) => x.l1)) {
+        assert.ok(has.has(r.ko), `${cc}: 카탈로그 L1 '${r.ko}' 가 제안 목록에 없다`)
+      }
+    }
   })
 })
 

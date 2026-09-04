@@ -143,7 +143,11 @@ describe('위스키 프롬프트', () => {
 
   test('에디션 유형이 폼과 일치한다', () => {
     const formSrc = readFileSync(join(ADMIN_COMPONENTS, 'SpiritFormFields.tsx'), 'utf8')
-    const block = formSrc.slice(formSrc.indexOf("{/* 에디션 유형 */}"))
+    // 주석 여는 부분만 찾는다 — `*/}` 까지 맞추면 주석에 설명 한 줄만 붙어도 조용히 빗나가
+    // 슬라이스가 파일 끝을 가리키고, 목록이 어긋나도 잡지 못하는 죽은 검사가 된다.
+    const at = formSrc.indexOf("{/* 에디션 유형")
+    assert.ok(at > 0, "폼에서 에디션 유형 블록을 찾지 못했다")
+    const block = formSrc.slice(at)
     const types = [...block.slice(0, 900).matchAll(/\['(NONE|BATCH|SINGLE_CASK|RELEASE_YEAR)',/g)]
       .map((m) => m[1])
     assert.ok(types.length === 4, `에디션 유형 파싱 실패: ${types.join(',')}`)

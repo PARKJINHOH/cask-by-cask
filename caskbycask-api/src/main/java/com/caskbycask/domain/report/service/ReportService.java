@@ -16,6 +16,8 @@ import com.caskbycask.domain.spirit.repository.SpiritImageRepository;
 import com.caskbycask.domain.user.entity.User;
 import com.caskbycask.domain.user.repository.UserRepository;
 import com.caskbycask.domain.translation.service.TranslationCacheInvalidator;
+import com.caskbycask.domain.venue.entity.VenueComment;
+import com.caskbycask.domain.venue.repository.VenueCommentRepository;
 import com.caskbycask.global.constants.ReportConstants;
 import com.caskbycask.global.exception.CustomException;
 import com.caskbycask.global.exception.ErrorCode;
@@ -36,6 +38,7 @@ public class ReportService {
     private final ReviewRepository reviewRepository;
     private final CommentRepository commentRepository;
     private final SpiritImageRepository spiritImageRepository;
+    private final VenueCommentRepository venueCommentRepository;
     private final UserRepository userRepository;
     private final ReviewService reviewService;
     private final TranslationCacheInvalidator translationCacheInvalidator;
@@ -114,6 +117,7 @@ public class ReportService {
             case REVIEW -> ReportConstants.SPIRIT_REVIEW_HIDE_THRESHOLD;
             case COMMENT -> ReportConstants.SPIRIT_COMMENT_HIDE_THRESHOLD;
             case IMAGE -> ReportConstants.SPIRIT_REVIEW_HIDE_THRESHOLD;
+            case VENUE_COMMENT -> ReportConstants.VENUE_COMMENT_HIDE_THRESHOLD;
         };
         if (pendingCount < threshold) return;
 
@@ -129,6 +133,8 @@ public class ReportService {
                     .ifPresent(CommunityComment::hide);
             case IMAGE -> spiritImageRepository.findById(targetId)
                     .ifPresent(SpiritImage::unmarkAsPrimary);
+            case VENUE_COMMENT -> venueCommentRepository.findById(targetId)
+                    .ifPresent(VenueComment::hide);
         }
     }
 
@@ -146,6 +152,8 @@ public class ReportService {
             case IMAGE -> {
                 // 이미지는 관리자가 별도로 대표 이미지 설정 — 자동 복구 없음
             }
+            case VENUE_COMMENT -> venueCommentRepository.findById(targetId)
+                    .ifPresent(VenueComment::unhide);
         }
     }
 
@@ -158,6 +166,8 @@ public class ReportService {
             case COMMENT -> commentRepository.findById(targetId)
                     .map(c -> c.getUser().getId()).orElse(null);
             case IMAGE -> null; // 작성자 개념 없음 — 자가신고 검사 제외
+            case VENUE_COMMENT -> venueCommentRepository.findById(targetId)
+                    .map(c -> c.getUser().getId()).orElse(null);
         };
         if (authorId != null && authorId.equals(reporterId)) {
             throw new CustomException(ErrorCode.CANNOT_REPORT_OWN_CONTENT);
@@ -169,6 +179,7 @@ public class ReportService {
             case REVIEW -> reviewRepository.existsById(targetId);
             case COMMENT -> commentRepository.existsById(targetId);
             case IMAGE -> spiritImageRepository.existsById(targetId);
+            case VENUE_COMMENT -> venueCommentRepository.existsById(targetId);
         };
         if (!exists) {
             throw new CustomException(ErrorCode.TARGET_NOT_FOUND);
@@ -189,6 +200,9 @@ public class ReportService {
             case IMAGE -> spiritImageRepository.findById(report.getTargetId())
                     .map(SpiritImage::getImageUrl)
                     .orElse("[삭제된 이미지]");
+            case VENUE_COMMENT -> venueCommentRepository.findById(report.getTargetId())
+                    .map(VenueComment::getContent)
+                    .orElse("[삭제된 장소 댓글]");
         };
     }
 

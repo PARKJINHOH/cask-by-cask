@@ -27,8 +27,8 @@ public record SpiritCommonDetailRequest(
         String bottledDate,
 
         @Schema(description = "용량 (ml)")
-        @Min(value = 1, message = "용량은 1ml 이상이어야 합니다.")
-        @Max(value = 100000, message = "용량은 100,000ml 이하이어야 합니다.")
+        @Min(value = SpiritLimits.VOLUME_ML_MIN, message = "용량은 1ml 이상이어야 합니다.")
+        @Max(value = SpiritLimits.VOLUME_ML_MAX, message = "용량은 30,000ml 이하여야 합니다.")
         Integer volumeMl,
 
         @Schema(description = "알코올 도수 %")

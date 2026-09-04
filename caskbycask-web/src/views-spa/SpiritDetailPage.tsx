@@ -16,6 +16,7 @@ import Button from '@/shared/components/Button'
 import ImageLightbox from '@/shared/components/ImageLightbox'
 import { scrollToPageTop } from '@/shared/utils/scrollToPageTop'
 import ReviewList from '@/domain/review/components/ReviewList'
+import SpiritVenueSection from '@/domain/venue/components/SpiritVenueSection'
 import { useReviews } from '@/domain/review/hooks/useReviews'
 import {
   buildReviewSchema,
@@ -423,17 +424,12 @@ function SpiritDetailSections({
                   if (smallCats.length === 0 && c === 'OTHER' && whisky.caskTypeOther) {
                     smallCats = [whisky.caskTypeOther]
                   }
-                  const isFinish = whisky.caskFinishes?.includes(c) ?? false
                   // 세부 분류도 같은 목록의 값이라 글자 크기를 옆 행과 맞춘다
                   const colorClass = 'bg-indigo-50/70 text-indigo-700 border border-indigo-200/50 rounded px-1.5 py-0 text-[14px] font-semibold break-keep'
 
                   return (
-                    <div key={c} className={`inline-flex items-center justify-end gap-1.5 rounded-md px-2.5 py-1 text-[14px] font-medium break-keep flex-wrap ${
-                      isFinish
-                        ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
-                        : 'bg-neutral-100 text-neutral-700'
-                    }`}>
-                      <span>{label} {isFinish && (isEn ? '(Finish)' : '(피니시)')}</span>
+                    <div key={c} className="inline-flex items-center justify-end gap-1.5 rounded-md px-2.5 py-1 text-[14px] font-medium break-keep flex-wrap bg-neutral-100 text-neutral-700">
+                      <span>{label}</span>
                       {smallCats.length > 0 && (
                         // 줄이 넘어가도 값은 계속 오른쪽에 붙어 있어야 한다
                         <div className="flex items-center justify-end gap-1 flex-wrap pl-1">
@@ -1438,6 +1434,12 @@ export default function SpiritDetailPage() {
             selectedValue={priceVariantId}
             onChange={setPriceVariantId}
           />
+        )}
+
+        {/* 이 술을 마실 수 있는 곳 — 리뷰의 "마신 곳" 태그가 쌓여 저절로 만들어지는 목록.
+            태그가 하나도 없으면 컴포넌트가 스스로 아무것도 그리지 않는다(빈 상자를 남기지 않는다). */}
+        {activeTab === 'reviews' && (
+          <SpiritVenueSection spiritId={masterSpiritId} className="mt-2" />
         )}
 
         <div role="tabpanel">

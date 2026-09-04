@@ -59,3 +59,10 @@ rate-limit:
 
 # 로컬: 메인 포트(8080)에서 actuator 함께 노출 — server 섹션 자체를 비워둠
 # (base 에 management.server 가 없으므로 별도 override 불필요)
+
+# 주류 장소 지도 — 로컬은 켜 둔다.
+# 운영은 application.yml 의 ${VENUE_ENABLED:false} 를 그대로 따라 기본 꺼짐이고,
+# 켜는 것은 배포 환경변수로만 한다. 로컬에서까지 환경변수를 요구하면
+# IDE 실행 설정에 넣는 것을 매번 잊게 된다.
+venue:
+  enabled: ${VENUE_ENABLED:true}

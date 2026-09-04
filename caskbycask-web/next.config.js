@@ -53,6 +53,15 @@ const nextConfig = {
         ],
       },
       {
+        // 자체 호스팅 MapLibre 워커. 경로에 버전이 들어가(`/maplibre/6.6.0/...`)
+        // 버전 교체 = URL 교체이므로 immutable 이 안전하다 — Pretendard 와 같은 규칙.
+        // (워커를 자체 호스팅하는 이유는 mapTiles.ts 의 MAPLIBRE_VERSION 주석 참고)
+        source: '/maplibre/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
         // 편집기 서체 woff2 조각. 파일명이 곧 내용이라(조각 번호·굵기별로 나뉜다)
         // 내용이 바뀌면 파일명도 바뀐다 — immutable 이 안전하다.
         // `:file+` 로 한 단계 아래 파일만 잡아, 위의 editor-fonts.css 와 겹치지 않게 한다.

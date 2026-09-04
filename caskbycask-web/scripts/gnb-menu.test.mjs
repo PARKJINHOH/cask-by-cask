@@ -46,10 +46,10 @@ function lookup(dict, dottedKey) {
 const EXPECTED_KEYS = [
   'spirits',
   'notice',
-  'request', 'requestSpirit', 'requestProducer', 'requestFeedback',
+  'request', 'requestSpirit', 'requestProducer', 'requestVenue', 'requestFeedback',
   'community', 'communityAll', 'communityNews', 'communityBoard', 'communityByob',
   'communityPhoto', 'youtubeGallery',
-  'tasteExplorer', 'tierList', 'tasteTree',
+  'tasteExplorer', 'tierList', 'tasteTree', 'venueMap',
 ]
 
 test('카탈로그 메뉴 키가 스냅샷과 일치한다 (DB 저장 값이라 함부로 못 바꾼다)', () => {
@@ -165,7 +165,7 @@ test('그룹을 끄면 하위까지 통째로 사라진다', () => {
 
 // 회귀 배경: 자식이 0개인 그룹을 남기면 버튼은 보이는데 눌러도 빈 드롭다운만 열린다.
 test('자식을 전부 끄면 그룹 버튼도 사라진다', () => {
-  const keys = visibleKeys(['tierList', 'tasteTree'])
+  const keys = visibleKeys(['tierList', 'tasteTree', 'venueMap'])
   assert.equal(keys.includes('tasteExplorer'), false, '빈 그룹이 남아 있다')
 })
 

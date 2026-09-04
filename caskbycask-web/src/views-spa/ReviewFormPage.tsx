@@ -51,6 +51,8 @@ import SocialPublishFields from '@/domain/social/components/SocialPublishFields'
 import { socialApi } from '@/domain/social/api/socialApi'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import { getLocalizedNames } from '@/domain/spirit/utils/spiritDisplayName'
+import VenuePicker, { type VenuePickerValue } from '@/domain/venue/components/VenuePicker'
+import { VENUE_FEATURE_ENABLED } from '@/domain/venue/config/venueFeature'
 import ReviewImageField, {
   existingReviewImageDrafts,
   reviewImageSubmission,
@@ -201,6 +203,19 @@ export default function ReviewFormPage() {
   const [socialError, setSocialError] = useState('')
   const [reviewImages, setReviewImages] = useState<ReviewImageDraft[]>(
     existingReviewImageDrafts(editingReview?.images),
+  )
+  // 마신 곳. 폼이 항상 보내므로(null = 태그 없음) 서버의 "항상 적용" 규약과 짝이 맞는다.
+  // 수정 화면에서는 이미 붙어 있던 태그를 그대로 이어받는다 — 안 그러면 저장할 때마다 태그가 지워진다.
+  const [venue, setVenue] = useState<VenuePickerValue | null>(() =>
+    editingReview?.venue
+      ? {
+          id: editingReview.venue.venueId,
+          nameKo: editingReview.venue.nameKo,
+          nameEn: editingReview.venue.nameEn,
+          cityNameKo: editingReview.venue.cityNameKo,
+          cityNameEn: editingReview.venue.cityNameEn,
+        }
+      : null,
   )
   const editionSelectRef = useRef<HTMLSelectElement>(null)
 
@@ -368,6 +383,8 @@ export default function ReviewFormPage() {
       tasteAromaWheelNotes:  showAroma ? (serializeAromaNotes(tasteAromas)  ?? (isEdit ? '' : undefined)) : undefined,
       finishAromaWheelNotes: showAroma ? (serializeAromaNotes(finishAromas) ?? (isEdit ? '' : undefined)) : undefined,
       aromaProfiles: supportsAromaProfiles(spirit?.category) ? aromaProfiles : [],
+      // 기능이 꺼져 있으면 아예 보내지 않는다 — 서버가 모르는 필드로 400 을 내지 않도록.
+      ...(VENUE_FEATURE_ENABLED ? { venueId: venue?.id ?? null } : {}),
       ...(!isEdit ? { socialPublish: socialSelection } : {}),
     }
     const imageSubmission = reviewImageSubmission(reviewImages)
@@ -727,6 +744,10 @@ export default function ReviewFormPage() {
         </div>
 
         <div className="h-px bg-neutral-200" aria-hidden="true" />
+
+        {VENUE_FEATURE_ENABLED && (
+          <VenuePicker value={venue} onChange={setVenue} />
+        )}
 
         <ReviewImageField
           value={reviewImages}

@@ -77,6 +77,8 @@ export interface ReviewItem {
   userReviewCount?: number
   images: ReviewImageItem[]
   aromaProfiles?: AromaProfile[]
+  /** 마신 곳. 태그가 없거나 장소가 비공개·삭제되면 null */
+  venue?: ReviewVenueInfo | null
 }
 
 /** 사용자 공개 리뷰의 카테고리별 개수 (GET /api/users/{userId}/reviews/category-counts) */
@@ -133,6 +135,11 @@ export interface CreateReviewRequest {
   finishAromaWheelNotes?: string
   aromaProfiles?: AromaProfile[]
   socialPublish?: SocialPublishSelection
+  /**
+   * 마신 곳(장소 ID). **폼이 항상 보낸다** — null 은 "태그 없음"이고 "변경 안 함"이 아니다.
+   * 점수 세 칸과 같은 규약이라, 그래야 태그를 지울 방법이 사라지지 않는다.
+   */
+  venueId?: number | null
 }
 
 export interface CreateVariantReviewRequest extends CreateReviewRequest {
@@ -180,6 +187,11 @@ export interface VariantReviewRequestItem {
   reviewedAt: string | null
   images: ReviewImageItem[]
   aromaProfiles?: AromaProfile[]
+  /**
+   * 마신 곳(장소 ID). **폼이 항상 보낸다** — null 은 "태그 없음"이고 "변경 안 함"이 아니다.
+   * 점수 세 칸과 같은 규약이라, 그래야 태그를 지울 방법이 사라지지 않는다.
+   */
+  venueId?: number | null
 }
 
 export interface UpdateReviewRequest {
@@ -200,3 +212,18 @@ export interface UpdateReviewRequest {
   aromaProfiles?: AromaProfile[]
 }
 import type { SocialPublishSelection } from '@/domain/social/types/social.types'
+
+/**
+ * 리뷰에 붙은 "마신 곳".
+ *
+ * 장소가 비공개·삭제되면 서버가 null 을 준다 — 리뷰 본문은 그대로 살아 있고
+ * 태그만 조용히 사라진다(에러가 아니다).
+ */
+export interface ReviewVenueInfo {
+  venueId: number
+  nameKo: string
+  nameEn: string | null
+  cityNameKo: string
+  cityNameEn: string
+  countryCode: string
+}

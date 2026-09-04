@@ -426,7 +426,9 @@
     "faq": "FAQ",
     "tasteExplorer": "취향 탐색",
     "tierList": "티어리스트",
-    "tasteTree": "취향 트리"
+    "tasteTree": "취향 트리",
+    "venueMap": "주류 장소",
+    "requestVenue": "장소 제보"
   },
   "calendar": {
     "title": "이벤트 달력",
@@ -731,36 +733,36 @@
       "tannin": "타닌"
     },
     "whiskyStyle": {
-      "SINGLE_MALT":    "싱글 몰트",
-      "BLENDED_MALT":   "블렌디드 몰트",
+      "SINGLE_MALT": "싱글 몰트",
+      "BLENDED_MALT": "블렌디드 몰트",
       "BLENDED_WHISKY": "블렌디드",
-      "BOURBON":        "버번",
+      "BOURBON": "버번",
       "WHEATED_BOURBON": "밀 버번",
-      "TENNESSEE":      "테네시",
-      "RYE":            "라이",
-      "POT_STILL":      "싱글 팟 스틸",
-      "GRAIN_CORN":     "그레인 / 콘",
-      "OTHER":          "기타"
+      "TENNESSEE": "테네시",
+      "RYE": "라이",
+      "POT_STILL": "싱글 팟 스틸",
+      "GRAIN_CORN": "그레인 / 콘",
+      "OTHER": "기타"
     },
     "whiskyStyleExample": {
-      "SINGLE_MALT":    "맥캘란 / 발베니 / 글렌피딕",
-      "BLENDED_MALT":   "조니워커 그린 / 몽키숄더",
+      "SINGLE_MALT": "맥캘란 / 발베니 / 글렌피딕",
+      "BLENDED_MALT": "조니워커 그린 / 몽키숄더",
       "BLENDED_WHISKY": "발렌타인 / 조니워커 / 시바스리갈",
-      "BOURBON":        "와일드터키 / 버팔로트레이스",
+      "BOURBON": "와일드터키 / 버팔로트레이스",
       "WHEATED_BOURBON": "메이커스 마크",
-      "TENNESSEE":      "잭다니엘스",
-      "RYE":            "호밀 위스키 / 불릿 라이",
-      "POT_STILL":      "아이리시 / 레드브레스트",
-      "GRAIN_CORN":     "곡물 위스키 / 헤이그클럽",
-      "OTHER":          ""
+      "TENNESSEE": "잭다니엘스",
+      "RYE": "호밀 위스키 / 불릿 라이",
+      "POT_STILL": "아이리시 / 레드브레스트",
+      "GRAIN_CORN": "곡물 위스키 / 헤이그클럽",
+      "OTHER": ""
     },
     "wineType": {
-      "RED":       "레드",
-      "WHITE":     "화이트",
-      "ROSE":      "로제",
+      "RED": "레드",
+      "WHITE": "화이트",
+      "ROSE": "로제",
       "SPARKLING": "스파클링",
-      "DESSERT":   "디저트",
-      "ORANGE":    "오렌지",
+      "DESSERT": "디저트",
+      "ORANGE": "오렌지",
       "FORTIFIED": "주정강화"
     },
     "wineVintageStatus": {
@@ -786,91 +788,91 @@
       "appellationPlaceholder": "예: AOC Bordeaux"
     },
     "cognacGrade": {
-      "VS":        "VS",
-      "NAPOLEON":  "Napoléon",
-      "VSOP":      "VSOP",
-      "XO":        "XO",
-      "XXO":       "XXO",
-      "EXTRA":     "Extra",
+      "VS": "VS",
+      "NAPOLEON": "Napoléon",
+      "VSOP": "VSOP",
+      "XO": "XO",
+      "XXO": "XXO",
+      "EXTRA": "Extra",
       "HORS_DAGE": "Hors d'Age",
       "NO_STATEMENT": "등급 표기 없음"
     },
     "cognacCru": {
       "GRANDE_CHAMPAGNE": "그랑드 샹파뉴 (Grande Champagne)",
       "PETITE_CHAMPAGNE": "프티트 샹파뉴 (Petite Champagne)",
-      "BORDERIES":        "보르드리 (Borderies)",
-      "FINS_BOIS":        "팽 부아 (Fins Bois)",
-      "BONS_BOIS":        "봉 부아 (Bons Bois)",
-      "BOIS_ORDINAIRES":  "부아 조르디네르 (Bois Ordinaires)"
+      "BORDERIES": "보르드리 (Borderies)",
+      "FINS_BOIS": "팽 부아 (Fins Bois)",
+      "BONS_BOIS": "봉 부아 (Bons Bois)",
+      "BOIS_ORDINAIRES": "부아 조르디네르 (Bois Ordinaires)"
     },
     "cognacBlend": {
-      "singleCru":     "단일 산지",
+      "singleCru": "단일 산지",
       "singleCruHelp": "한 곳의 포도만 써서 만들었습니다. 꼬냑은 여러 산지를 섞는 것이 기본이라 드문 편입니다.",
-      "multiCru":      "여러 산지 블렌드",
-      "multiCruHelp":  "여러 산지의 원액을 섞었습니다. 꼬냑에서는 일반적인 방식입니다."
+      "multiCru": "여러 산지 블렌드",
+      "multiCruHelp": "여러 산지의 원액을 섞었습니다. 꼬냑에서는 일반적인 방식입니다."
     },
     "cognacFineChampagneHelp": "그랑드 샹파뉴와 프티트 샹파뉴만 섞고, 그랑드 샹파뉴가 50% 이상일 때만 붙일 수 있는 법정 표기입니다.",
     "cognacFineChampagneNote": "그랑드 샹파뉴 50% 이상 + 프티트 샹파뉴",
     "cognacOak": {
-      "LIMOUSIN":   "리무쟁 (Limousin)",
-      "TRONCAIS":   "트롱세 (Tronçais)",
-      "ALLIER":     "알리에 (Allier)",
-      "NEVERS":     "느베르 (Nevers)",
-      "VOSGES":     "보주 (Vosges)",
-      "JUPILLES":   "쥐피유 (Jupilles)",
+      "LIMOUSIN": "리무쟁 (Limousin)",
+      "TRONCAIS": "트롱세 (Tronçais)",
+      "ALLIER": "알리에 (Allier)",
+      "NEVERS": "느베르 (Nevers)",
+      "VOSGES": "보주 (Vosges)",
+      "JUPILLES": "쥐피유 (Jupilles)",
       "BERTRANGES": "베르트랑주 (Bertranges)",
       "FRENCH_OAK": "프랑스산 (산지 미표기)",
-      "OTHER":      "기타"
+      "OTHER": "기타"
     },
     "otherType": {
-      "RUM":      "럼",
-      "GIN":      "진",
-      "VODKA":    "보드카",
-      "TEQUILA":  "데킬라",
-      "MEZCAL":   "메스칼",
-      "BRANDY":   "브랜디",
-      "LIQUEUR":  "리큐르",
-      "SAKE":     "사케",
-      "SOJU":     "소주",
-      "BAIJIU":   "바이주",
+      "RUM": "럼",
+      "GIN": "진",
+      "VODKA": "보드카",
+      "TEQUILA": "데킬라",
+      "MEZCAL": "메스칼",
+      "BRANDY": "브랜디",
+      "LIQUEUR": "리큐르",
+      "SAKE": "사케",
+      "SOJU": "소주",
+      "BAIJIU": "바이주",
       "ABSINTHE": "압생트",
-      "BEER":     "맥주",
-      "OTHER":    "기타"
+      "BEER": "맥주",
+      "OTHER": "기타"
     },
     "taste": {
       "sweetness": "당도",
-      "body":      "바디",
-      "acidity":   "산도",
-      "tannin":    "타닌",
-      "unset":     "미지정",
-      "title":     "맛"
+      "body": "바디",
+      "acidity": "산도",
+      "tannin": "타닌",
+      "unset": "미지정",
+      "title": "맛"
     },
     "wineSweetness": {
-      "DRY":          "드라이",
-      "OFF_DRY":      "오프드라이",
-      "MEDIUM":       "미디엄",
+      "DRY": "드라이",
+      "OFF_DRY": "오프드라이",
+      "MEDIUM": "미디엄",
       "MEDIUM_SWEET": "미디엄 스위트",
-      "SWEET":        "스위트"
+      "SWEET": "스위트"
     },
     "wineBody": {
-      "LIGHT":        "라이트",
+      "LIGHT": "라이트",
       "LIGHT_MEDIUM": "라이트 미디엄",
-      "MEDIUM":       "미디엄",
-      "MEDIUM_FULL":  "미디엄 풀",
-      "FULL":         "풀바디"
+      "MEDIUM": "미디엄",
+      "MEDIUM_FULL": "미디엄 풀",
+      "FULL": "풀바디"
     },
     "wineIntensity": {
-      "LOW":         "낮음",
-      "LOW_MEDIUM":  "약간 낮음",
-      "MEDIUM":      "중간",
+      "LOW": "낮음",
+      "LOW_MEDIUM": "약간 낮음",
+      "MEDIUM": "중간",
       "MEDIUM_HIGH": "약간 높음",
-      "HIGH":        "높음"
+      "HIGH": "높음"
     },
     "wineCertification": {
-      "ORGANIC":     "Organic",
-      "BIODYNAMIC":  "Biodynamic",
+      "ORGANIC": "Organic",
+      "BIODYNAMIC": "Biodynamic",
       "SUSTAINABLE": "Sustainable",
-      "NONE":        "없음"
+      "NONE": "없음"
     },
     "noResult": {
       "title": "검색 결과가 없습니다.",
@@ -1070,8 +1072,8 @@
     "aromaSearchPlaceholder": "아로마 검색 또는 직접 입력...",
     "aromaNoMatch": "검색 결과 없음 — 직접 추가하려면",
     "aromaProfile": {
-        "expand": "아로마 프로파일 보기",
-        "collapse": "아로마 프로파일 닫기",
+      "expand": "아로마 프로파일 보기",
+      "collapse": "아로마 프로파일 닫기",
       "byReviewer": "{{nickname}}님의 아로마 프로파일",
       "title": "아로마 프로파일",
       "add": "+ 프로파일",
@@ -1090,9 +1092,9 @@
       "discardConfirm": "변경한 프로파일을 저장하지 않고 닫을까요?",
       "deleteConfirm": "{{phase}} 프로파일을 삭제할까요? 선택한 아로마는 삭제되지 않습니다.",
       "removeAxisConfirm": "이 아로마를 제거하면 프로파일 축이 3개 미만이 되어 해당 프로파일도 삭제됩니다. 계속할까요?",
-        "textAlternative": "아로마 강도 목록",
-        "itemValue": "{{aroma}} 강도 {{intensity}}, {{label}}",
-        "phase": {
+      "textAlternative": "아로마 강도 목록",
+      "itemValue": "{{aroma}} 강도 {{intensity}}, {{label}}",
+      "phase": {
         "NOSE": "향",
         "PALATE": "맛",
         "FINISH": "피니시"
@@ -1259,7 +1261,7 @@
     },
     "maturingTab": "레벨",
     "reviewsTab": "내 리뷰",
-      "wishlistTab": "즐겨찾기",
+    "wishlistTab": "즐겨찾기",
     "collectionTab": "주류보관함",
     "priceReportsTab": "내 가격 등록",
     "priceAlertsTab": "내 목표가 알림",
@@ -2611,14 +2613,14 @@
     "deleteConfirm": "이 티어리스트를 삭제하시겠습니까?",
     "saveFirst": "공유하려면 먼저 저장해주세요.",
     "shareCopied": "공유 URL을 복사했습니다.",
-      "copyShare": "공유 URL 복사",
-        "downloadImage": "이미지 저장",
-        "editModeOn": "수정모드",
-        "previewMode": "미리보기",
-        "presentationMode": "프레젠테이션",
-        "exitPresentation": "프레젠테이션 종료",
-        "presentationFailed": "프레젠테이션 모드를 시작하지 못했습니다.",
-        "formTitle": "제목",
+    "copyShare": "공유 URL 복사",
+    "downloadImage": "이미지 저장",
+    "editModeOn": "수정모드",
+    "previewMode": "미리보기",
+    "presentationMode": "프레젠테이션",
+    "exitPresentation": "프레젠테이션 종료",
+    "presentationFailed": "프레젠테이션 모드를 시작하지 못했습니다.",
+    "formTitle": "제목",
     "formDescription": "설명",
     "titlePlaceholder": "예: 입문자에게 추천하는 싱글몰트",
     "descriptionPlaceholder": "설명은 선택입니다.",
@@ -2637,20 +2639,20 @@
     "mobileMoveToTier": "티어 선택",
     "emptyRow": "아직 배치된 항목이 없습니다.",
     "poolTitle": "후보 항목",
-      "poolCount": "{{count}}개",
-      "poolEmpty": "아래에서 주류, 증류소, 직접 추가 항목을 넣어주세요.",
-      "removeCandidate": "후보 항목 제거",
-      "addTargets": "항목 추가",
+    "poolCount": "{{count}}개",
+    "poolEmpty": "아래에서 주류, 증류소, 직접 추가 항목을 넣어주세요.",
+    "removeCandidate": "후보 항목 제거",
+    "addTargets": "항목 추가",
     "spiritTab": "주류",
     "producerTab": "증류소",
     "customTab": "직접 추가",
-      "searchSpirit": "주류 이름으로 검색",
-      "selectVariant": "식별값 선택",
-      "baseEdition": "통합 제품",
-      "searchProducer": "증류소/생산자 이름으로 검색",
-      "producerCountryFilter": "국가로 필터",
-      "producerTypeFilter": "생산자 유형",
-      "allProducerTypes": "모든 유형",
+    "searchSpirit": "주류 이름으로 검색",
+    "selectVariant": "식별값 선택",
+    "baseEdition": "통합 제품",
+    "searchProducer": "증류소/생산자 이름으로 검색",
+    "producerCountryFilter": "국가로 필터",
+    "producerTypeFilter": "생산자 유형",
+    "allProducerTypes": "모든 유형",
     "customName": "직접 추가할 이름",
     "add": "추가",
     "noImage": "이미지 없음",
@@ -3250,5 +3252,137 @@
     "logoVariantChooseHint": "이 증류소는 로고를 여러 장 등록해 뒀습니다. 카드에 쓸 버전을 골라주세요.",
     "logoVariantSkip": "로고 없이 계속",
     "logoVariantUse": "이 로고 쓰기"
+  },
+  "venue": {
+    "map": {
+      "title": "주류 장소 지도",
+      "search": "장소 검색",
+      "allTypes": "전체",
+      "myLocation": "내 위치에서 가까운 곳",
+      "skipToList": "지도 건너뛰고 목록으로",
+      "webglUnsupported": "이 브라우저에서는 지도를 표시할 수 없어요.",
+      "listStillWorks": "목록에서 주소·전화·지도 앱 링크를 그대로 쓸 수 있어요.",
+      "tileError": "지도를 불러오지 못했어요. 목록은 그대로 쓸 수 있어요.",
+      "clusterGroup": "겹친 장소 {{count}}곳 보는 중 · 전체 보기",
+      "openMap": "지도에서 보기",
+      "selectCountry": "국가 선택",
+      "searchCountry": "국가·도시 검색"
+    },
+    "panel": {
+      "backToList": "목록",
+      "fullPage": "전체 페이지"
+    },
+    "sheet": {
+      "toggle": "패널 높이 조절"
+    },
+    "tab": {
+      "info": "정보",
+      "photos": "사진",
+      "comments": "후기"
+    },
+    "action": {
+      "directions": "길찾기",
+      "call": "전화",
+      "share": "공유"
+    },
+    "detail": {
+      "address": "주소",
+      "hours": "영업시간",
+      "phone": "전화",
+      "links": "링크",
+      "website": "웹사이트",
+      "mapApps": "지도 앱",
+      "copy": "복사",
+      "copied": "복사됨"
+    },
+    "list": {
+      "empty": "아직 등록된 장소가 없어요.",
+      "emptyFiltered": "조건에 맞는 장소가 없어요.",
+      "resetFilter": "필터 초기화",
+      "suggest": "장소 제보하기"
+    },
+    "gallery": {
+      "empty": "아직 사진이 없어요. 후기에 사진을 함께 올려주세요.",
+      "openPhoto": "사진 크게 보기"
+    },
+    "comment": {
+      "placeholder": "방문 후기를 남겨주세요. 어떤 술이 좋았나요?",
+      "replyPlaceholder": "답글을 입력해주세요",
+      "loginToWrite": "로그인하고 방문 후기를 남겨보세요",
+      "empty": "아직 후기가 없어요. 첫 방문 후기를 남겨보세요.",
+      "submit": "등록",
+      "reply": "답글",
+      "hidden": "신고 누적으로 숨김 처리된 댓글입니다.",
+      "confirmDelete": "댓글을 삭제할까요?",
+      "contentRequired": "내용을 입력해주세요.",
+      "saveFailed": "저장하지 못했어요. 잠시 후 다시 시도해주세요.",
+      "removeImage": "사진 삭제",
+      "photoAlt": "방문 사진",
+      "imageLimit": "사진은 최대 {{max}}장까지 올릴 수 있어요.",
+      "imageTooLarge": "사진 한 장은 10MB를 넘을 수 없어요.",
+      "imageTotalTooLarge": "사진 전체 용량은 50MB를 넘을 수 없어요.",
+      "imageHeic": "HEIC 형식은 지원하지 않아요. 아이폰이라면 설정 > 카메라 > 포맷을 '높은 호환성'으로 바꾸거나, 사진을 캡처해서 올려주세요."
+    },
+    "type": {
+      "BAR": "바",
+      "BOTTLE_SHOP": "리쿼샵",
+      "OTHER": "기타"
+    },
+    "status": {
+      "ACTIVE": "영업 중",
+      "CLOSED": "폐업",
+      "closed": "폐업"
+    },
+    "country": {
+      "kr": "대한민국",
+      "jp": "일본",
+      "tw": "대만",
+      "hk": "홍콩",
+      "sg": "싱가포르",
+      "us": "미국",
+      "gb": "영국",
+      "fr": "프랑스",
+      "de": "독일",
+      "cn": "중국",
+      "th": "태국",
+      "vn": "베트남",
+      "mo": "마카오",
+      "my": "말레이시아",
+      "ph": "필리핀"
+    },
+    "spirit": {
+      "sectionTitle": "이 술을 마실 수 있는 곳",
+      "sectionHint": "리뷰에 남긴 '마신 곳'을 모은 목록이에요.",
+      "reviewCount": "리뷰 {{count}}건",
+      "seeAll": "지도에서 보기"
+    },
+    "picker": {
+      "label": "마신 곳",
+      "placeholder": "바·보틀샵 이름을 검색하세요 (선택)",
+      "none": "선택 안 함",
+      "clear": "선택 해제",
+      "noResult": "검색 결과가 없어요.",
+      "suggest": "찾는 곳이 없나요? 제보하기",
+      "hint": "여기에 남긴 장소가 술 상세의 '마실 수 있는 곳'에 쌓입니다."
+    },
+    "hub": {
+      "title": "주류 장소",
+      "description": "바·리쿼샵을 국가와 도시별로 찾아보세요.",
+      "countryCount": "장소 {{count}}곳",
+      "cityCount": "{{count}}곳",
+      "empty": "아직 등록된 장소가 없어요."
+    },
+    "request": {
+      "title": "장소 제보",
+      "description": "알고 계신 바·보틀샵을 알려주세요. 확인 후 지도에 올라갑니다.",
+      "submit": "제보하기",
+      "submitted": "제보가 접수되었어요. 확인 후 알림으로 알려드릴게요.",
+      "myRequests": "내 제보",
+      "statusPending": "검토 중",
+      "statusApproved": "승인됨",
+      "statusRejected": "반려됨",
+      "empty": "아직 제보한 장소가 없어요.",
+      "loginRequired": "로그인 후 제보할 수 있어요."
+    }
   }
 }

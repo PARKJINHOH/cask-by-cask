@@ -227,6 +227,27 @@ function getIndicatorConfig(pathname: string, state: unknown, t: TFunction): Ind
     }
   }
 
+  // 주류 장소 — 목록 계열(허브·국가·도시)은 한 단계로 묶고, 장소 상세만 한 칸 더 들어간다.
+  // 페이지 안의 빵부스러기가 '주류 장소 › 서울 › 가게' 로 더 자세히 알려 주므로
+  // 상단 표시기는 어느 구역에 있는지만 말하면 된다.
+  if (exact('/venues', pathname)) {
+    return { items: sectionCrumbs(t, t('menu.venueMap'), '/venues') }
+  }
+  if (exact('/venues/:countryCode/:citySlug', pathname)) {
+    return { items: sectionCrumbs(t, t('menu.venueMap'), '/venues'), backTo: '/venues' }
+  }
+  match = exact('/venues/:segment', pathname)
+  if (match) {
+    // /venues/:segment 는 국가(영문 2자)와 장소 id(숫자)를 한 라우트에서 형태로 가른다.
+    const isVenueDetail = /^\d+$/.test(String(match.params.segment ?? ''))
+    return {
+      items: isVenueDetail
+        ? sectionCrumbs(t, t('menu.venueMap'), '/venues', t('pageIndicator.detail'))
+        : sectionCrumbs(t, t('menu.venueMap'), '/venues'),
+      backTo: '/venues',
+    }
+  }
+
   match = exact('/price-tracker/spirits/:id', pathname)
   if (match) {
     return {
