@@ -35,6 +35,7 @@ import {
 } from '@/domain/review/utils/aroma'
 import { reviewSpiritLabel, variantRequestSpiritLabel } from '@/domain/review/utils/reviewDisplay'
 import { getSpiritDetailPath } from '@/domain/spirit/utils/spiritUrl'
+import { ABV_STEP, roundAbv } from '@/domain/spirit/data/spiritLimits'
 import { EMPTY_SOCIAL_SELECTION, type SocialPublishSelection } from '@/domain/social/types/social.types'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
 import type { AromaProfile } from '@/domain/review/types/review.types'
@@ -294,7 +295,7 @@ export default function ReviewEditPage() {
         // 재승인 요청에서는 에디션 정보를 서버가 연결된 하위 에디션 값으로 덮어쓴다.
         variantValue: variantValue.trim() || request.variantValue,
         variantValueEn: variantValueEn.trim() || null,
-        abv: canEditEdition ? Math.round(Number(abv) * 10) / 10 : request.abv,
+        abv: canEditEdition ? roundAbv(Number(abv)) : request.abv,
         volumeMl: canEditEdition ? Math.round(Number(volumeMl)) : request.volumeMl,
         requestMemo: requestMemo.trim() || null,
       }
@@ -445,7 +446,7 @@ export default function ReviewEditPage() {
                       ref={abvRef}
                       min={0}
                       max={100}
-                      step={0.1}
+                      step={ABV_STEP}
                       value={abv}
                       onChange={(event) => {
                         setAbv(event.target.value)

@@ -52,7 +52,7 @@ public class SpiritCommonDetail {
     @Comment("용량(ml)")
     private Integer volumeMl;
 
-    @Column(precision = 4, scale = 1)
+    @Column(precision = 6, scale = 3)
     @Comment("도수(%)")
     private BigDecimal abv;
 

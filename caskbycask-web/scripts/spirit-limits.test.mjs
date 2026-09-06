@@ -14,14 +14,15 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import {
-  ABV_MIN, ABV_MAX, VOLUME_ML_MIN, VOLUME_ML_MAX, YEAR_MIN, YEAR_MAX,
-  suspiciousVolume, suspiciousAbv,
+  ABV_MIN, ABV_MAX, ABV_DECIMALS, ABV_STEP, VOLUME_ML_MIN, VOLUME_ML_MAX, YEAR_MIN, YEAR_MAX,
+  suspiciousVolume, suspiciousAbv, roundAbv, formatAbv,
 } from '../src/domain/spirit/data/spiritLimits.ts'
 import { formatYearMonth } from '../src/shared/utils/yearMonth.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const API_DTO = join(HERE, '..', '..', 'caskbycask-api', 'src', 'main', 'java', 'com',
-  'caskbycask', 'domain', 'spirit', 'dto')
+const API_DOMAIN = join(HERE, '..', '..', 'caskbycask-api', 'src', 'main', 'java', 'com',
+  'caskbycask', 'domain')
+const API_DTO = join(API_DOMAIN, 'spirit', 'dto')
 
 const limitsSrc = readFileSync(join(API_DTO, 'SpiritLimits.java'), 'utf8')
 const num = (name) => {
@@ -99,6 +100,61 @@ describe('등록·수정·등록요청·에디션 DTO 가 같은 제약을 갖�
       assert.ok(!/value = 100000/.test(src),
         `${file}: 옛 상한 100000 이 남아 있다 (SpiritLimits.VOLUME_ML_MAX 를 쓸 것)`)
     }
+  })
+})
+
+describe('도수 소수점 자릿수 — 입력한 값 그대로 저장된다', () => {
+  // 회귀 배경: 컬럼이 decimal(4,1) 이라 43.75% 를 넣으면 MySQL 이 조용히 43.8 로 반올림했다.
+  // 저장 직후 화면에는 입력값이 남아 있다가 다시 불러오면 값이 바뀌어 있어 원인을 찾기 어려웠다.
+  // 캐스크 스트렝스는 라벨에 60.35% 처럼 소수점 아래가 찍힌다 — 깎으면 라벨과 다른 술이 된다. (V113)
+  const ABV_ENTITY_COLUMNS = [
+    { file: join(API_DOMAIN, 'spirit', 'entity', 'Spirit.java'),
+      fields: ['BigDecimal abv;', 'BigDecimal abvMin;', 'BigDecimal abvMax;'] },
+    { file: join(API_DOMAIN, 'spirit', 'entity', 'SpiritCommonDetail.java'),
+      fields: ['BigDecimal abv;'] },
+    { file: join(API_DOMAIN, 'review', 'entity', 'SpiritVariantReviewRequest.java'),
+      fields: ['BigDecimal abv;'] },
+  ]
+
+  test('도수를 담는 엔티티 컬럼이 모두 같은 자릿수를 쓴다', () => {
+    for (const { file, fields } of ABV_ENTITY_COLUMNS) {
+      const src = readFileSync(file, 'utf8')
+      for (const field of fields) {
+        const at = src.indexOf(field)
+        assert.ok(at >= 0, `${file}: '${field}' 를 찾지 못했다`)
+        // 필드 선언 직전 4줄 안에 @Column 이 있다
+        const before = src.slice(0, at).split(/\r?\n/).slice(-5).join('\n')
+        assert.ok(before.includes(`scale = ${ABV_DECIMALS}`),
+          `${file}: '${field}' 의 scale 이 ${ABV_DECIMALS} 가 아니다 — DB 가 조용히 반올림한다`)
+      }
+    }
+  })
+
+  test('입력칸 step 이 소수 셋째 자리를 허용한다', () => {
+    // NumberInput 은 step 이 정수면 소수점 글쇠 자체를 막는다
+    assert.ok(!Number.isInteger(Number(ABV_STEP)), `ABV_STEP(${ABV_STEP}) 이 정수면 소수 입력이 막힌다`)
+    assert.equal(Number(ABV_STEP), 10 ** -ABV_DECIMALS)
+  })
+
+  test('저장 직전 반올림은 DB 자릿수에 맞춘다', () => {
+    assert.equal(roundAbv(43.75), 43.75, '셋째 자리 안쪽은 그대로 살아남아야 한다')
+    assert.equal(roundAbv(60.35), 60.35)
+    assert.equal(roundAbv(46.789), 46.789)
+    assert.equal(roundAbv(46), 46)
+    assert.equal(roundAbv(46.7891), 46.789, '넷째 자리부터는 DB 와 같게 반올림한다')
+    assert.equal(roundAbv(46.7896), 46.79)
+  })
+
+  test('표시할 때 뒤따르는 0 을 붙이지 않는다', () => {
+    // decimal(6,3) 이라 46.300 처럼 0 이 붙어 오는 값이 있다
+    assert.equal(formatAbv(46.3), '46.3')
+    assert.equal(formatAbv('46.300'), '46.3')
+    assert.equal(formatAbv(43.75), '43.75')
+    assert.equal(formatAbv('46.789'), '46.789')
+    assert.equal(formatAbv(46), '46')
+    assert.equal(formatAbv(null), null)
+    assert.equal(formatAbv(''), null)
+    assert.equal(formatAbv('40도'), null, '숫자가 아니면 대체 표기는 호출부가 정한다')
   })
 })
 

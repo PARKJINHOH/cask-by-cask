@@ -11,6 +11,40 @@ export const ABV_MIN = 0
 export const ABV_MAX = 100
 
 /**
+ * 도수의 소수점 자릿수 — DB 컬럼이 `decimal(6,3)` 이라 셋째 자리까지 저장된다(V113).
+ *
+ * 캐스크 스트렝스는 라벨에 `60.35%` 처럼 소수점 아래가 찍힌다. 첫째 자리로 깎으면 라벨과 다른 술이 된다.
+ */
+export const ABV_DECIMALS = 3
+
+/** 도수 입력칸의 `step` — 이 값이 정수면 NumberInput 이 소수점 입력 자체를 막는다 */
+export const ABV_STEP = '0.001'
+
+/**
+ * 저장 직전 도수 반올림 — DB 가 받는 자릿수로 맞춘다.
+ *
+ * 여기서 맞추지 않으면 MySQL 이 조용히 반올림해, 저장 후 다시 불러올 때 값이 달라진다.
+ */
+export function roundAbv(value: number): number {
+  const factor = 10 ** ABV_DECIMALS
+  return Math.round(value * factor) / factor
+}
+
+/**
+ * 도수 표시 문자열 — 셋째 자리까지 쓰되 뒤따르는 0 은 떼어 낸다.
+ *
+ * `46 → "46"`, `46.5 → "46.5"`, `43.75 → "43.75"`, `46.789 → "46.789"`.
+ * DB 가 `decimal(6,3)` 이라 `46.300` 처럼 0 이 붙어 오는 값이 있어, 그대로 쓰면 화면마다 표기가 갈린다.
+ * 숫자로 읽을 수 없으면 `null` — 대체 표기는 호출부가 정한다.
+ */
+export function formatAbv(value: number | string | null | undefined): string | null {
+  if (value == null || value === '') return null
+  const abv = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(abv)) return null
+  return String(roundAbv(abv))
+}
+
+/**
  * 용량(ml).
  *
  * 상한 30,000ml = 30L 은 실제 유통되는 가장 큰 병 포맷(Midas·Melchizedek)을 담는 값이다.

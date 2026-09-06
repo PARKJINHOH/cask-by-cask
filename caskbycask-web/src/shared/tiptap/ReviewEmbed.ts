@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import i18n from '@/shared/utils/i18n'
+import { formatAbv } from '@/domain/spirit/data/spiritLimits'
 
 export interface ReviewEmbedAttrs {
   reviewId: string
@@ -45,12 +46,6 @@ function formatDecimal(value: unknown) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return '-'
   return parsed.toFixed(1)
-}
-
-function formatAbv(value: unknown) {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed)) return ''
-  return Number.isInteger(parsed) ? String(parsed) : parsed.toFixed(1)
 }
 
 function localizedNames(attrs: Record<string, unknown>) {
@@ -104,7 +99,7 @@ function reviewCardMarkup(attrs: Record<string, unknown>) {
   const names = localizedNames(attrs)
   const abv = attrs.abv == null
     ? null
-    : roleSpan('abv', i18n.t('editor.reviewCard.abv', { value: formatAbv(attrs.abv) }))
+    : roleSpan('abv', i18n.t('editor.reviewCard.abv', { value: formatAbv(attrs.abv as number | string) ?? '' }))
   const meta = roleSpan(
     'meta',
     ...(abv ? [abv] : []),
@@ -310,7 +305,7 @@ export const ReviewEmbed = Node.create({
         subtitle.hidden = !names.secondary || names.secondary === names.primary
         abv.textContent = attrs.abv == null
           ? ''
-          : i18n.t('editor.reviewCard.abv', { value: formatAbv(attrs.abv) })
+          : i18n.t('editor.reviewCard.abv', { value: formatAbv(attrs.abv as number | string) ?? '' })
         abv.hidden = attrs.abv == null
         reviewCount.textContent = i18n.t('editor.reviewCard.reviewCount', {
           count: Number(attrs.reviewCount ?? 0),

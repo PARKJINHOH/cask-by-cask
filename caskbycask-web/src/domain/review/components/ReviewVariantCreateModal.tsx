@@ -5,6 +5,7 @@ import { RequiredFieldsNotice, RequiredMark } from '@/shared/components/FormFiel
 import Button from '@/shared/components/Button'
 import AutoGrowTextarea from '@/shared/components/AutoGrowTextarea'
 import NumberInput from '@/shared/components/NumberInput'
+import { ABV_STEP, roundAbv } from '@/domain/spirit/data/spiritLimits'
 
 export interface ReviewVariantDraft {
   variantValue: string
@@ -77,7 +78,7 @@ export default function ReviewVariantCreateModal({
     onCreated({
       variantValue: trimmedValue,
       variantValueEn: variantValueEn.trim() || null,
-      abv: Math.round(abvValue * 10) / 10,
+      abv: roundAbv(abvValue),
       volumeMl: Math.round(volumeValue),
       requestMemo: requestMemo.trim() || null,
     })
@@ -169,7 +170,7 @@ export default function ReviewVariantCreateModal({
               aria-required="true"
               min={0}
               max={100}
-              step={0.1}
+              step={ABV_STEP}
               value={abv}
               onChange={(e) => {
                 setAbv(e.target.value)

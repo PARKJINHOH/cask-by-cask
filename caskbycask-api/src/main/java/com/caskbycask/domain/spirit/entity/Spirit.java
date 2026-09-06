@@ -77,7 +77,7 @@ public class Spirit extends BaseTimeEntity {
     @GenericField
     private Integer vintageYear;
 
-    @Column(precision = 4, scale = 1)
+    @Column(precision = 6, scale = 3)
     @Comment("도수(%)")
     @GenericField
     private BigDecimal abv;
@@ -191,11 +191,11 @@ public class Spirit extends BaseTimeEntity {
     @Comment("하위 에디션 표시 순서 (마스터 기준 0부터, 마스터/일반 술은 null)")
     private Integer displayOrder;
 
-    @Column(precision = 4, scale = 1)
+    @Column(precision = 6, scale = 3)
     @Comment("최소 도수(%)")
     private BigDecimal abvMin;
 
-    @Column(precision = 4, scale = 1)
+    @Column(precision = 6, scale = 3)
     @Comment("최대 도수(%)")
     private BigDecimal abvMax;
 

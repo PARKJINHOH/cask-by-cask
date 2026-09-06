@@ -57,7 +57,7 @@ public class SpiritVariantReviewRequest extends BaseTimeEntity {
     @Column(length = 100)
     private String seriesIdentifierEn;
 
-    @Column(nullable = false, precision = 4, scale = 1)
+    @Column(nullable = false, precision = 6, scale = 3)
     private BigDecimal abv;
 
     @Column(nullable = false)

@@ -14,7 +14,7 @@ import { ISO3166_COUNTRIES } from '@/domain/location/data/iso3166Countries'
 import { REGION_CATALOG_CATEGORIES } from '@/domain/location/hooks/useWineRegionCatalog'
 import { WHISKY_STYLES } from '@/domain/spirit/data/whisky'
 import {
-  ABV_MIN, ABV_MAX, VOLUME_ML_MIN, VOLUME_ML_MAX, LIMIT_MESSAGE,
+  ABV_MIN, ABV_MAX, ABV_STEP, VOLUME_ML_MIN, VOLUME_ML_MAX, LIMIT_MESSAGE,
   suspiciousVolume, suspiciousAbv,
 } from '@/domain/spirit/data/spiritLimits'
 import type { SpiritCategory } from '@/domain/spirit/types/spirit.types'
@@ -1759,7 +1759,7 @@ export default function SpiritFormFields({
                 {form.isAbvRange ? (
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                      <NumberInput step="0.1" min="0" max="100" value={form.abvMin}
+                      <NumberInput step={ABV_STEP} min="0" max="100" value={form.abvMin}
                          data-field="abvMin"
                          required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                          disabled={isMasterSpecsDisabled}
@@ -1771,7 +1771,7 @@ export default function SpiritFormFields({
                     </div>
                     <span className="text-neutral-400">~</span>
                     <div className="relative flex-1">
-                      <NumberInput step="0.1" min="0" max="100" value={form.abvMax}
+                      <NumberInput step={ABV_STEP} min="0" max="100" value={form.abvMax}
                          data-field="abvMax"
                          required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                          disabled={isMasterSpecsDisabled}
@@ -1784,7 +1784,7 @@ export default function SpiritFormFields({
                   </div>
                 ) : (
                   <div className="relative">
-                    <NumberInput step="0.1" min="0" max="100" value={form.commonDetail.abv}
+                    <NumberInput step={ABV_STEP} min="0" max="100" value={form.commonDetail.abv}
                        data-field="abv"
                        required={isMasterSpecsRequired} aria-required={isMasterSpecsRequired || undefined}
                        disabled={isMasterSpecsDisabled}
@@ -2545,7 +2545,7 @@ function VariantItemCard({
             <div className="relative">
               <NumberInput
                 data-field={`variantAbv_${index}`}
-                step="0.1"
+                step={ABV_STEP}
                 min="0"
                 max="100"
                 value={variant.abv ?? ''}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { sanitizeHtml } from '@/shared/utils/sanitize'
+import { formatAbv } from '@/domain/spirit/data/spiritLimits'
 import ImageLightbox from './ImageLightbox'
 
 interface Props {
@@ -128,11 +129,6 @@ export default function RichContent({ html, className }: Props) {
       const parsed = Number(value)
       return Number.isFinite(parsed) ? parsed.toFixed(1) : '-'
     }
-    const formatAbv = (value: string) => {
-      const parsed = Number(value)
-      if (!Number.isFinite(parsed)) return value
-      return Number.isInteger(parsed) ? String(parsed) : parsed.toFixed(1)
-    }
 
     container.querySelectorAll<HTMLElement>('a.di-review-embed[data-review-id]').forEach((card) => {
       const isEn = i18n.language === 'en'
@@ -160,7 +156,7 @@ export default function RichContent({ html, className }: Props) {
       if (abv) {
         const value = card.dataset.spiritAbv
         abv.hidden = !value
-        if (value) abv.textContent = t('editor.reviewCard.abv', { value: formatAbv(value) })
+        if (value) abv.textContent = t('editor.reviewCard.abv', { value: formatAbv(value) ?? value })
       }
       setText('review-count', t('editor.reviewCard.reviewCount', {
         count: Number(card.dataset.spiritReviewCount ?? 0),

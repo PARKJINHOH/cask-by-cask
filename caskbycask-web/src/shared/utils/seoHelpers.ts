@@ -14,6 +14,7 @@ import {
   type MetadataSearchParams,
 } from '@/shared/utils/seoIndexing'
 import { appendWineVintageDisplay } from '@/domain/spirit/utils/spiritDisplayName'
+import { formatAbv } from '@/domain/spirit/data/spiritLimits'
 import {
   buildAboutJsonLdGraph,
   buildHomeJsonLdGraph,
@@ -605,12 +606,12 @@ function formatAbvValue(
   min: number | string | null | undefined,
   max: number | string | null | undefined,
 ): string | null {
-  const minValue = formatDecimal(min)
-  const maxValue = formatDecimal(max)
+  const minValue = formatAbv(min)
+  const maxValue = formatAbv(max)
   if (minValue && maxValue) return minValue === maxValue ? `${minValue}%` : `${minValue}%~${maxValue}%`
   if (minValue) return `${minValue}%+`
   if (maxValue) return `~${maxValue}%`
-  const single = formatDecimal(abv)
+  const single = formatAbv(abv)
   return single ? `${single}%` : null
 }
 
