@@ -105,7 +105,7 @@ public class AiNewsService {
      * 기사는 관리자가 직접 쓴다. 발행도 관리자 몫이라 여기서 발행하지 않는다.
      */
     @Transactional
-    public AiNewsDtos.ArticleDetailResponse ingestLead(AiNewsDtos.LeadIngestRequest request) {
+    public AiNewsDtos.LeadIngestResponse ingestLead(AiNewsDtos.LeadIngestRequest request) {
         String canonicalUrlHash = hasText(request.canonicalUrlHash())
                 ? request.canonicalUrlHash().trim().toLowerCase(Locale.ROOT) : null;
         Optional<AiNewsArticle> duplicate = findDuplicateLead(
@@ -116,7 +116,7 @@ public class AiNewsService {
             if (existing.getStatus() == AiNewsArticleStatus.PUBLISHED) {
                 existing.markUpdateAvailable();
             }
-            return AiNewsDtos.ArticleDetailResponse.from(findArticleDetail(existing.getId()));
+            return AiNewsDtos.LeadIngestResponse.of(false, existing);
         }
 
         AiNewsArticle article = AiNewsArticle.builder()
@@ -141,7 +141,7 @@ public class AiNewsService {
         } catch (DataIntegrityViolationException e) {
             throw new CustomException(ErrorCode.AI_NEWS_DUPLICATE);
         }
-        return AiNewsDtos.ArticleDetailResponse.from(findArticleDetail(article.getId()));
+        return AiNewsDtos.LeadIngestResponse.of(true, article);
     }
 
     @Transactional
@@ -368,7 +368,7 @@ public class AiNewsService {
     }
 
     /**
-     * 출처는 그냥 지운다. {@code resolveSourceScopeKey} 가 행을 만들지 않으므로 되살아날 경로가 없다
+     * 출처는 그냥 지운다. 자동 등록이 없어져 되살아날 경로가 없다
      * (예전에는 자동 등록이 삭제를 되돌려서 차단으로 남겨야 했다).
      */
     @Transactional
@@ -452,28 +452,75 @@ public class AiNewsService {
 
     @Transactional(readOnly = true)
     public AiNewsDtos.InternalConfigResponse internalConfig() {
-        LocalDateTime today = LocalDate.now(SERVICE_ZONE).atStartOfDay();
+        LocalDateTime now = LocalDateTime.now(SERVICE_ZONE);
         AiNewsSettings settings = getSettingsEntity();
-        LocalDateTime nextCollectionAt = nextCollectionAt(settings);
+        LocalDateTime lastRun = runRepository.findFirstByOrderByStartedAtDesc()
+                .map(AiNewsRun::getStartedAt).orElse(null);
         return new AiNewsDtos.InternalConfigResponse(
                 AiNewsDtos.SettingsResponse.from(settings), usageSummary(),
                 sourceConfigRepository.findByEnabledTrueOrderBySourceNameAsc().stream()
                         .map(AiNewsDtos.SourceConfigResponse::from).toList(),
-                articleRepository.countCreatedSince(AiNewsArticleType.RELEASE_NEWS, today),
-                nextCollectionAt == null || !LocalDateTime.now(SERVICE_ZONE).isBefore(nextCollectionAt),
-                nextCollectionAt);
+                articleRepository.countCreatedSince(
+                        AiNewsArticleType.RELEASE_NEWS, now.toLocalDate().atStartOfDay()),
+                lastRun == null || lastRun.isBefore(lastScheduledAt(settings, now)),
+                nextCollectionAt(settings, now));
     }
 
     /**
-     * 다음 수집이 허용되는 시각. 실행 이력이 없으면 {@code null} 이고, 그때는 곧바로 수집한다.
+     * 지금까지 지나온 예정 시각 중 가장 최근 것. 마지막 실행이 이보다 앞서면 이번 차례를 아직 안 돈 것이다.
      *
-     * <p>cron 은 매시간 돌지만 실제 주기는 관리자 설정이 정한다. 주기가 아직 지나지 않았으면 크롤러가
-     * {@code ai_news_runs} 행을 만들기 전에 종료하므로 실행 이력이 건너뛴 기록으로 오염되지 않는다.
+     * <p>오늘 지난 예정 시각이 하나도 없으면 <b>어제의 마지막 예정 시각</b>을 쓴다. 그래야 자정을 넘겨
+     * 처음 도는 실행이 "어제 18시 차례를 이미 돌았는지"를 제대로 판단한다.
      */
-    private LocalDateTime nextCollectionAt(AiNewsSettings settings) {
-        return runRepository.findFirstByOrderByStartedAtDesc()
-                .map(run -> run.getStartedAt().plusHours(Math.max(1, settings.getCollectionIntervalHours())))
-                .orElse(null);
+    static LocalDateTime lastScheduledAt(AiNewsSettings settings, LocalDateTime now) {
+        List<Integer> hours = parseCollectionHours(settings.getCollectionHours());
+        LocalDateTime found = null;
+        for (int hour : hours) {
+            LocalDateTime candidate = now.toLocalDate().atTime(hour, 0);
+            if (!candidate.isAfter(now)) found = candidate;
+        }
+        return found != null
+                ? found
+                : now.toLocalDate().minusDays(1).atTime(hours.get(hours.size() - 1), 0);
+    }
+
+    /** 지금 이후 가장 이른 예정 시각. 관리자 화면의 '다음 수집 예정'이 이 값이다. */
+    static LocalDateTime nextCollectionAt(AiNewsSettings settings, LocalDateTime now) {
+        List<Integer> hours = parseCollectionHours(settings.getCollectionHours());
+        for (int hour : hours) {
+            LocalDateTime candidate = now.toLocalDate().atTime(hour, 0);
+            if (candidate.isAfter(now)) return candidate;
+        }
+        return now.toLocalDate().plusDays(1).atTime(hours.get(0), 0);
+    }
+
+    /**
+     * {@code "9,18"} 을 정렬·중복 제거한 시각 목록으로 바꾼다.
+     *
+     * <p>간격(시간)이 아니라 시각인 이유는 "하루 두 번, 09시와 18시" 가 고정 간격으로 표현되지 않기
+     * 때문이다 — 09→18 은 9시간, 18→09 는 15시간이다.
+     */
+    static List<Integer> parseCollectionHours(String value) {
+        if (!hasText(value)) throw new CustomException(ErrorCode.INVALID_INPUT);
+        SortedSet<Integer> hours = new TreeSet<>();
+        for (String token : value.split(",")) {
+            String trimmed = token.trim();
+            if (trimmed.isEmpty()) continue;
+            try {
+                int hour = Integer.parseInt(trimmed);
+                if (hour < 0 || hour > 23) throw new CustomException(ErrorCode.INVALID_INPUT);
+                hours.add(hour);
+            } catch (NumberFormatException e) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+        }
+        if (hours.isEmpty()) throw new CustomException(ErrorCode.INVALID_INPUT);
+        return List.copyOf(hours);
+    }
+
+    private static String normalizeCollectionHours(String value) {
+        return parseCollectionHours(value).stream().map(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(","));
     }
 
     @Transactional(readOnly = true)
@@ -502,9 +549,9 @@ public class AiNewsService {
                 ? request.openaiMonthlyBudgetUsd() : null;
         Long tokenLimit = request.openaiMonthlyTokenLimit() != null && request.openaiMonthlyTokenLimit() > 0
                 ? request.openaiMonthlyTokenLimit() : null;
-        settings.update(request.automationEnabled(), request.collectionIntervalHours(),
-                request.dailyReleaseLimit(),
-                request.tavilyMonthlyCreditLimit(), budget, tokenLimit,
+        settings.update(request.automationEnabled(),
+                normalizeCollectionHours(request.collectionHours()), request.recentWindowDays(),
+                request.dailyReleaseLimit(), budget, tokenLimit,
                 request.whiskyRatio(), request.wineRatio(), request.cognacRatio());
         log(actorId, AiNewsSettings.SINGLETON_ID, "AI 소식 설정 변경", null);
         return AiNewsDtos.SettingsResponse.from(settings);
@@ -516,11 +563,10 @@ public class AiNewsService {
                 .with(TemporalAdjusters.firstDayOfMonth()).atStartOfDay();
         AiNewsSettings settings = getSettingsEntity();
         return new AiNewsDtos.UsageSummaryResponse(
-                usageRepository.sumTavilyCreditsSince(monthStart),
                 usageRepository.sumInputTokensSince(monthStart),
                 usageRepository.sumOutputTokensSince(monthStart),
                 Optional.ofNullable(usageRepository.sumEstimatedCostSince(monthStart)).orElse(BigDecimal.ZERO),
-                settings.getTavilyMonthlyCreditLimit(), settings.getOpenaiMonthlyBudgetUsd(),
+                settings.getOpenaiMonthlyBudgetUsd(),
                 settings.getOpenaiMonthlyTokenLimit());
     }
 
@@ -534,7 +580,6 @@ public class AiNewsService {
                 .inputTokens(request.inputTokens())
                 .outputTokens(request.outputTokens())
                 .imageCount(request.imageCount())
-                .tavilyCredits(request.tavilyCredits())
                 .estimatedCostUsd(request.estimatedCostUsd() != null ? request.estimatedCostUsd() : BigDecimal.ZERO)
                 .usageAt(request.usageAt() != null ? request.usageAt() : LocalDateTime.now())
                 .build());
@@ -548,7 +593,7 @@ public class AiNewsService {
                 .runKey(request.runKey())
                 .runType(request.runType())
                 .status(AiNewsRunStatus.RUNNING)
-                // 수집 주기 판정이 이 값을 기준으로 하므로, 같은 서비스의 다른 시각 계산과 시계를 맞춘다.
+                // 수집 차례 판정이 이 값을 기준으로 하므로, 같은 서비스의 다른 시각 계산과 시계를 맞춘다.
                 .startedAt(LocalDateTime.now(SERVICE_ZONE))
                 .build());
         return AiNewsDtos.RunResponse.from(run);
@@ -632,10 +677,13 @@ public class AiNewsService {
     private void addResolvedSources(AiNewsArticle article,
                                     List<AiNewsDtos.SourceEvidenceRequest> sources) {
         if (sources == null) return;
-        Set<String> scopes = new HashSet<>();
+        // 근거 테이블의 유니크 제약이 (article_id, domain) 이다. 예전에는 도메인+등록 경로로 걸렀는데,
+        // 그러면 같은 도메인의 다른 경로 두 건이 통과했다가 저장에서 DataIntegrityViolation 으로 터졌다.
+        // 기사 단위로 수집하면서 같은 매체의 기사가 여러 건 올라오므로 실제로 자주 걸린다.
+        Set<String> domains = new HashSet<>();
         for (AiNewsDtos.SourceEvidenceRequest source : sources) {
             String domain = verifiedSourceDomain(source.sourceUrl(), source.domain());
-            if (!scopes.add(resolveSourceScopeKey(source.sourceUrl(), domain))) continue;
+            if (!domains.add(domain)) continue;
             article.addSource(AiNewsArticleSource.builder()
                     .sourceUrl(source.sourceUrl().trim())
                     .canonicalUrl(normalizeCanonicalUrl(source.canonicalUrl()))
@@ -652,12 +700,11 @@ public class AiNewsService {
     private void mergeNewSources(AiNewsArticle article, List<AiNewsDtos.SourceEvidenceRequest> sources) {
         if (sources == null || sources.isEmpty()) return;
         Set<String> existing = article.getSources().stream()
-                .map(source -> resolveSourceScopeKey(source.getSourceUrl(), source.getDomain()))
+                .map(AiNewsArticleSource::getDomain)
                 .collect(java.util.stream.Collectors.toSet());
         for (AiNewsDtos.SourceEvidenceRequest source : sources) {
             String domain = verifiedSourceDomain(source.sourceUrl(), source.domain());
-            String scopeKey = resolveSourceScopeKey(source.sourceUrl(), domain);
-            if (existing.contains(scopeKey)) continue;
+            if (existing.contains(domain)) continue;
             article.addSource(AiNewsArticleSource.builder()
                     .sourceUrl(source.sourceUrl().trim()).canonicalUrl(normalizeCanonicalUrl(source.canonicalUrl()))
                     .domain(domain).sourceTitle(trimToNull(source.sourceTitle()))
@@ -665,7 +712,7 @@ public class AiNewsService {
                     .publishedAt(source.publishedAt())
                     .retrievedAt(source.retrievedAt() != null ? source.retrievedAt() : LocalDateTime.now())
                     .build());
-            existing.add(scopeKey);
+            existing.add(domain);
         }
     }
 
@@ -726,12 +773,6 @@ public class AiNewsService {
      * 미등록 도메인은 도메인 전체를 한 범위로 보고, 근거 이력은 {@code ai_news_article_sources} 에만
      * 남는다 — 공개 글 하단 출처 표시에 필요한 정보는 그쪽이 이미 전부 갖고 있다.
      */
-    private String resolveSourceScopeKey(String sourceUrl, String domain) {
-        String path = sourceUrlPath(sourceUrl);
-        AiNewsSourceConfig configured = findBestSourceConfig(sourceConfigRepository.findByDomain(domain), path);
-        return scopeKey(domain, configured != null ? configured.getPathPrefix() : "");
-    }
-
     private AiNewsArticle findArticleDetail(Long id) {
         return articleRepository.findDetailById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.AI_NEWS_NOT_FOUND));
@@ -827,21 +868,6 @@ public class AiNewsService {
         return value;
     }
 
-    private static String sourceUrlPath(String rawUrl) {
-        try {
-            URI parsed = URI.create(rawUrl.trim()).normalize();
-            if (!("http".equalsIgnoreCase(parsed.getScheme()) || "https".equalsIgnoreCase(parsed.getScheme()))
-                    || parsed.getHost() == null) {
-                throw new CustomException(ErrorCode.INVALID_INPUT);
-            }
-            return normalizePathPrefix(parsed.getPath());
-        } catch (CustomException e) {
-            throw e;
-        } catch (RuntimeException ignored) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
-    }
-
     private static String verifiedSourceDomain(String sourceUrl, String claimedDomain) {
         try {
             String actual = normalizeDomain(URI.create(sourceUrl.trim()).getHost());
@@ -852,22 +878,6 @@ public class AiNewsService {
         } catch (RuntimeException ignored) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
-    }
-
-    private static boolean pathMatches(String sourcePath, String pathPrefix) {
-        if (!hasText(pathPrefix)) return true;
-        return sourcePath.equals(pathPrefix) || sourcePath.startsWith(pathPrefix + "/");
-    }
-
-    static AiNewsSourceConfig findBestSourceConfig(List<AiNewsSourceConfig> configs, String sourcePath) {
-        return configs.stream()
-                .filter(source -> pathMatches(sourcePath, source.getPathPrefix()))
-                .max(Comparator.comparingInt(source -> source.getPathPrefix().length()))
-                .orElse(null);
-    }
-
-    private static String scopeKey(String domain, String pathPrefix) {
-        return domain + (hasText(pathPrefix) ? pathPrefix : "/*");
     }
 
     private static String normalizeCanonicalUrl(String raw) {

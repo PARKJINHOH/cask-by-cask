@@ -32,7 +32,6 @@ public class AiNewsUsage extends BaseTimeEntity {
     @Builder.Default private long inputTokens = 0;
     @Builder.Default private long outputTokens = 0;
     @Builder.Default private int imageCount = 0;
-    @Builder.Default private int tavilyCredits = 0;
 
     @Builder.Default
     @Column(nullable = false, precision = 12, scale = 6)

@@ -940,20 +940,20 @@ sudo systemctl reload prometheus || sudo kill -HUP $(pidof prometheus)
 제거됐다. 소재는 관리자 원고 목록에 `PENDING_REVIEW`로 들어가고 본문이 빈 글은 발행되지 않는다.
 
 AI 소식 크롤러의 비밀값은 API의 `/app/env/api.env`가 아니라 `/app/caskbycask-crawler/.env`에서 관리한다.
-아래 네 개가 없으면 실행이 즉시 중단된다 — `CASKBYCASK_API_URL`, `CASKBYCASK_INTERNAL_KEY`,
-`TAVILY_API_KEY`, `GEMINI_API_KEY`. 나머지는 선택값이며 비워 두면 코드 기본값으로 동작한다.
+아래 세 개가 없으면 실행이 즉시 중단된다 — `CASKBYCASK_API_URL`, `CASKBYCASK_INTERNAL_KEY`,
+`GEMINI_API_KEY`. 나머지는 선택값이며 비워 두면 코드 기본값으로 동작한다.
 
 | 키 | 용도 |
 |---|---|
 | `CASKBYCASK_API_URL` | 같은 서버 API. 운영 권장값 `http://127.0.0.1:8080` |
 | `CASKBYCASK_INTERNAL_KEY` | API env와 동일한 내부 인증 키 |
-| `TAVILY_API_KEY` | 2시간 주기 한국어·영어 웹 검색 |
 | `GEMINI_API_KEY` | Google AI Studio 키. 핫딜 분석과 AI 소식 소재 선별에 공용 사용 |
 | `GEMINI_MODEL` | 핫딜 멀티모달 분석 모델. 기본 `gemini-3.1-flash-lite` |
 | `GEMINI_REQUEST_INTERVAL_SEC` | 핫딜 Gemini 호출 간격. 기본 5초 |
 | `AI_NEWS_CLASSIFIER_MODEL` | AI 소식이 쓰는 **유일한** 모델. 소재 선별·제목·요약. 기본 `gemini-3.1-flash-lite` |
 | `AI_NEWS_MAX_LEADS_PER_RUN` | 실행당 저장 소재 상한. 기본 3 |
-| `AI_NEWS_SEARCH_RESULTS_PER_QUERY` | 검색어당 Tavily 결과 수. 기본 10 |
+| `AI_NEWS_ARTICLES_PER_SOURCE` | 출처당 열어 볼 기사 수. 기본 5 |
+| `AI_NEWS_MAX_ARTICLES_PER_RUN` | 실행당 기사 수 상한. 기본 20 |
 | `AI_NEWS_GEMINI_FREE_TIER` | 텍스트 무료 티어 사용 여부. 기본 `true`(예상 비용을 0으로 집계) |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_USD` | 관리자 DB 설정과 별개의 절대 안전상한. `0`이면 비활성 |
 | `AI_NEWS_GEMINI_HARD_MONTHLY_TOKENS` | 월 토큰 절대 안전상한. `0`이면 비활성 |
@@ -967,30 +967,114 @@ crontab -l | grep caskbycask-crawler
 tail -n 100 /app/caskbycask-crawler/logs/ai-news.log
 ```
 
+#### 배포 후 설정 점검 (기사 단위 수집 · 수집 시각)
+
+`V112` 로 수집 설정이 **간격 → 시각**으로 바뀌었고 크롤러가 기사 단위로 내려간다. 배포 뒤 아래 순서로 본다.
+
+**1) 마이그레이션이 적용됐는가**
+
+```bash
+mariadb -u CHANGE_ME_DB_USER -p caskbycask_prod -e "select version, script, success from flyway_schema_history where version in ('111','112');"
+```
+
+```bash
+mariadb -u CHANGE_ME_DB_USER -p caskbycask_prod -e "select automation_enabled, collection_hours, recent_window_days, daily_release_limit, whisky_ratio, wine_ratio, cognac_ratio from ai_news_settings where id = 1;"
+```
+
+`collection_hours = 9,18`, `recent_window_days = 3`, `automation_enabled = 1` 이어야 한다.
+`tavily_*` 컬럼이 남아 있으면 `V111` 이 적용되지 않은 것이다.
+
+**2) 크롤러가 새 코드·새 환경변수를 쓰는가**
+
+```bash
+ls /app/caskbycask-crawler/current/news_articles.py && grep -c TAVILY /app/caskbycask-crawler/current/news_config.py
+```
+
+`news_articles.py` 가 있고 `grep -c` 가 `0` 이어야 한다.
+
+```bash
+grep -E '^(AI_NEWS_ARTICLES_PER_SOURCE|AI_NEWS_MAX_ARTICLES_PER_RUN|TAVILY_API_KEY)=' /app/caskbycask-crawler/.env
+```
+
+`TAVILY_API_KEY` 줄이 보이면 **직접 지운다**(배포는 `.env` 를 덮어쓰지 않는다). 나머지 둘은 없으면 코드 기본값(5·20)이 쓰인다.
+
+**3) 서버가 크롤러에게 내려 주는 판단이 맞는가**
+
+```bash
+curl -s -H "X-Internal-Key: $(grep -oP '(?<=^CASKBYCASK_INTERNAL_KEY=).*' /app/caskbycask-crawler/.env)" http://127.0.0.1:8080/api/internal/ai-news/config | python3 -m json.tool | head -30
+```
+
+`settings.collectionHours`, `settings.recentWindowDays`, `collectionDue`, `nextCollectionAt` 이 보여야 하고
+`nextCollectionAt` 은 오늘/내일의 09:00 또는 18:00 이어야 한다.
+
+**4) 실제 수집이 09:17 · 18:17 에만 도는가**
+
+```bash
+grep -E '수집 차례가 아직|이번 실행 우선 주종|기사 수집 source=' /app/caskbycask-crawler/logs/ai-news.log | tail -30
+```
+
+차례가 아닌 시간대에는 `수집 차례가 아직 아니라 건너뜁니다` 만 남아야 한다.
+
+```bash
+mariadb -u CHANGE_ME_DB_USER -p caskbycask_prod -e "select id, started_at, status, candidate_count, review_count, duplicate_count, error_count from ai_news_runs order by started_at desc limit 10;"
+```
+
+하루에 두 행만, 09:17·18:17 부근에 생겨야 한다.
+
+**5) 근거가 목록 페이지가 아니라 기사인가 (이번 수정의 핵심)**
+
+```bash
+mariadb -u CHANGE_ME_DB_USER -p caskbycask_prod -e "select a.id, a.created_at, s.published_at, s.canonical_url from ai_news_articles a join ai_news_article_sources s on s.article_id = a.id where a.article_type = 'RELEASE_NEWS' order by a.created_at desc limit 20;"
+```
+
+`canonical_url` 이 **등록해 둔 목록 URL 이 아니라 개별 기사 URL** 이어야 하고, `published_at` 이 채워져 있어야 한다.
+목록 URL 이 그대로면 크롤러가 아직 옛 코드다.
+
+**6) 출처별 상태**
+
+```bash
+mariadb -u CHANGE_ME_DB_USER -p caskbycask_prod -e "select id, source_name, enabled, auto_discovered, crawl_status, last_crawled_at, left(coalesce(last_crawl_error,''),60) as err from ai_news_source_configs order by enabled desc, crawl_status;"
+```
+
+- `auto_discovered = 1` 인 옛 자동 등록 행은 **비활성으로 내리거나 삭제**한다. 주류와 무관한 도메인이 섞여 있다.
+- `NO_RESULT` 만 계속되면 관리자 화면의 **최신 기사 기간**(기본 3일)을 늘린다. 실패가 아니다.
+- `ERROR` 는 사유를 그대로 읽는다. Instagram 은 확인 경로가 없어 항상 `ERROR` 다.
+
 - `CRON_TZ=Asia/Seoul` 기준 핫딜은 `current/run.sh`를 짝수 시각 정각(`0 */2 * * *`)에, AI 소식은
   `current/run-news.sh`를 매시간 17분(`17 * * * *`)에 실행한다.
-- AI 소식의 cron 은 확인만 한다. 실제 수집 주기는 `관리자 > 커뮤니티 > 소식(AI) > 설정·사용량`의
-  **수집 주기(시간)** 가 정하며(기본 2), 크롤러는 `/api/internal/ai-news/config` 의 `collectionDue` 가
-  거짓이면 `ai_news_runs` 행을 만들지 않고 종료한다. 즉 실행 이력 표의 간격이 곧 실제 수집 주기다.
-- 수집 차례인 실행마다 주종 하나(`whiskyRatio`·`wineRatio`·`cognacRatio` 비율로 회전)에 집중하고,
-  근거는 관리자가 등록한 출처 허용목록에서만 모은다. 일일 상한(`dailyReleaseLimit`, 기본 3)은
-  발행이 아니라 **소재 생성** 기준이다.
+- AI 소식의 cron 은 확인만 한다. 실제 수집 시각은 `관리자 > 커뮤니티 > 소식(AI) > 설정·사용량`의
+  **수집 시각(0~23, 콤마)** 이 정하며(기본 `9,18`), 크롤러는 `/api/internal/ai-news/config` 의
+  `collectionDue` 가 거짓이면 `ai_news_runs` 행을 만들지 않고 종료한다.
+  cron 이 매시간 17분에 확인하므로 **실제 실행은 09:17 · 18:17** 이다 — 핫딜(짝수 정각)과 Gemini 호출이
+  겹치지 않게 비켜 둔 것이고, 09:17 실행이 실패하면 10:17 이 대신 수집한다.
+  즉 실행 이력 표의 간격이 곧 실제 수집 간격이다.
+- 근거는 관리자가 등록한 출처에서 **개별 기사**를 읽어서만 모은다. 출처의 RSS/Atom 피드를 먼저 찾고,
+  없으면 사이트맵, 그것도 없으면 목록 페이지의 링크에서 기사를 고른다. 각 기사의 발행일을 읽어
+  **최신 기사 기간**(관리자 설정, 기본 3일) 밖은 버린다.
+  주종 하나(`whiskyRatio`·`wineRatio`·`cognacRatio` 비율로 회전)는 Gemini 가 소재를 고를 때 우선순위로만 쓴다.
+  일일 상한(`dailyReleaseLimit`, 기본 3)은 발행이 아니라 **소재 생성** 기준이다.
+- 등록 출처 직접 확인이 유일한 수집 경로이므로 출처가 깨지면 그날 소재가 0건이 된다. 관리자 화면의
+  출처별 상태를 먼저 본다 — `수집 실패`는 사유가 함께 뜨고, `결과 없음`은 기간 안에 새 기사가 없었다는 뜻이라
+  실패가 아니다. `결과 없음`만 계속되면 **최신 기사 기간**을 늘린다.
+  Instagram 처럼 서버가 직접 읽을 수 없는 플랫폼은 확인할 방법이 없어 항상 `수집 실패`로 남는다 —
+  등록해 두면 매 실행 오류 목록에 뜬다.
+- 실행 이력의 `검토` 건수는 **실제로 새로 만들어진 원고 수**다. 서버가 근거 URL 겹침으로 기존 원고를
+  돌려주면 `중복`으로 센다(`LeadIngestResponse.created`).
 - 코드 배포는 `.env`, `targets.json`, SQLite, `logs/`, `temp/`를 덮어쓰지 않는다. `.venv`는 각
   릴리스 안에서 hash lock으로 새로 설치되며 `current`/`previous`와 함께 전환된다.
 - 배포는 핫딜·AI 소식·와인 수집의 세 `flock`을 획득한 뒤 cron을 갱신하고 링크를 교체한다. 실행 중 작업이
   120초 안에 끝나지 않거나 cron 갱신이 실패하면 기존 `current`를 유지한다.
 - 관리자 화면 기본값은 **자동화 OFF**다. 켜기 전까지 크롤러는 설정만 읽고 바로 종료한다.
   자동발행·드라이런·신뢰도 임계값 설정은 `V93`에서 삭제됐으므로 켜고 끌 대상이 아니다.
-- Tavily 기본 월 한도는 900크레딧이다. Gemini는 토큰·예상비용을 관리자 화면에서 확인하고 필요할 때 월
-  상한을 입력한다. `AI_NEWS_GEMINI_FREE_TIER=true`면 예상 비용이 0으로 집계된다.
+- Gemini는 토큰·예상비용을 관리자 화면에서 확인하고 필요할 때 월 상한을 입력한다.
+  `AI_NEWS_GEMINI_FREE_TIER=true`면 예상 비용이 0으로 집계된다.
 - 관리자 비용·토큰 상한은 80%에서 Slack 경고를 보내고 100%에서 그 실행을 중단한다. 환경변수 절대 상한도
   별도로 적용된다.
 - Slack 알림은 `SLACK_WEBHOOK_URL`이 있고 `SLACK_ALERTS_ENABLED=true`일 때만 나간다. 같은 종류는 실행당
   1회, 전체 `SLACK_MAX_ALERTS_PER_RUN`(기본 10)건까지다. 실제로 보내는 알림은 다음뿐이다.
-  - 한도 80% 경고(실행은 계속): `AI 소식 Tavily 한도 80% 도달`, `AI 소식 Gemini 관리자 한도 80% 도달`,
-    `AI 소식 Gemini 토큰 한도 80% 도달`
-  - 한도 도달로 실행 중단: `AI 소식 Tavily 한도 도달`, `AI 소식 Gemini 관리자 한도 도달`,
-    `AI 소식 Gemini 토큰 한도 도달`, `AI 소식 Gemini 절대 한도 도달`, `AI 소식 Gemini 절대 토큰 한도 도달`
+  - 한도 80% 경고(실행은 계속): `AI 소식 Gemini 관리자 한도 80% 도달`, `AI 소식 Gemini 토큰 한도 80% 도달`
+  - 한도 도달로 실행 중단: `AI 소식 Gemini 관리자 한도 도달`, `AI 소식 Gemini 토큰 한도 도달`,
+    `AI 소식 Gemini 절대 한도 도달`, `AI 소식 Gemini 절대 토큰 한도 도달`
   - 실패: `AI 소식 자동화 실행 실패`, `AI 소식 시작 실패`, `AI 소식 사용량 기록 실패`,
     `AI 소식 일부 처리 실패`(실패 단계·예외와 후보/저장/중복/오류 건수 포함)
 - 수동 롤백도 세 crawler `flock`을 획득한 뒤 `previous`의 `.venv/bin/python`을 확인하고
@@ -1071,7 +1155,7 @@ Vivino가 429나 bot challenge로 응답하기 시작하면 우회하지 말고 
 | **SNS 토큰 만료** | Instagram/Threads 장기 토큰 자동 갱신 실패 후 만료 | `SocialTokenRefreshScheduler` ERROR 로그 → `SlackErrorAppender` | 서버(매일 03:20) |
 | **크롤러 장애** | 네이버 카페 쿠키/인증, 내부 API 토큰, Gemini 인증·quota, 게시글 처리 오류 | `caskbycask-crawler/alerts/slack_notifier.py` | 서버(cron) |
 | **와인 수집 실패** | 후보 부족, 필수 필드 누락, 저장 오류 (와이너리 미확인은 실패가 아님) | 영문 와인명·Vivino 링크·사유를 `alerts/slack_notifier.py`로 전송 | 서버(매시 37분) |
-| **AI 소식 한도·실행 실패** | Tavily·Gemini 월 한도 80%/100% 도달, 실행 실패·일부 소재 저장 실패·사용량 기록 실패 | `news_main.py` → `alerts/slack_notifier.py` | 서버(짝수 시각 17분) |
+| **AI 소식 한도·실행 실패** | Gemini 월 한도 80%/100% 도달, 실행 실패·일부 소재 저장 실패·사용량 기록 실패 | `news_main.py` → `alerts/slack_notifier.py` | 서버(짝수 시각 17분) |
 | ~~서비스 다운~~ ⏸️보류 | `/healthz` 무응답 = VM 통째 다운 | `synology/healthcheck.sh` | 시놀로지 |
 
 > ⏸️ **서비스 다운(외부 헬스체크)은 현재 보류.** 이 알람은 크롤러용 시놀로지 DS220+ 가 상시 켜져 있다는 전제인데, `caskbycask-crawler` 가 아직 운영에 반영되지 않았다. 크롤러를 운영에 올릴 때 함께 활성화한다(5번 절차). 그 전까지 **VM 통째 다운 감지는 공백** — 서버 내부 알람(ERROR·종료·디스크)은 VM 이 죽으면 못 뜨므로, 필요하면 임시로 UptimeRobot 등 무료 외부 모니터로 메울 수 있다.

@@ -33,7 +33,7 @@ public class AiNewsInternalController {
     }
 
     @PostMapping("/leads")
-    public ResponseEntity<ApiResponse<AiNewsDtos.ArticleDetailResponse>> ingestLead(
+    public ResponseEntity<ApiResponse<AiNewsDtos.LeadIngestResponse>> ingestLead(
             @Valid @RequestBody AiNewsDtos.LeadIngestRequest request) {
         return ResponseEntity.ok(ApiResponse.success(aiNewsService.ingestLead(request)));
     }

@@ -7,6 +7,7 @@ import base64
 import json
 import tempfile
 from pathlib import Path
+from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
 # 번들 검증 런타임에 프로젝트 패키지가 없을 때만 최소 stub을 사용한다.
@@ -76,10 +77,17 @@ from news_gemini import GeminiLeadFinder
 from news_main import _lead_payload, _process_lead
 from alerts.ai_news_error_alert import append_error_detail, format_error_alert
 from news_prompts import AI_NEWS_LEAD_PROMPT, AI_NEWS_TITLE_MAX_LENGTH
-from news_tavily import TavilyNewsSearch
-from news_source_config import matching_source_config
-from news_official import (CATEGORY_QUERIES, _direct_source, _get_public_url, _targeted_match,
-                           collect_registered_sources, rotation_category)
+from bs4 import BeautifulSoup
+
+#: bs4 가 없는 번들 검증 런타임에서는 위 stub 이 Mock 을 넣는다 — 파싱이 필요한 테스트는 건너뛴다.
+HAS_BS4 = not isinstance(BeautifulSoup, Mock)
+
+from news_articles import (ArticleRef, _article_published_at, collect_source_articles,
+                           date_from_url, discover_articles, extract_article_links,
+                           get_public_url, is_recent, parse_datetime, parse_feed, read_article)
+from news_models import SERVICE_ZONE
+from news_official import (DIRECT_FETCH_BLOCKED_REASON, collect_registered_sources,
+                           rotation_category)
 
 
 def config_value(config, name: str):
@@ -91,67 +99,6 @@ def part_bytes(part) -> bytes:
     if isinstance(part, dict):
         return part["data"]
     return part.inline_data.data
-
-
-class TavilyNewsSearchTest(unittest.TestCase):
-    @patch("news_tavily.requests.post")
-    def test_search_filters_invalid_urls_and_normalizes_domain(self, post: Mock) -> None:
-        response = Mock()
-        response.raise_for_status.return_value = None
-        response.json.return_value = {
-            "results": [
-                {
-                    "title": "New release",
-                    "url": "https://www.example.com/news/1",
-                    "raw_content": "Release evidence",
-                    "score": 0.92,
-                    "published_date": "2026-07-10",
-                },
-                {"title": "Invalid", "url": "javascript:alert(1)", "content": "ignored"},
-            ]
-        }
-        post.return_value = response
-
-        search = TavilyNewsSearch("test-key", timeout=5, max_results=50)
-        results = search.search("whisky release", include_domains=["example.com"])
-
-        self.assertEqual(1, search.credits_used)
-        self.assertEqual(20, search.max_results)
-        self.assertEqual(1, len(results))
-        self.assertEqual("example.com", results[0].domain)
-        self.assertEqual("Release evidence", results[0].content)
-        request_payload = post.call_args.kwargs["json"]
-        self.assertEqual("basic", request_payload["search_depth"])
-        self.assertEqual("day", request_payload["time_range"])
-        self.assertEqual(["example.com"], request_payload["include_domains"])
-
-    @patch("news_tavily.requests.post")
-    def test_search_truncates_query_to_tavily_limit(self, post: Mock) -> None:
-        response = Mock()
-        response.raise_for_status.return_value = None
-        response.json.return_value = {"results": []}
-        post.return_value = response
-
-        search = TavilyNewsSearch("test-key")
-        search.search("가" * 500)
-
-        request_query = post.call_args.kwargs["json"]["query"]
-        self.assertEqual(TavilyNewsSearch.QUERY_MAX_LENGTH, len(request_query))
-        self.assertLess(len(request_query), 400)
-
-    @patch("news_tavily.requests.post")
-    def test_search_failure_includes_tavily_response_detail(self, post: Mock) -> None:
-        response = Mock()
-        response.status_code = 400
-        response.text = '{"detail":"Query must be less than 400 characters"}'
-        response.raise_for_status.side_effect = requests.RequestException("Bad Request")
-        post.return_value = response
-
-        search = TavilyNewsSearch("test-key")
-
-        with self.assertRaisesRegex(RuntimeError, "Query must be less than 400 characters"):
-            search.search("whisky release")
-        self.assertEqual(0, search.credits_used)
 
 
 class NewsModelTest(unittest.TestCase):
@@ -222,11 +169,50 @@ class NewsModelTest(unittest.TestCase):
         self.assertIn("eventKey=new-release", body)
         self.assertIn("RuntimeError: Gemini 응답 형식 오류", body)
 
-class NewsSourceConfigTest(unittest.TestCase):
-    @patch("news_official.time.sleep")
-    @patch("news_official.get_public_response")
-    @patch("news_official.new_public_session")
-    def test_direct_request_retries_a_transient_connection_failure(
+def fake_fetcher(pages: dict[str, tuple[str, str]]):
+    """URL -> (Content-Type, 본문) 표로 news_articles.get_public_url 을 흉내 낸다."""
+    def _get(url, timeout, *, allowed_hosts=None):
+        if url not in pages:
+            raise requests.RequestException(f"not found: {url}")
+        content_type, body = pages[url]
+        return url, content_type, body
+    return _get
+
+
+RSS_FEED = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>Example News</title>
+  <item>
+    <title>New single malt release</title>
+    <link>https://example.com/2026/09/04/new-single-malt</link>
+    <pubDate>Fri, 04 Sep 2026 09:00:00 +0900</pubDate>
+  </item>
+  <item>
+    <title>Old news</title>
+    <link>https://example.com/2026/01/02/old-news</link>
+    <pubDate>Thu, 02 Jan 2026 09:00:00 +0900</pubDate>
+  </item>
+</channel></rss>"""
+
+ATOM_FEED = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title>Atom release</title>
+    <link rel="alternate" href="https://example.com/atom-release"/>
+    <published>2026-09-04T09:00:00+09:00</published>
+  </entry>
+</feed>"""
+
+LISTING_HTML = '<html><head><link rel="alternate" type="application/rss+xml" href="/feed.xml"></head><body><a href="/2026/09/04/new-single-malt">New single malt release</a></body></html>'
+
+
+class ArticleDiscoveryTest(unittest.TestCase):
+    """등록 출처에서 기사 목록을 얻는 세 경로 — 피드 · 사이트맵 · 링크 추출."""
+
+    @patch("news_articles.time.sleep")
+    @patch("news_articles.get_public_response")
+    @patch("news_articles.new_public_session")
+    def test_public_request_retries_a_transient_connection_failure(
         self, session_factory: Mock, get_public: Mock, sleep: Mock,
     ) -> None:
         session = session_factory.return_value
@@ -239,75 +225,237 @@ class NewsSourceConfigTest(unittest.TestCase):
             (response, "https://example.com/news"),
         ]
 
-        final_url, content_type, body = _get_public_url("https://example.com/news", 15)
+        final_url, content_type, body = get_public_url("https://example.com/news", 15)
 
         self.assertEqual("https://example.com/news", final_url)
         self.assertIn("text/html", content_type)
         self.assertEqual("<html>ok</html>", body)
         self.assertEqual(2, get_public.call_count)
-        self.assertEqual(15, get_public.call_args.kwargs["timeout"])
-        self.assertIs(session, get_public.call_args.args[0])
         sleep.assert_called_once_with(1)
         response.close.assert_called_once()
         session.close.assert_called_once()
 
-    @patch("news_official.BeautifulSoup")
-    @patch("news_official._get_public_url")
-    def test_direct_source_limits_redirects_to_configured_domain(
-        self, get_public: Mock, soup_factory: Mock,
-    ) -> None:
-        get_public.return_value = (
-            "https://www.example.com/news",
-            "text/html; charset=utf-8",
-            "<html><title>Official news</title><body>공식 뉴스 본문이 충분히 있습니다.</body></html>",
-        )
-        soup = soup_factory.return_value
-        soup.return_value = []
-        soup.title.get_text.return_value = "Official news"
-        soup.get_text.return_value = "공식 뉴스 본문이 충분히 있습니다. 제품 출시와 관련된 세부 정보입니다."
+    @unittest.skipUnless(HAS_BS4, "bs4 필요")
+    def test_feed_link_in_the_page_head_is_used_instead_of_scraping_links(self) -> None:
+        """피드가 있으면 그쪽을 쓴다 — 발행일이 딸려 와서 기사를 열기 전에 최신성을 거를 수 있다."""
+        pages = {
+            "https://example.com/news": ("text/html", LISTING_HTML),
+            "https://example.com/feed.xml": ("application/rss+xml", RSS_FEED),
+        }
+        with patch("news_articles.get_public_url", side_effect=fake_fetcher(pages)):
+            refs, method = discover_articles(
+                {"sourceUrl": "https://example.com/news", "domain": "example.com"}, 15, Mock())
 
-        source = _direct_source({
-            "sourceUrl": "https://example.com/news",
-            "sourceName": "Example",
-            "domain": "example.com",
-        }, 15)
+        self.assertEqual("feed", method)
+        self.assertEqual("https://example.com/2026/09/04/new-single-malt", refs[0].url)
+        self.assertEqual("New single malt release", refs[0].title)
+        self.assertEqual(2026, refs[0].published_at.year)
+        self.assertEqual(9, refs[0].published_at.month)
+
+    def test_registered_url_that_is_itself_a_feed_is_read_directly(self) -> None:
+        pages = {"https://example.com/rss": ("application/rss+xml", RSS_FEED)}
+        with patch("news_articles.get_public_url", side_effect=fake_fetcher(pages)):
+            refs, method = discover_articles(
+                {"sourceUrl": "https://example.com/rss", "domain": "example.com"}, 15, Mock())
+
+        self.assertEqual("feed", method)
+        self.assertEqual(2, len(refs))
+
+    def test_atom_entries_use_the_link_href_attribute(self) -> None:
+        """BeautifulSoup 의 html.parser 는 <link> 를 빈 요소로 봐서 링크를 잃는다. XML 로 읽어야 한다."""
+        refs = parse_feed(ATOM_FEED, "https://example.com/atom")
+
+        self.assertEqual(["https://example.com/atom-release"], [ref.url for ref in refs])
+        self.assertEqual("Atom release", refs[0].title)
+        self.assertIsNotNone(refs[0].published_at)
+
+    @unittest.skipUnless(HAS_BS4, "bs4 필요")
+    def test_link_extraction_is_the_last_resort_and_stays_inside_the_domain(self) -> None:
+        html = (
+            '<a href="/2026/09/04/whisky-release">위스키 신제품 출시</a>'
+            '<a href="https://other.example/2026/09/04/outside">남의 도메인</a>'
+            '<a href="/tag/news">태그 목록</a>'
+            '<a href="#top">앵커</a>'
+            '<a href="mailto:a@b.c">메일</a>'
+        )
+
+        refs = extract_article_links(html, "https://example.com/news", "example.com")
+
+        self.assertEqual(["https://example.com/2026/09/04/whisky-release"], [ref.url for ref in refs])
+
+    @unittest.skipUnless(HAS_BS4, "bs4 필요")
+    def test_link_extraction_skips_the_listing_page_itself(self) -> None:
+        html = '<a href="/news">현재 페이지</a><a href="/2026/09/04/release">기사</a>'
+
+        refs = extract_article_links(html, "https://example.com/news", "example.com")
+
+        self.assertEqual(["https://example.com/2026/09/04/release"], [ref.url for ref in refs])
+
+
+class ArticleDateTest(unittest.TestCase):
+    """발행일을 못 읽으면 '최근 3일'이라는 판단 자체가 성립하지 않는다."""
+
+    def test_iso_and_rfc2822_and_date_only_are_all_accepted(self) -> None:
+        self.assertEqual(2026, parse_datetime("2026-09-04T09:00:00+09:00").year)
+        self.assertEqual(9, parse_datetime("Fri, 04 Sep 2026 09:00:00 +0900").month)
+        self.assertEqual(4, parse_datetime("2026-09-04").day)
+        self.assertIsNone(parse_datetime(""))
+        self.assertIsNone(parse_datetime("어제"))
+
+    def test_naive_datetime_is_read_as_korea_time(self) -> None:
+        """국내 출처가 시간대를 빼먹는 일이 잦다. UTC 로 읽으면 9시간이 밀린다."""
+        parsed = parse_datetime("2026-09-04T09:00:00")
+
+        self.assertEqual(9, parsed.hour)
+        self.assertEqual(SERVICE_ZONE.utcoffset(parsed.replace(tzinfo=None)),
+                         parsed.utcoffset())
+
+    def test_date_in_the_url_path_is_the_last_resort(self) -> None:
+        found = date_from_url("https://nypost.com/2026/08/16/lifestyle/sarti-spritz")
+        self.assertEqual((2026, 8, 16), (found.year, found.month, found.day))
+
+        month_only = date_from_url("https://retailgazette.co.uk/blog/2026/08/kfc-chicken-wine")
+        self.assertEqual((2026, 8, 1), (month_only.year, month_only.month, month_only.day))
+
+        self.assertIsNone(date_from_url("https://example.com/news/whisky"))
+
+    @unittest.skipUnless(HAS_BS4, "bs4 필요")
+    def test_json_ld_meta_and_time_tags_are_read_in_order(self) -> None:
+        json_ld = BeautifulSoup(
+            '<script type="application/ld+json">'
+            '{"@type":"NewsArticle","datePublished":"2026-09-04T10:00:00+09:00"}</script>',
+            "html.parser")
+        meta = BeautifulSoup(
+            '<meta property="article:published_time" content="2026-09-03T10:00:00+09:00">',
+            "html.parser")
+        time_tag = BeautifulSoup('<time datetime="2026-09-02T10:00:00+09:00">이틀 전</time>',
+                                 "html.parser")
+
+        self.assertEqual(4, _article_published_at(json_ld, "https://example.com/a").day)
+        self.assertEqual(3, _article_published_at(meta, "https://example.com/a").day)
+        self.assertEqual(2, _article_published_at(time_tag, "https://example.com/a").day)
+
+    def test_recent_window_boundary_is_inclusive(self) -> None:
+        now = datetime(2026, 9, 5, 12, 0, tzinfo=SERVICE_ZONE)
+
+        self.assertTrue(is_recent(now - timedelta(days=2), 3, reference=now))
+        self.assertTrue(is_recent(now - timedelta(days=3), 3, reference=now))
+        self.assertFalse(is_recent(now - timedelta(days=4), 3, reference=now))
+
+    def test_article_without_a_date_is_kept(self) -> None:
+        """날짜를 못 찾았다고 버리면 메타 태그가 없는 매체를 통째로 잃는다.
+        같은 기사를 다시 잡는 것은 서버의 근거 URL 중복 판정이 막는다."""
+        self.assertTrue(is_recent(None, 3))
+
+
+class ArticleReadTest(unittest.TestCase):
+    @unittest.skipUnless(HAS_BS4, "bs4 필요")
+    def test_read_article_extracts_body_and_published_date(self) -> None:
+        html = (
+            '<html><head><title>Fallback</title>'
+            '<meta property="article:published_time" content="2026-09-04T09:00:00+09:00">'
+            "</head><body><nav>메뉴 메뉴 메뉴</nav>"
+            "<article>" + ("공식 출시 소식 본문입니다. " * 20) + "</article>"
+            "<footer>푸터</footer></body></html>"
+        )
+        pages = {"https://example.com/2026/09/04/release": ("text/html", html)}
+
+        with patch("news_articles.get_public_url", side_effect=fake_fetcher(pages)):
+            source = read_article(
+                ArticleRef(url="https://example.com/2026/09/04/release", title="출시 소식"),
+                "example.com", 15)
 
         self.assertEqual("example.com", source.domain)
-        get_public.assert_called_once_with(
-            "https://example.com/news",
-            15,
-            allowed_hosts={"example.com"},
-        )
+        self.assertEqual("출시 소식", source.title)
+        self.assertIn("공식 출시 소식 본문입니다.", source.content)
+        # nav 와 footer 는 본문에서 빠진다 — 목록 페이지를 통째로 긁던 시절의 잡동사니가 이것이다.
+        self.assertNotIn("메뉴 메뉴 메뉴", source.content)
+        self.assertNotIn("푸터", source.content)
+        self.assertTrue(source.published_at.startswith("2026-09-04"))
 
-    def test_account_rule_wins_over_domain_rule_only_for_matching_path(self) -> None:
-        configs = [
-            {"domain": "instagram.com", "pathPrefix": ""},
-            {"domain": "instagram.com", "pathPrefix": "/metabevkorea"},
+    def test_read_article_rejects_a_redirect_outside_the_registered_domain(self) -> None:
+        def _get(url, timeout, *, allowed_hosts=None):
+            return "https://other.example/hijacked", "text/html", "<html><body>x</body></html>"
+
+        with patch("news_articles.get_public_url", side_effect=_get):
+            with self.assertRaisesRegex(ValueError, "등록 도메인 밖"):
+                read_article(ArticleRef(url="https://example.com/a"), "example.com", 15)
+
+
+class SourceArticleCollectionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = {"id": 1, "sourceName": "공식", "sourceUrl": "https://example.com/news",
+                       "domain": "example.com", "enabled": True}
+
+    @staticmethod
+    def _source(url: str, published_at: datetime | None) -> SearchSource:
+        return SearchSource(title=url, url=url, domain="example.com", content="본문",
+                            published_at=published_at.isoformat() if published_at else None)
+
+    @patch("news_articles.time.sleep")
+    def test_feed_dates_filter_before_any_article_is_opened(self, sleep: Mock) -> None:
+        """피드에 날짜가 있으면 기사를 열기 전에 거른다 — 요청이 가장 적게 드는 경로다."""
+        now = datetime.now(SERVICE_ZONE)
+        refs = [
+            ArticleRef(url="https://example.com/new", published_at=now - timedelta(days=1)),
+            ArticleRef(url="https://example.com/old", published_at=now - timedelta(days=40)),
         ]
+        read = Mock(side_effect=lambda ref, domain, timeout: self._source(ref.url, ref.published_at))
 
-        account = matching_source_config(
-            "https://www.instagram.com/metabevkorea/news", "instagram.com", configs
-        )
-        other = matching_source_config(
-            "https://www.instagram.com/another_account", "instagram.com", configs
-        )
+        with patch("news_articles.discover_articles", return_value=(refs, "feed")), \
+                patch("news_articles.read_article", read):
+            collected = collect_source_articles(self.config, 15, recent_days=3, limit=5, log=Mock())
 
-        self.assertEqual("/metabevkorea", account["pathPrefix"])
-        self.assertEqual("", other["pathPrefix"])
+        self.assertEqual(["https://example.com/new"], [source.url for source in collected])
+        self.assertEqual(1, read.call_count)
 
-    def test_similar_account_name_does_not_match_prefix(self) -> None:
-        configs = [
-            {"domain": "instagram.com", "pathPrefix": "/metabevkorea"},
-        ]
+    @patch("news_articles.time.sleep")
+    def test_link_extracted_articles_are_filtered_after_reading(self, sleep: Mock) -> None:
+        """링크 추출에는 날짜가 없다. 열어 본 뒤에 거를 수밖에 없다."""
+        now = datetime.now(SERVICE_ZONE)
+        refs = [ArticleRef(url="https://example.com/a"), ArticleRef(url="https://example.com/b")]
+        dates = {"https://example.com/a": now - timedelta(days=1),
+                 "https://example.com/b": now - timedelta(days=10)}
+        read = Mock(side_effect=lambda ref, domain, timeout: self._source(ref.url, dates[ref.url]))
 
-        matched = matching_source_config(
-            "https://instagram.com/metabevkorea_fake", "instagram.com", configs
-        )
+        with patch("news_articles.discover_articles", return_value=(refs, "links")), \
+                patch("news_articles.read_article", read):
+            collected = collect_source_articles(self.config, 15, recent_days=3, limit=5, log=Mock())
 
-        self.assertIsNone(matched)
+        self.assertEqual(["https://example.com/a"], [source.url for source in collected])
+        self.assertEqual(2, read.call_count)
 
+    @patch("news_articles.time.sleep")
+    def test_per_source_limit_stops_opening_articles(self, sleep: Mock) -> None:
+        refs = [ArticleRef(url=f"https://example.com/{i}") for i in range(10)]
+        read = Mock(side_effect=lambda ref, domain, timeout: self._source(ref.url, None))
+
+        with patch("news_articles.discover_articles", return_value=(refs, "links")), \
+                patch("news_articles.read_article", read):
+            collected = collect_source_articles(self.config, 15, recent_days=3, limit=3, log=Mock())
+
+        self.assertEqual(3, len(collected))
+        self.assertEqual(3, read.call_count)
+
+    @patch("news_articles.time.sleep")
+    def test_one_broken_article_does_not_lose_the_others(self, sleep: Mock) -> None:
+        refs = [ArticleRef(url="https://example.com/a"), ArticleRef(url="https://example.com/b")]
+
+        def _read(ref, domain, timeout):
+            if ref.url.endswith("/a"):
+                raise ValueError("HTTP 404")
+            return self._source(ref.url, None)
+
+        with patch("news_articles.discover_articles", return_value=(refs, "links")), \
+                patch("news_articles.read_article", side_effect=_read):
+            collected = collect_source_articles(self.config, 15, recent_days=3, limit=5, log=Mock())
+
+        self.assertEqual(["https://example.com/b"], [source.url for source in collected])
+
+
+class RegisteredSourceCollectionTest(unittest.TestCase):
     def test_release_search_rotates_one_category_per_run(self) -> None:
-        """실행 순번만으로 집중 주종이 정해지고, 비율대로 순환한다."""
+        """실행 순번만으로 우선 주종이 정해지고, 비율대로 순환한다."""
         ratios = {"WHISKY": 60, "WINE": 20, "COGNAC": 20}
         picks = [rotation_category(index, ratios) for index in range(10)]
 
@@ -320,159 +468,129 @@ class NewsSourceConfigTest(unittest.TestCase):
     def test_rotation_falls_back_to_whisky_when_every_ratio_is_zero(self) -> None:
         self.assertEqual("WHISKY", rotation_category(0, {"WHISKY": 0, "WINE": 0, "COGNAC": 0}))
 
-    def test_registered_search_is_domain_restricted_and_category_focused(self) -> None:
-        """허용목록 밖 도메인은 검색 대상이 아니다 — 출처 목록이 불어나던 통로를 막은 부분이다."""
-        config = {"sources": [{
-            "id": 1, "sourceName": "공식", "sourceUrl": "https://whiskymag.example/news",
-            "domain": "whiskymag.example", "pathPrefix": "/news", "enabled": True,
-        }]}
-        search = Mock()
-        search.search.return_value = []
-        api = Mock()
+    @patch("news_official.collect_source_articles")
+    def test_direct_fetch_blocked_platform_is_reported_as_an_error(self, collect: Mock) -> None:
+        """확인할 방법이 없는 출처는 사유와 함께 실패로 남는다.
 
-        with patch("news_official._direct_source", side_effect=ValueError("skip")):
-            collect_registered_sources(config, search, api, Mock(), 5, category="WINE")
-
-        kwargs = search.search.call_args.kwargs
-        self.assertEqual(["whiskymag.example"], kwargs["include_domains"])
-        self.assertIn(CATEGORY_QUERIES["WINE"], search.search.call_args.args[0])
-
-    def test_social_post_can_be_assigned_to_registered_account_by_handle_evidence(self) -> None:
-        configs = [{
-            "id": 1,
-            "domain": "instagram.com",
-            "pathPrefix": "/metabevkorea",
-        }]
-        source = SearchSource(
-            title="MetaBevKorea 신제품 소식",
-            url="https://instagram.com/p/example-post",
-            domain="instagram.com",
-            content="메타베브코리아 공식 계정 @metabevkorea 게시물",
-        )
-
-        matched = _targeted_match(source, configs)
-
-        self.assertEqual(1, matched["id"])
-
-    @patch("news_official._direct_source")
-    def test_instagram_uses_search_without_direct_request(self, direct_source: Mock) -> None:
-        config = {"sources": [{
-            "id": 1,
-            "sourceName": "메타베브코리아",
-            "sourceUrl": "https://www.instagram.com/metabevkorea",
-            "domain": "instagram.com",
-            "pathPrefix": "/metabevkorea",
-            "enabled": True,
-        }]}
-        search = Mock()
-        search.search.return_value = []
-        api = Mock()
-
-        sources = collect_registered_sources(config, search, api, Mock(), timeout=15)
-
-        self.assertEqual([], sources)
-        direct_source.assert_not_called()
-        search.search.assert_called_once()
-        query = search.search.call_args.args[0]
-        self.assertIn("메타베브코리아", query)
-        self.assertIn("metabevkorea", query)
-        # 검색으로만 확인하는 출처는 결과가 없으면 '성공'이 아니다 —
-        # 예전에는 여기서도 SUCCESS 로 찍혀서 계정이 바뀌어도 아무도 몰랐다.
-        api.record_source_crawl_result.assert_called_once_with(1, "NO_RESULT", None)
-
-    @patch("news_official._direct_source")
-    def test_empty_search_no_longer_hides_a_direct_failure(self, direct_source: Mock) -> None:
-        """제한 검색이 정상 완료돼도 직접 확인 실패를 덮지 않는다.
-
-        예전에는 검색만 성공하면 모든 출처를 SUCCESS 로 찍었다. 그래서 등록 URL 이 깨져도
-        출처 목록은 늘 '수집 성공'이었고, 관리자는 고칠 수 있는 문제를 볼 수 없었다.
-        일시적 실패는 다음 실행에서 성공으로 덮이므로 사유를 남기는 쪽이 안전하다.
+        제한 검색을 걷어내면서 인스타그램을 확인할 경로가 사라졌다. 조용히 '결과 없음'으로
+        찍으면 관리자는 손쓸 수 없는 출처인 줄 모른 채 새 소식을 기다리게 된다.
         """
         config = {"sources": [{
-            "id": 2,
-            "sourceName": "Whisky Advocate News",
-            "sourceUrl": "https://whiskyadvocate.com/Tag/news",
-            "domain": "whiskyadvocate.com",
-            "pathPrefix": "/Tag/news",
-            "enabled": True,
+            "id": 1, "sourceName": "메타베브코리아",
+            "sourceUrl": "https://www.instagram.com/metabevkorea",
+            "domain": "instagram.com", "enabled": True,
         }]}
-        direct_source.side_effect = TimeoutError("connect timeout")
-        search = Mock()
-        search.search.return_value = []
         api = Mock()
 
-        sources = collect_registered_sources(config, search, api, Mock(), timeout=15)
+        sources = collect_registered_sources(config, api, Mock(), timeout=15)
+
+        self.assertEqual([], sources)
+        collect.assert_not_called()
+        api.record_source_crawl_result.assert_called_once_with(
+            1, "ERROR", DIRECT_FETCH_BLOCKED_REASON)
+
+    @patch("news_official.collect_source_articles")
+    def test_source_without_recent_articles_is_no_result_not_an_error(self, collect: Mock) -> None:
+        """목록은 정상인데 기간 안에 새 기사가 없는 것은 실패가 아니다.
+
+        여기서 목록 페이지 URL 을 근거로 제출하면 서버 중복 판정이 그 출처를 영구히 잠근다.
+        """
+        config = {"sources": [{
+            "id": 2, "sourceName": "조용한 출처", "sourceUrl": "https://quiet.example/news",
+            "domain": "quiet.example", "enabled": True,
+        }]}
+        collect.return_value = []
+        api = Mock()
+
+        sources = collect_registered_sources(config, api, Mock(), timeout=15)
+
+        self.assertEqual([], sources)
+        api.record_source_crawl_result.assert_called_once_with(2, "NO_RESULT", None)
+
+    @patch("news_official.collect_source_articles")
+    def test_direct_failure_is_reported_with_its_reason(self, collect: Mock) -> None:
+        """확인이 실패하면 사유와 함께 실패로 남는다.
+
+        예전에는 제한 검색만 성공하면 모든 출처를 SUCCESS 로 찍었다. 그래서 등록 URL 이 깨져도
+        출처 목록은 늘 '수집 성공'이었고, 관리자는 고칠 수 있는 문제를 볼 수 없었다.
+        """
+        config = {"sources": [{
+            "id": 2, "sourceName": "Whisky Advocate News",
+            "sourceUrl": "https://whiskyadvocate.com/Tag/news",
+            "domain": "whiskyadvocate.com", "enabled": True,
+        }]}
+        collect.side_effect = TimeoutError("connect timeout")
+        api = Mock()
+
+        sources = collect_registered_sources(config, api, Mock(), timeout=15)
 
         self.assertEqual([], sources)
         api.record_source_crawl_result.assert_called_once_with(2, "ERROR", "connect timeout")
 
-    @patch("news_official._direct_source")
-    def test_failed_fallback_keeps_direct_failure(self, direct_source: Mock) -> None:
-        config = {"sources": [{
-            "id": 2,
-            "sourceName": "Whisky Advocate News",
-            "sourceUrl": "https://whiskyadvocate.com/Tag/news",
-            "domain": "whiskyadvocate.com",
-            "pathPrefix": "/Tag/news",
-            "enabled": True,
-        }]}
-        direct_source.side_effect = TimeoutError("connect timeout")
-        search = Mock()
-        search.search.side_effect = RuntimeError("Tavily unavailable")
-        api = Mock()
-
-        collect_registered_sources(config, search, api, Mock(), timeout=15)
-
-        api.record_source_crawl_result.assert_called_once_with(2, "ERROR", "connect timeout")
-
-    @patch("news_official._direct_source")
-    def test_one_source_failing_does_not_change_the_others(self, direct_source: Mock) -> None:
+    @patch("news_official.collect_source_articles")
+    def test_one_source_failing_does_not_change_the_others(self, collect: Mock) -> None:
         """실패는 실패한 출처에만 남는다 — 사유도 그 출처의 것이어야 한다."""
         config = {"sources": [
             {"id": 1, "sourceName": "정상", "sourceUrl": "https://ok.example/news",
-             "domain": "ok.example", "pathPrefix": "/news", "enabled": True},
+             "domain": "ok.example", "enabled": True},
             {"id": 2, "sourceName": "깨진 출처", "sourceUrl": "https://broken.example/news",
-             "domain": "broken.example", "pathPrefix": "/news", "enabled": True},
+             "domain": "broken.example", "enabled": True},
         ]}
-        direct_source.side_effect = [
-            SearchSource(title="정상", url="https://ok.example/news/1",
-                         domain="ok.example", content="본문"),
+        collect.side_effect = [
+            [SearchSource(title="정상", url="https://ok.example/news/1",
+                          domain="ok.example", content="본문")],
             ValueError("HTTP 404"),
         ]
-        search = Mock()
-        search.search.return_value = []
         api = Mock()
 
-        collect_registered_sources(config, search, api, Mock(), timeout=15)
+        collect_registered_sources(config, api, Mock(), timeout=15)
 
         reported = {call.args[0]: call.args[1:] for call
                     in api.record_source_crawl_result.call_args_list}
         self.assertEqual(("SUCCESS", None), reported[1])
         self.assertEqual(("ERROR", "HTTP 404"), reported[2])
 
-    @patch("news_official._direct_source")
-    def test_disabled_source_is_not_collected_and_grade_no_longer_matters(
-        self, direct_source: Mock
-    ) -> None:
-        """수집 대상 판단은 '수집 활성' 하나뿐이다.
-
-        예전에는 등급까지 봐서, 활성이어도 등급이 커뮤니티면 조용히 빠졌다.
-        """
+    @patch("news_official.collect_source_articles")
+    def test_disabled_source_is_not_collected(self, collect: Mock) -> None:
+        """수집 대상 판단은 '수집 활성' 하나뿐이다."""
         config = {"sources": [
-            {"id": 1, "sourceName": "커뮤니티였던 출처", "sourceUrl": "https://forum.example/news",
-             "domain": "forum.example", "pathPrefix": "/news", "enabled": True},
+            {"id": 1, "sourceName": "켜 둔 출처", "sourceUrl": "https://forum.example/news",
+             "domain": "forum.example", "enabled": True},
             {"id": 2, "sourceName": "꺼 둔 출처", "sourceUrl": "https://off.example/news",
-             "domain": "off.example", "pathPrefix": "/news", "enabled": False},
+             "domain": "off.example", "enabled": False},
         ]}
-        direct_source.return_value = SearchSource(
-            title="글", url="https://forum.example/news/1", domain="forum.example", content="본문")
-        search = Mock()
-        search.search.return_value = []
+        collect.return_value = [SearchSource(title="글", url="https://forum.example/news/1",
+                                             domain="forum.example", content="본문")]
         api = Mock()
 
-        collect_registered_sources(config, search, api, Mock(), timeout=15)
+        collect_registered_sources(config, api, Mock(), timeout=15)
 
-        self.assertEqual(["forum.example"], search.search.call_args.kwargs["include_domains"])
+        reported = [call.args[0] for call in api.record_source_crawl_result.call_args_list]
+        self.assertEqual([1], reported)
+
+    @patch("news_official.collect_source_articles")
+    def test_run_budget_defers_remaining_sources_without_faking_their_status(
+        self, collect: Mock
+    ) -> None:
+        """상한에 걸려 확인하지 못한 출처의 상태를 덮어쓰지 않는다.
+
+        확인도 안 하고 '결과 없음'으로 찍으면 관리자가 보는 상태가 거짓이 된다.
+        """
+        config = {"sources": [
+            {"id": 1, "sourceName": "첫 출처", "sourceUrl": "https://a.example/news",
+             "domain": "a.example", "enabled": True},
+            {"id": 2, "sourceName": "다음 실행으로", "sourceUrl": "https://b.example/news",
+             "domain": "b.example", "enabled": True},
+        ]}
+        collect.return_value = [
+            SearchSource(title=f"기사 {i}", url=f"https://a.example/news/{i}",
+                         domain="a.example", content="본문") for i in range(2)
+        ]
+        api = Mock()
+
+        collect_registered_sources(config, api, Mock(), timeout=15, max_articles=2)
+
+        self.assertEqual(1, collect.call_count)
         reported = [call.args[0] for call in api.record_source_crawl_result.call_args_list]
         self.assertEqual([1], reported)
 
@@ -635,6 +753,18 @@ class GeminiLeadFinderTest(unittest.TestCase):
         # 본문·이미지·해시태그는 크롤러가 만들지 않는다.
         for absent in ("content", "imageUrl", "hashtags", "semanticFingerprint", "autoPublishRequested"):
             self.assertNotIn(absent, submitted)
+
+    def test_lead_rejected_by_the_server_as_a_shared_source_counts_as_duplicate(self) -> None:
+        """사전 확인은 근거 URL 겹침 단계를 보지 않는다. created=False 를 안 보면
+        새 원고가 0건인데 실행 이력에는 '검토 N건'으로 찍힌다."""
+        lead = NewsLead(category="WHISKY", title="같은 사건", summary="요약",
+                        event_key="shared", source_indexes=[0], confidence=0.9)
+        source = SearchSource(title="t", url="https://example.com/a", domain="example.com", content="c")
+        api = Mock()
+        api.check_duplicate.return_value = {"duplicate": False}
+        api.submit_lead.return_value = {"created": False, "id": 61, "status": "PENDING_REVIEW"}
+
+        self.assertIsNone(_process_lead(api, lead, [source], Mock()))
 
     def test_duplicate_lead_is_not_submitted(self) -> None:
         lead = NewsLead(category="WHISKY", title="중복", summary="요약",

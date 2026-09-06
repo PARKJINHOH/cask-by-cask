@@ -246,9 +246,9 @@ public final class AiNewsDtos {
 
     public record SettingsUpdateRequest(
             boolean automationEnabled,
-            @Min(1) @Max(24) int collectionIntervalHours,
+            @NotBlank @Size(max = 50) String collectionHours,
+            @Min(1) @Max(30) int recentWindowDays,
             @Min(0) @Max(20) int dailyReleaseLimit,
-            @Min(0) @Max(1000) int tavilyMonthlyCreditLimit,
             @DecimalMin("0.0") BigDecimal openaiMonthlyBudgetUsd,
             @Min(0) Long openaiMonthlyTokenLimit,
             @Min(0) @Max(100) int whiskyRatio,
@@ -258,9 +258,9 @@ public final class AiNewsDtos {
 
     public record SettingsResponse(
             boolean automationEnabled,
-            int collectionIntervalHours,
+            String collectionHours,
+            int recentWindowDays,
             int dailyReleaseLimit,
-            int tavilyMonthlyCreditLimit,
             BigDecimal openaiMonthlyBudgetUsd,
             Long openaiMonthlyTokenLimit,
             int whiskyRatio,
@@ -268,9 +268,8 @@ public final class AiNewsDtos {
             int cognacRatio
     ) {
         public static SettingsResponse from(AiNewsSettings settings) {
-            return new SettingsResponse(settings.isAutomationEnabled(), settings.getCollectionIntervalHours(),
-                    settings.getDailyReleaseLimit(),
-                    settings.getTavilyMonthlyCreditLimit(),
+            return new SettingsResponse(settings.isAutomationEnabled(), settings.getCollectionHours(),
+                    settings.getRecentWindowDays(), settings.getDailyReleaseLimit(),
                     settings.getOpenaiMonthlyBudgetUsd(), settings.getOpenaiMonthlyTokenLimit(),
                     settings.getWhiskyRatio(), settings.getWineRatio(), settings.getCognacRatio());
         }
@@ -283,20 +282,34 @@ public final class AiNewsDtos {
             @Min(0) long inputTokens,
             @Min(0) long outputTokens,
             @Min(0) int imageCount,
-            @Min(0) int tavilyCredits,
             @DecimalMin("0.0") BigDecimal estimatedCostUsd,
             LocalDateTime usageAt
     ) {}
 
     public record UsageSummaryResponse(
-            long tavilyCredits,
             long inputTokens,
             long outputTokens,
             BigDecimal estimatedCostUsd,
-            int tavilyCreditLimit,
             BigDecimal openaiBudgetUsd,
             Long openaiTokenLimit
     ) {}
+
+    /**
+     * 크롤러가 제출한 소재의 처리 결과. {@code created} 가 거짓이면 <b>중복이라 새로 만들지 않고</b>
+     * 기존 원고를 돌려준 것이다 — 이 값이 없으면 크롤러가 그것도 '저장'으로 세어
+     * 실행 이력에는 검토 N건인데 새 원고는 0건인 상태가 된다.
+     */
+    public record LeadIngestResponse(
+            boolean created,
+            Long id,
+            AiNewsArticleStatus status,
+            String dedupeKey
+    ) {
+        public static LeadIngestResponse of(boolean created, AiNewsArticle article) {
+            return new LeadIngestResponse(created, article.getId(), article.getStatus(),
+                    article.getDedupeKey());
+        }
+    }
 
     public record RunStartRequest(
             @NotBlank @Size(max = 100) String runKey,
@@ -338,9 +351,9 @@ public final class AiNewsDtos {
     /**
      * 크롤러가 실행 앞머리에서 읽는 설정 묶음.
      *
-     * <p>{@code collectionDue} 는 <b>서버가 내리는 판단</b>이다 — cron 은 매시간 돌지만 실제 수집 주기는
-     * 관리자 설정({@code collectionIntervalHours})이 정한다. 크롤러가 스스로 계산하지 않는 이유는
-     * 마지막 실행 시각이 DB 에만 있어서다 — 두 쪽이 각자 계산하면 주기가 조용히 어긋난다.
+     * <p>{@code collectionDue} 는 <b>서버가 내리는 판단</b>이다 — cron 은 매시간 돌지만 실제 수집 시각은
+     * 관리자 설정({@code collectionHours}, 예 {@code "9,18"})이 정한다. 크롤러가 스스로 계산하지 않는
+     * 이유는 마지막 실행 시각이 DB 에만 있어서다 — 두 쪽이 각자 계산하면 시각이 조용히 어긋난다.
      */
     public record InternalConfigResponse(
             SettingsResponse settings,

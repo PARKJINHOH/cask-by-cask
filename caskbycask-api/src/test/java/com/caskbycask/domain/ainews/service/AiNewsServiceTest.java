@@ -267,7 +267,7 @@ class AiNewsServiceTest {
     @Test
     void categoryRatiosMustSumToOneHundred() {
         AiNewsDtos.SettingsUpdateRequest request = new AiNewsDtos.SettingsUpdateRequest(
-                false, 2, 3, 900, null, null, 60, 30, 30);
+                false, "9,18", 3, 3, null, null, 60, 30, 30);
 
         assertThatThrownBy(() -> service.updateSettings(request, 1L))
                 .isInstanceOf(CustomException.class);
@@ -281,32 +281,67 @@ class AiNewsServiceTest {
         AiNewsDtos.InternalConfigResponse config = service.internalConfig();
 
         assertThat(config.collectionDue()).isTrue();
-        assertThat(config.nextCollectionAt()).isNull();
+        // 예정 시각은 실행 이력과 무관하게 시계로 정해진다. 이력이 없어도 다음 예정은 있다.
+        assertThat(config.nextCollectionAt()).isNotNull();
     }
 
     @Test
-    void crawlerIsToldToWaitUntilTheConfiguredIntervalHasPassed() {
-        // cron 은 매시간 돌지만 주기는 관리자 설정이 정한다. 아직 차례가 아니면 실행 행조차 만들지 않는다.
+    void crawlerIsToldToWaitWhenThisSlotHasAlreadyRun() {
+        // cron 은 매시간 돌지만 수집 시각은 관리자 설정이 정한다. 차례가 아니면 실행 행조차 만들지 않는다.
         given(settingsRepository.findById(1L)).willReturn(Optional.of(defaultSettings()));
-        LocalDateTime justRan = LocalDateTime.now().minusMinutes(10);
         given(runRepository.findFirstByOrderByStartedAtDesc())
-                .willReturn(Optional.of(runStartedAt(justRan)));
+                .willReturn(Optional.of(runStartedAt(LocalDateTime.now().minusMinutes(10))));
 
-        AiNewsDtos.InternalConfigResponse config = service.internalConfig();
-
-        assertThat(config.collectionDue()).isFalse();
-        assertThat(config.nextCollectionAt()).isEqualTo(justRan.plusHours(2));
+        assertThat(service.internalConfig().collectionDue()).isFalse();
     }
 
     @Test
-    void crawlerCollectsAgainOnceTheIntervalHasPassed() {
+    void crawlerCollectsAgainWhenTheLastRunIsOlderThanThisSlot() {
         given(settingsRepository.findById(1L)).willReturn(Optional.of(defaultSettings()));
         given(runRepository.findFirstByOrderByStartedAtDesc())
-                .willReturn(Optional.of(runStartedAt(LocalDateTime.now().minusHours(3))));
+                .willReturn(Optional.of(runStartedAt(LocalDateTime.now().minusDays(3))));
 
-        AiNewsDtos.InternalConfigResponse config = service.internalConfig();
+        assertThat(service.internalConfig().collectionDue()).isTrue();
+    }
 
-        assertThat(config.collectionDue()).isTrue();
+    @Test
+    void collectionSlotIsTheMostRecentConfiguredHourThatHasPassed() {
+        AiNewsSettings settings = defaultSettings();
+
+        // 09:30 이면 오늘 09시 차례를 돌 때다. 다음은 오늘 18시.
+        LocalDateTime morning = LocalDateTime.of(2026, 9, 5, 9, 30);
+        assertThat(AiNewsService.lastScheduledAt(settings, morning))
+                .isEqualTo(LocalDateTime.of(2026, 9, 5, 9, 0));
+        assertThat(AiNewsService.nextCollectionAt(settings, morning))
+                .isEqualTo(LocalDateTime.of(2026, 9, 5, 18, 0));
+
+        // 19:00 이면 오늘 18시가 마지막 차례고, 다음은 내일 09시다.
+        LocalDateTime evening = LocalDateTime.of(2026, 9, 5, 19, 0);
+        assertThat(AiNewsService.lastScheduledAt(settings, evening))
+                .isEqualTo(LocalDateTime.of(2026, 9, 5, 18, 0));
+        assertThat(AiNewsService.nextCollectionAt(settings, evening))
+                .isEqualTo(LocalDateTime.of(2026, 9, 6, 9, 0));
+    }
+
+    @Test
+    void beforeTheFirstSlotOfTheDayTheSlotIsYesterdayEvening() {
+        // 자정을 넘겨 처음 도는 실행이 어제 18시 차례를 이미 돌았는지 제대로 봐야 한다.
+        LocalDateTime dawn = LocalDateTime.of(2026, 9, 5, 8, 0);
+
+        assertThat(AiNewsService.lastScheduledAt(defaultSettings(), dawn))
+                .isEqualTo(LocalDateTime.of(2026, 9, 4, 18, 0));
+        assertThat(AiNewsService.nextCollectionAt(defaultSettings(), dawn))
+                .isEqualTo(LocalDateTime.of(2026, 9, 5, 9, 0));
+    }
+
+    @Test
+    void collectionHoursAreNormalizedAndBadValuesAreRejected() {
+        assertThat(AiNewsService.parseCollectionHours(" 18, 9 ,18")).containsExactly(9, 18);
+
+        for (String invalid : List.of("", "  ", "24", "-1", "9,a", ",")) {
+            assertThatThrownBy(() -> AiNewsService.parseCollectionHours(invalid))
+                    .isInstanceOf(CustomException.class);
+        }
     }
 
     private AiNewsRun runStartedAt(LocalDateTime startedAt) {
@@ -367,26 +402,6 @@ class AiNewsServiceTest {
     }
 
     @Test
-    void accountScopeWinsOnlyForTheMatchingAccountPath() {
-        AiNewsSourceConfig domainRule = AiNewsSourceConfig.builder()
-                .sourceName("인스타그램 기본").sourceUrl("https://instagram.com")
-                .domain("instagram.com").pathPrefix("")
-                .build();
-        AiNewsSourceConfig accountRule = AiNewsSourceConfig.builder()
-                .sourceName("메타베브코리아").sourceUrl("https://instagram.com/metabevkorea")
-                .domain("instagram.com").pathPrefix("/metabevkorea")
-                .build();
-
-        AiNewsSourceConfig matching = AiNewsService.findBestSourceConfig(
-                List.of(domainRule, accountRule), "/metabevkorea/news");
-        AiNewsSourceConfig other = AiNewsService.findBestSourceConfig(
-                List.of(domainRule, accountRule), "/another_account");
-
-        assertThat(matching).isSameAs(accountRule);
-        assertThat(other).isSameAs(domainRule);
-    }
-
-    @Test
     void crawlerErrorIsStoredWithCheckedTimeAndMessage() {
         AiNewsSourceConfig source = AiNewsSourceConfig.builder()
                 .id(3L).sourceName("공식 뉴스룸").sourceUrl("https://example.com/news")
@@ -423,14 +438,11 @@ class AiNewsServiceTest {
         // 근거 이력은 ai_news_article_sources 에만 남는다.
         AtomicReference<AiNewsArticle> saved = new AtomicReference<>();
         given(articleRepository.findByDedupeKey("release:new-domain")).willReturn(Optional.empty());
-        given(sourceConfigRepository.findByDomain("unknown-blog.example")).willReturn(List.of());
         given(articleRepository.saveAndFlush(any(AiNewsArticle.class))).willAnswer(invocation -> {
             AiNewsArticle article = invocation.getArgument(0);
             saved.set(article);
             return article;
         });
-        given(articleRepository.findDetailById(null))
-                .willAnswer(invocation -> Optional.ofNullable(saved.get()));
 
         service.ingestLead(new AiNewsDtos.LeadIngestRequest(
                 AiNewsCategory.WHISKY, "새 도메인 근거 소식", "요약", "release:new-domain",
@@ -481,16 +493,12 @@ class AiNewsServiceTest {
         given(articleRepository.findByDedupeKey("release:balvenie-14-caribbean")).willReturn(Optional.empty());
         given(postPrefixRepository.findFirstByBoardTypeAndNameOrderBySortOrderAscIdAsc(
                 BoardType.NOTICE, "일반")).willReturn(Optional.of(general));
-        given(sourceConfigRepository.findByDomain("whiskymag.example")).willReturn(List.of());
         given(articleRepository.saveAndFlush(any(AiNewsArticle.class))).willAnswer(invocation -> {
             AiNewsArticle article = invocation.getArgument(0);
             saved.set(article);
             return article;
         });
-        given(articleRepository.findDetailById(null))
-                .willAnswer(invocation -> Optional.ofNullable(saved.get()));
-
-        AiNewsDtos.ArticleDetailResponse result = service.ingestLead(new AiNewsDtos.LeadIngestRequest(
+        AiNewsDtos.LeadIngestResponse result = service.ingestLead(new AiNewsDtos.LeadIngestRequest(
                 AiNewsCategory.WHISKY, "발베니 14년 캐리비안 캐스크 국내 출시",
                 "윌리엄그랜트앤선즈코리아가 9월 정식 수입한다고 발표했습니다.",
                 "release:balvenie-14-caribbean", null, new BigDecimal("0.9"), "gemini-test",
@@ -499,13 +507,14 @@ class AiNewsServiceTest {
                         "whiskymag.example", "Balvenie 14",
                         null, null, null, null))));
 
+        assertThat(result.created()).isTrue();
         assertThat(result.status()).isEqualTo(AiNewsArticleStatus.PENDING_REVIEW);
         // 본문은 관리자가 쓴다. AI 는 제목·요약·근거까지만 만든다.
-        assertThat(result.content()).isEmpty();
-        assertThat(result.leadSummary()).contains("9월 정식 수입");
-        assertThat(result.prefixId()).isEqualTo(9L);
-        assertThat(result.sources()).singleElement()
-                .extracting(AiNewsDtos.SourceResponse::domain).isEqualTo("whiskymag.example");
+        assertThat(saved.get().getContent()).isEmpty();
+        assertThat(saved.get().getLeadSummary()).contains("9월 정식 수입");
+        assertThat(saved.get().getPrefixId()).isEqualTo(9L);
+        assertThat(saved.get().getSources()).singleElement()
+                .extracting(AiNewsArticleSource::getDomain).isEqualTo("whiskymag.example");
     }
 
     @Test
@@ -543,9 +552,8 @@ class AiNewsServiceTest {
         given(articleRepository.findFirstByArticleTypeAndSourcesCanonicalUrlInOrderByCreatedAtAsc(
                 org.mockito.ArgumentMatchers.eq(AiNewsArticleType.RELEASE_NEWS),
                 org.mockito.ArgumentMatchers.anyList())).willReturn(Optional.of(existing));
-        given(articleRepository.findDetailById(61L)).willReturn(Optional.of(existing));
 
-        AiNewsDtos.ArticleDetailResponse result = service.ingestLead(new AiNewsDtos.LeadIngestRequest(
+        AiNewsDtos.LeadIngestResponse result = service.ingestLead(new AiNewsDtos.LeadIngestRequest(
                 AiNewsCategory.WHISKY, "다른 매체가 쓴 같은 사건", "요약", "release:other-key",
                 null, new BigDecimal("0.9"), "gemini-test",
                 List.of(new AiNewsDtos.SourceEvidenceRequest(
@@ -553,17 +561,49 @@ class AiNewsServiceTest {
                         "whiskymag.example", "같은 근거",
                         null, null, null, null))));
 
+        // created=false 가 없으면 크롤러가 이것도 저장으로 세어, 새 원고가 0건인데
+        // 실행 이력에는 검토 N건으로 찍힌다.
+        assertThat(result.created()).isFalse();
         assertThat(result.id()).isEqualTo(61L);
         verify(articleRepository, never()).saveAndFlush(any(AiNewsArticle.class));
+    }
+
+    @Test
+    void twoArticlesFromTheSameOutletCollapseToOneEvidenceRow() {
+        // 근거 테이블은 (article_id, domain) 이 유니크다. 예전에는 도메인+등록 경로로 걸러
+        // 같은 도메인의 다른 경로 두 건이 통과했다가 저장에서 터졌다.
+        PostPrefix general = PostPrefix.builder()
+                .id(9L).boardType(BoardType.NOTICE).name("일반").sortOrder(0).build();
+        AtomicReference<AiNewsArticle> saved = new AtomicReference<>();
+        given(articleRepository.findByDedupeKey("release:same-outlet")).willReturn(Optional.empty());
+        given(postPrefixRepository.findFirstByBoardTypeAndNameOrderBySortOrderAscIdAsc(
+                BoardType.NOTICE, "일반")).willReturn(Optional.of(general));
+        given(articleRepository.saveAndFlush(any(AiNewsArticle.class))).willAnswer(invocation -> {
+            saved.set(invocation.getArgument(0));
+            return invocation.getArgument(0);
+        });
+
+        service.ingestLead(new AiNewsDtos.LeadIngestRequest(
+                AiNewsCategory.WHISKY, "같은 매체 기사 두 건", "요약", "release:same-outlet",
+                null, new BigDecimal("0.9"), "gemini-test",
+                List.of(
+                        new AiNewsDtos.SourceEvidenceRequest(
+                                "https://whiskymag.example/news/1", "https://whiskymag.example/news/1",
+                                "whiskymag.example", "기사 1", null, null, null, null),
+                        new AiNewsDtos.SourceEvidenceRequest(
+                                "https://whiskymag.example/reviews/2", "https://whiskymag.example/reviews/2",
+                                "whiskymag.example", "기사 2", null, null, null, null))));
+
+        assertThat(saved.get().getSources()).hasSize(1);
     }
 
     private AiNewsSettings defaultSettings() {
         return AiNewsSettings.builder()
                 .id(1L)
                 .automationEnabled(false)
-                .collectionIntervalHours(2)
+                .collectionHours("9,18")
+                .recentWindowDays(3)
                 .dailyReleaseLimit(3)
-                .tavilyMonthlyCreditLimit(900)
                 .whiskyRatio(60)
                 .wineRatio(20)
                 .cognacRatio(20)

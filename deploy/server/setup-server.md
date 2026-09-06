@@ -675,7 +675,7 @@ nano /app/caskbycask-crawler/targets.json
 * `CASKBYCASK_INTERNAL_KEY` (서버 `/app/env/api.env` 의 키값과 일치)
 * 경로 4종에 대해 `/app/caskbycask-crawler/...` 설정 유지 확인
 * 핫딜·AI 소식 공용 `GEMINI_API_KEY`, 핫딜용 `GEMINI_MODEL=gemini-3.1-flash-lite`, `GEMINI_REQUEST_INTERVAL_SEC=5` 기입
-* `NAVER_NID_AUT`, `NAVER_NID_SES`, AI 소식용 `TAVILY_API_KEY` 기입
+* `NAVER_NID_AUT`, `NAVER_NID_SES` 기입
 * AI 소식이 쓰는 모델은 `AI_NEWS_CLASSIFIER_MODEL=gemini-3.1-flash-lite` 하나뿐 — 소재 선별·제목·요약에만 쓴다.
   크롤러는 본문도 대표 이미지도 만들지 않는다(본문·이미지·발행은 전부 관리자 몫). 작성·이미지 모델 변수는 없다.
 * 텍스트 무료 티어 사용 시 `AI_NEWS_GEMINI_FREE_TIER=true`. 예상 비용을 0으로 집계한다.

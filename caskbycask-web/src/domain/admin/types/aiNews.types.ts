@@ -126,11 +126,15 @@ export interface AiNewsBulkDeleteResult {
 
 export interface AiNewsSettings {
   automationEnabled: boolean
-  /** 수집 실행 간격(시간). cron 은 매시간 돌고 실제 주기는 이 값이 정한다. */
-  collectionIntervalHours: number
+  /**
+   * 수집할 시각을 0~23 으로 나열한 값(예 '9,18'). cron 은 매시간 확인하고
+   * 지금이 그 시각을 지났는지는 서버가 판단한다.
+   */
+  collectionHours: string
+  /** 최신 기사로 볼 기간(일). 이 기간 밖의 기사는 소재 후보에 넣지 않는다. */
+  recentWindowDays: number
   /** 하루에 모을 소재 수. 발행이 아니라 생성 기준이다. */
   dailyReleaseLimit: number
-  tavilyMonthlyCreditLimit: number
   openaiMonthlyBudgetUsd: number | null
   openaiMonthlyTokenLimit: number | null
   whiskyRatio: number
@@ -139,11 +143,9 @@ export interface AiNewsSettings {
 }
 
 export interface AiNewsUsageSummary {
-  tavilyCredits: number
   inputTokens: number
   outputTokens: number
   estimatedCostUsd: number
-  tavilyCreditLimit: number
   openaiBudgetUsd: number | null
   openaiTokenLimit: number | null
 }

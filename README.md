@@ -17,7 +17,7 @@ CaskByCask는 주류 정보와 사용자 리뷰를 중심으로 한 풀스택 �
 |---|---|---|
 | `caskbycask-api` | REST API 서버 | Java 21 · Spring Boot 3.5 · MariaDB |
 | `caskbycask-web` | 웹 프론트엔드 | React 19 · Next.js 16 · TypeScript |
-| `caskbycask-crawler` | 가격 수집 · AI 소식 생성 | Python · Gemini · Tavily |
+| `caskbycask-crawler` | 가격 수집 · AI 소식 생성 | Python · Gemini |
 | `deploy` | 배포 스크립트 · nginx · systemd | GitHub Actions |
 
 ---
@@ -55,7 +55,7 @@ CaskByCask는 주류 정보와 사용자 리뷰를 중심으로 한 풀스택 �
 | 분류 | 기술 |
 |---|---|
 | Core | Python 3 |
-| AI | Google Gemini (소식 작성) · Tavily (웹 검색) |
+| AI | Google Gemini (소식 소재 선별) |
 | 분석 | 가격 파싱 · 주류 매칭 · 중복 제거 (SQLite) |
 
 ### Infra · DevOps
@@ -78,7 +78,7 @@ CaskByCask는 주류 정보와 사용자 리뷰를 중심으로 한 풀스택 �
                                      └─ /api      → Spring Boot (:8080) ─┬─ MariaDB
                                                                          └─ Redis
 
-크롤러 (OCI) ── 주기적 수집 → Gemini/Tavily 분석
+크롤러 (OCI) ── 주기적 수집 → Gemini 분석
     └─ POST /api/internal/* (인증키) → 관리자 검토 큐
 ```
 

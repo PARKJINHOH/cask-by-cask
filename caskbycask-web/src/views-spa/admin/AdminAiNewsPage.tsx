@@ -549,18 +549,14 @@ function SettingsTab() {
   const [form, setForm] = useState<AiNewsSettings | null>(null)
   useEffect(() => { if (saved) setForm(saved) }, [saved])
   const save = useMutation({ mutationFn: adminAiNewsApi.updateSettings, onSuccess: (next) => { setForm(next); qc.invalidateQueries({ queryKey: ['admin', 'ai-news'] }) } })
-  // 다음 수집 예정은 서버가 쓰는 규칙(마지막 실행 시각 + 저장된 주기)을 그대로 화면에서 계산한다.
-  // 저장 전 입력값이 아니라 저장된 값을 쓴다 — 실제로 적용 중인 주기를 보여 줘야 한다.
-  const lastRunAt = runs?.content?.[0]?.startedAt
-  const nextCollectionAt = lastRunAt && saved
-    ? new Date(new Date(lastRunAt).getTime() + saved.collectionIntervalHours * 3_600_000)
-    : null
+  // 다음 수집 예정은 서버가 쓰는 규칙(저장된 수집 시각 중 지금 이후 가장 이른 것)을 그대로 계산한다.
+  // 저장 전 입력값이 아니라 저장된 값을 쓴다 — 실제로 적용 중인 시각을 보여 줘야 한다.
+  const nextCollectionAt = saved ? nextCollectionTime(saved.collectionHours) : null
   if (isLoading || !form) return <Loading />
   return <div className="space-y-4">
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Metric label="다음 수집 예정" value={!saved?.automationEnabled ? '자동화 꺼짐'
         : nextCollectionAt ? formatClock(nextCollectionAt) : '다음 실행에 곧바로'} />
-      <Metric label="Tavily 크레딧" value={`${usage?.tavilyCredits ?? 0} / ${usage?.tavilyCreditLimit ?? form.tavilyMonthlyCreditLimit}`} />
       <Metric label="입력 토큰" value={(usage?.inputTokens ?? 0).toLocaleString()} />
       <Metric label="출력 토큰" value={(usage?.outputTokens ?? 0).toLocaleString()} />
       <Metric label="월 토큰 합계" value={`${((usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0)).toLocaleString()} / ${usage?.openaiTokenLimit?.toLocaleString() ?? '무제한'}`} />
@@ -577,10 +573,11 @@ function SettingsTab() {
       <RequiredFieldsNotice admin />
       <Toggle label="자동화 활성화" description="정해진 주기에 따라 등록 출처를 훑어 소재를 모읍니다. OFF이면 새로운 수집을 시작하지 않습니다." checked={form.automationEnabled} onChange={(v) => setForm({ ...form, automationEnabled: v })} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <NumberField label="수집 주기(시간, 1~24)" value={form.collectionIntervalHours} min="1" max="24"
-          onChange={(v) => setForm({ ...form, collectionIntervalHours: v })} />
+        <TextField label="수집 시각(0~23, 콤마)" value={form.collectionHours} placeholder="9,18"
+          onChange={(v) => setForm({ ...form, collectionHours: v })} />
+        <NumberField label="최신 기사 기간(일, 1~30)" value={form.recentWindowDays} min="1" max="30"
+          onChange={(v) => setForm({ ...form, recentWindowDays: v })} />
         <NumberField label="소재 일일 수집 한도" value={form.dailyReleaseLimit} onChange={(v) => setForm({ ...form, dailyReleaseLimit: v })} />
-        <NumberField label="Tavily 월 한도" value={form.tavilyMonthlyCreditLimit} onChange={(v) => setForm({ ...form, tavilyMonthlyCreditLimit: v })} />
         <NumberField label="Gemini 월 예산(USD, 0=모니터링)" value={form.openaiMonthlyBudgetUsd ?? 0} step="0.01" onChange={(v) => setForm({ ...form, openaiMonthlyBudgetUsd: v > 0 ? v : null })} />
         <NumberField label="Gemini 월 토큰 한도(0=무제한)" value={form.openaiMonthlyTokenLimit ?? 0} onChange={(v) => setForm({ ...form, openaiMonthlyTokenLimit: v > 0 ? v : null })} />
         <NumberField label="위스키 비율" value={form.whiskyRatio} onChange={(v) => setForm({ ...form, whiskyRatio: v })} />
@@ -589,11 +586,15 @@ function SettingsTab() {
       </div>
       <div className="space-y-1 text-xs leading-5 text-neutral-500">
         <p>
-          수집 주기는 <strong>마지막 실행 시각 기준</strong>입니다. 서버는 매시간 확인하고, 주기가 지나지 않았으면 그냥 넘어갑니다.
-          실행마다 주종 하나에 집중해 검색하므로, 주기를 길게 잡을수록 특정 주종이 다시 돌아오는 데 오래 걸립니다.
+          수집 시각은 <strong>0~23을 콤마로</strong> 적습니다(기본 <code>9,18</code> = 하루 두 번).
+          서버는 매시간 17분에 확인하므로 <strong>실제 실행은 09:17 · 18:17</strong>입니다 — 핫딜 수집과 AI 호출이 겹치지 않게 비켜 둔 것이고,
+          한 번 실패해도 다음 정시 확인이 대신 수집합니다.
+        </p>
+        <p>
+          최신 기사 기간 안에 발행된 기사만 소재 후보가 됩니다. 등록 출처가 뜸하게 올리면 기간을 늘리세요.
         </p>
         <p>소재 일일 수집 한도는 <strong>발행이 아니라 수집</strong> 기준입니다. 주기를 짧게 해도 이 한도는 그대로 상한입니다.</p>
-        <p>주종 비율은 소재 검색이 실행마다 어느 주종에 집중할지 정하는 순환 비중입니다. 합계는 100이어야 합니다. (60/20/20이면 10회 중 위스키 6·와인 2·꼬냑 2)</p>
+        <p>주종 비율은 소재 선별이 실행마다 어느 주종을 우선할지 정하는 순환 비중입니다. 합계는 100이어야 합니다. (60/20/20이면 10회 중 위스키 6·와인 2·꼬냑 2 — 하루 2회면 한 바퀴가 5일)</p>
         <p>API 키와 절대 안전상한은 서버 환경변수에서만 관리합니다.</p>
       </div>
       <button disabled={save.isPending} className="rounded-lg bg-primary-800 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">설정 저장</button>
@@ -618,6 +619,25 @@ function Toggle({ label, description, checked, onChange }: { label: string; desc
   </label>
 }
 function NumberField({ label, value, onChange, step = '1', min, max }: { label: string; value: number; onChange: (v: number) => void; step?: string; min?: string; max?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<RequiredMark /><NumberInput required aria-required="true" step={step} min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className={`${inputCls} mt-1 w-full`} /></label> }
+
+function TextField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) { return <label className="text-xs font-medium text-neutral-600">{label}<RequiredMark /><input required aria-required="true" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={`${inputCls} mt-1 w-full`} /></label> }
+
+/**
+ * 저장된 수집 시각 중 지금 이후 가장 이른 것. 서버의 nextCollectionAt 과 같은 규칙이다.
+ * 형식이 깨진 값이면 계산하지 않는다 — 서버가 저장 시점에 거르지만 화면이 먼저 죽을 이유는 없다.
+ */
+function nextCollectionTime(collectionHours: string): Date | null {
+  const hours = [...new Set(String(collectionHours || '').split(',')
+    .map((token) => Number(token.trim()))
+    .filter((hour) => Number.isInteger(hour) && hour >= 0 && hour <= 23))].sort((a, b) => a - b)
+  if (!hours.length) return null
+  const now = new Date()
+  for (const hour of hours) {
+    const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0)
+    if (candidate > now) return candidate
+  }
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hours[0], 0, 0, 0)
+}
 
 /** formatDateTime 과 같은 모양(yyyy-MM-dd HH:mm)으로 Date 를 찍는다. */
 function formatClock(date: Date) {

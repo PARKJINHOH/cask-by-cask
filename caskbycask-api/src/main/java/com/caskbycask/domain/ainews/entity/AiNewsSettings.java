@@ -29,15 +29,22 @@ public class AiNewsSettings extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean automationEnabled;
 
-    /** 수집 실행 간격(시간). cron 은 매시간 돌고, 실제로 돌 차례인지는 이 값으로 판단한다. */
+    /**
+     * 수집할 시각을 0~23 으로 나열한 값(예 {@code "9,18"}). cron 은 매시간 돌고,
+     * 지금이 그 시각을 지났는지는 서버가 판단한다.
+     *
+     * <p>간격(시간)이 아니라 시각인 이유는 "하루 두 번, 09시와 18시" 같은 스케줄이
+     * 고정 간격으로 표현되지 않기 때문이다 — 09→18 은 9시간, 18→09 는 15시간이다.
+     */
+    @Column(nullable = false, length = 50)
+    private String collectionHours;
+
+    /** 최신 기사로 볼 기간(일). 이 기간 밖의 기사는 소재 후보에 넣지 않는다. */
     @Column(nullable = false)
-    private int collectionIntervalHours;
+    private int recentWindowDays;
 
     @Column(nullable = false)
     private int dailyReleaseLimit;
-
-    @Column(nullable = false)
-    private int tavilyMonthlyCreditLimit;
 
     @Column(precision = 12, scale = 4)
     private BigDecimal openaiMonthlyBudgetUsd;
@@ -55,9 +62,9 @@ public class AiNewsSettings extends BaseTimeEntity {
 
     public void update(
             boolean automationEnabled,
-            int collectionIntervalHours,
+            String collectionHours,
+            int recentWindowDays,
             int dailyReleaseLimit,
-            int tavilyMonthlyCreditLimit,
             BigDecimal openaiMonthlyBudgetUsd,
             Long openaiMonthlyTokenLimit,
             int whiskyRatio,
@@ -65,9 +72,9 @@ public class AiNewsSettings extends BaseTimeEntity {
             int cognacRatio
     ) {
         this.automationEnabled = automationEnabled;
-        this.collectionIntervalHours = collectionIntervalHours;
+        this.collectionHours = collectionHours;
+        this.recentWindowDays = recentWindowDays;
         this.dailyReleaseLimit = dailyReleaseLimit;
-        this.tavilyMonthlyCreditLimit = tavilyMonthlyCreditLimit;
         this.openaiMonthlyBudgetUsd = openaiMonthlyBudgetUsd;
         this.openaiMonthlyTokenLimit = openaiMonthlyTokenLimit;
         this.whiskyRatio = whiskyRatio;

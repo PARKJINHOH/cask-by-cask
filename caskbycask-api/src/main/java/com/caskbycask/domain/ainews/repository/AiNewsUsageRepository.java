@@ -10,9 +10,6 @@ import java.time.LocalDateTime;
 
 public interface AiNewsUsageRepository extends JpaRepository<AiNewsUsage, Long> {
 
-    @Query("select coalesce(sum(u.tavilyCredits), 0) from AiNewsUsage u where u.usageAt >= :from")
-    long sumTavilyCreditsSince(@Param("from") LocalDateTime from);
-
     @Query("select coalesce(sum(u.inputTokens), 0) from AiNewsUsage u where u.usageAt >= :from")
     long sumInputTokensSince(@Param("from") LocalDateTime from);
 
